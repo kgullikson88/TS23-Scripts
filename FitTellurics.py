@@ -1,3 +1,11 @@
+"""
+   Function to fit tellurics in the optical regime, given a McDonald-style reduced echelle spectrum
+   Molecules to fit are H2O and O2
+   Also fit wavelength (should already have a good first guess from the reduction),
+     continuum (same), and resolution (should be ~60000)
+"""
+
+
 import pylab
 import pyfits
 import numpy
@@ -9,90 +17,68 @@ from scipy.interpolate import interp1d, UnivariateSpline
 from scipy.optimize import leastsq, brute, fmin
 from scipy.linalg import svd, diagsvd
 from scipy import mat
-import MakeModel_Testing3 as MakeModel
+import MakeModel
 import DataStructures
+import FitsUtils
+import Units
+
 
 homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
-LineListFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/LineList.dat"
+LineListFile = homedir + "/School/Research/McDonaldData/LineList.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
 
 #Define some bounds. Bound functions are defined below
-ch4_bounds = [1.0, 2.5]
+o2_bounds = [1.8e5, 2.5e5]
 humidity_bounds = [0,100]
-co_bounds = [0,1]
-resolution_bounds = [35000,175000]
-breakpoint_bounds = [4,100]
-decay_bounds = [2,100]
-angle_bounds = [0,90]
-searchgrid = ((1.2,2.0,0.025),(0.25,15, 0.25),(0,1,.25),(35,36,1))
+resolution_bounds = [35000,90000]
+searchgrid = ((1.8e5,2.5e5,1e4),(20,90, 5))
 
-"""
-class xypoint:
-  def __init__(self,size):
-    self.x = numpy.zeros(size)
-    self.y = numpy.zeros(size)
-    self.cont = numpy.zeros(size)
-    self.err = numpy.zeros(size)
-  def copy(self):
-    copy = xypoint(self.x.size)
-    copy.x = self.x.copy()
-    copy.y = self.y.copy()
-    copy.cont = self.cont.copy()
-    copy.err = self.err.copy()
-    return copy
-"""
 
 class ContinuumSegments:
   def __init__(self,size):
     self.low = numpy.zeros(size)
     self.high = numpy.zeros(size)
 
-def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None):
+def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None, o2=None):
   
   #Get some information from the fits header
   hdulist = pyfits.open(filename)
   header = hdulist[0].header
+  orders = FitsUtils.MakeXYpoints(header, hdulist[0].data)
   
   #Resolution:
   if resolution == None:
-    slitwidth = header["hierarch eso ins slit1 wid"]
-    resolution = -50000/0.2*(slitwidth-0.2)+100000
+    resolution = 60000
     
   #Angle:
   if angle == None:
-    altitude = header["hierarch eso tel alt"]
-    angle = 90 - altitude
+    angle = float(header["zd"])
   angle_bounds = [angle-2, angle+2] #Do not allow zenith angle to change much
   
   #Humidity:
   if humidity == None:
-    humidity = header["hierarch eso tel ambi rhum"]/2.0  #My humidity profile always over-predicts humidity
+    humidity = 40.0
   
   #Always use fits header for the temperature and pressure
-  temperature = header["hierarch eso tel ambi temp"] + 273.15
-  pressure_start = header["hierarch eso tel ambi pres start"]
-  pressure_end = header["hierarch eso tel ambi pres end"]
+  temperature = (64 - 32)*5./9. + 273.15
+  pressure_start = 23.55*Units.hPa/Units.inch_Hg
+  pressure_end = 23.58*Units.hPa/Units.inch_Hg
   pressure = (pressure_start + pressure_end)/2.0
   
-  wave_start = 2250
-  wave_end = 2450
+  wave_start = 400
+  wave_end = 1100
   wavenum_start = int(1.0e7/wave_end)
   wavenum_end = int(1.0e7/wave_start+1)
   
-  chips = []
   xspacing = 1e-4    #Change this to change the interpolation spacing
   #Generate interpolated chip data
-  for i in range(1,5):
-    data = hdulist[i].data
-    chip = DataStructures.xypoint(data.field(7).size)
-    chip.x = data.field(7)
-    chip.y = data.field(1)
-    chip.cont = data.field(9)
-    chip.err = data.field(3)
+  for order in orders:
+    order.cont = numpy.ones(order.x.size)
+    order.err = numpy.sqrt(order.y)
+    
     #make sure there are no zeros (fancy indexing)
-    chip.err[chip.err <= 0] = 1e10
-    chips.append(chip)
+    order.err[order.err <= 0] = 1e10
   hdulist.close()
   
   #Read in line list:
@@ -108,12 +94,11 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   if co == None:
     co = 0.14
   o3 = 4e-2
-  #CH4 profile parameters:
-  breakpoint = 15   #height in km where profile switches from flat to gaussian
-  decay = 18.7   #standard deviation of gaussian part
+  o2 = 2.12e5
+  
   continuum_fit_order = [5,3,3,3]
-  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, 5]
-  pars = [ch4, humidity, co]
+  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, 5]
+  pars = [humidity, o2]
   
   #Make outfilename from the input fits file
   outfilename = "Corrected_" + filename[3:].split("-")[0] + ".dat"
@@ -122,17 +107,17 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(3):
+  for i in range(len(orders)):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     
-    print "Fitting chip ", i+1, "with size ", chips[i].x.size
+    print "Fitting order ", i+1, "with size ", orders[i].x.size
     if not debug:
       #const_pars[8] = continuum_fit_order[i]
-      fitout = leastsq(ErrorFunction, pars, args=(chips[i], const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
+      fitout = leastsq(ErrorFunction, pars, args=(orders[i], const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
       fitpars = fitout[0]
       pars = fitpars
     else:
-      fitout = brute(ErrorFunctionBrute, searchgrid, args=(chips[i], const_pars, linelist, segments))
+      fitout = brute(ErrorFunctionBrute, searchgrid, args=(orders[i], const_pars, linelist, segments))
       fitpars = pars
       
     outfile2 = open("chisq_summary.dat", 'a')
@@ -141,18 +126,18 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     
     print fitpars
     print "Done fitting chip ", i+1, "\n\n\n"
-    model = FitFunction(chips[i], fitpars, const_pars)
+    model = FitFunction(orders[i], fitpars, const_pars)
     model_original = model.copy()
   
     #convolve to approximate resolution (will fit later)
     resolution = const_pars[6]
-    Continuum = UnivariateSpline(chips[i].x, chips[i].cont, s=0)
+    Continuum = UnivariateSpline(orders[i].x, orders[i].cont, s=0)
     model = MakeModel.ReduceResolution(model, resolution, Continuum)
-    model = MakeModel.RebinData(model, chips[i].x)
+    model = MakeModel.RebinData(model, orders[i].x)
     
     #Fit Continuum of the chip, using the model
     #chips[i] = FitContinuum2(chips[i],model,segments)
-    chips[i] = FitContinuum3(chips[i], model,4)
+    orders[i] = FitContinuum3(orders[i], model,4)
     #if i == 0:
     #  chips[i] = FitContinuum(chips[i], model, condition=0.99)
     #else:
@@ -160,22 +145,22 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
-    modelfcn, mean = FitWavelength2(chips[i], model, linelist)
+    modelfcn, mean = FitWavelength2(orders[i], model, linelist)
     model_original.x = modelfcn(model_original.x - mean)    
 
     #Fit resolution:
-    model, resolution = FitResolution(chips[i], model_original, resolution)
+    model, resolution = FitResolution(orders[i], model_original, resolution)
     Model = UnivariateSpline(model.x, model.y,s=0)
     
     #Estimate errors:
     model2 = Model(chips[i].x)
-    residuals = model2 - chips[i].y
+    residuals = model2 - orders[i].y
     std = numpy.std(residuals)
     covariance = numpy.sqrt(fitout[1]*std)
 
     #For very deep lines, just set the line cores equal to the model (will destroy an info in the line, but will prevent huge residuals)
     indices = numpy.where(model2 < 0.05)[0]
-    chips[i].y[indices] = model2[indices]*chips[i].cont[indices]
+    orders[i].y[indices] = model2[indices]*orders[i].cont[indices]
 
     #Output
     if not debug:
@@ -189,7 +174,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
       for j in range(chips[i].x.size):
-        outfile.write("%.15f" %chips[i].x[j] + "\t1.0\t%.15f" %(chips[i].y[j]/model2[j]) + "\t1.0\t%.15f" %chips[i].err[j] + "\t%.15f" %chips[i].cont[j] + "\n")
+        outfile.write("%.15f" %orders[i].x[j] + "\t1.0\t%.15f" %(orders[i].y[j]/model2[j]) + "\t1.0\t%.15f" %orders[i].err[j] + "\t%.15f" %orders[i].cont[j] + "\n")
       outfile.write("\n\n\n")
     
     #pylab.plot(chips[i].x, chips[i].y/chips[i].cont, label="data")
@@ -210,7 +195,7 @@ def ReadContinuumDatabase(filename):
 ########################################################################
 #This function will Generate a telluric model with the given parameters#
 ########################################################################
-def FitFunction(chip, pars, const_pars):
+def FitFunction(order, pars, const_pars):
   temperature = const_pars[0]
   pressure = const_pars[1]
   co2 = const_pars[2]
@@ -219,16 +204,17 @@ def FitFunction(chip, pars, const_pars):
   wavenum_end = const_pars[5]
   angle = const_pars[7]
   resolution = const_pars[6]
-  ch4 = pars[0]
-  humidity = pars[1]
+  ch4 = const_pars[7]
+  co = const_pars[8]
+  humidity = pars[0]
+  o2 = pars[1]
   #angle = pars[2]
-  co = pars[2]
   plotflg = False
   
   #Make sure certain variables are positive
-  if co < 0:
+  if o2 < 0:
     co = 0
-    print "\nWarning! CO was set to be negative. Resetting to zero before generating model!\n\n"
+    print "\nWarning! O2 was set to be negative. Resetting to zero before generating model!\n\n"
     #plotflg = True
   if ch4 < 0:
     ch4 = 0
@@ -244,30 +230,20 @@ def FitFunction(chip, pars, const_pars):
     #plotflg = True
 
   #Generate the model:
-  model = MakeModel.Main(pressure, temperature, humidity, wavenum_start, wavenum_end, angle, co2, o3, ch4, co, chip.x, resolution)
+  model = MakeModel.Main(pressure, temperature, humidity, wavenum_start, wavenum_end, angle, co2, o3, ch4, co, o2, order.x, resolution)
   if "FullSpectrum.freq" in os.listdir(TelluricModelDir):
     cmd = "rm "+ TelluricModelDir + "FullSpectrum.freq"
     command = subprocess.check_call(cmd, shell=True)
 
-  print "FitFunction: model spacing = ", (model.x[-1] - model.x[0])/float(model.x.size)
   if plotflg:
-    pylab.plot(chip.x, chip.y)
+    pylab.plot(order.x, order.y)
     pylab.plot(model.x, model.y)
     pylab.show()
   return model
   
   
-def ErrorFunction(pars, chip, const_pars, linelist, contlist):
-  #all_pars = const_pars
-  #all_pars.extend(pars)
-  #print "Pars: ", all_pars
-  #ch4_bounds = [1.1, 2.5]
-  #humidity_bounds = [0,100]
-  #co_bounds = [0,1]
-  #resolution_bounds = [35000,125000]
-  #breakpoint_bounds = [4,100]
-  #decay_bounds = [2,100]
-  model = FitFunction(chip.copy(), pars, const_pars)
+def ErrorFunction(pars, order, const_pars, linelist, contlist):
+  model = FitFunction(order.copy(), pars, const_pars)
    
   model_original = model.copy()
   plotflg = False
@@ -275,42 +251,36 @@ def ErrorFunction(pars, chip, const_pars, linelist, contlist):
   #  plotflg = True
   
   #Reduce to initial guess resolution
-  Continuum = UnivariateSpline(chip.x.copy(), chip.cont.copy(), s=0)
+  Continuum = UnivariateSpline(order.x.copy(), order.cont.copy(), s=0)
   resolution = const_pars[6]
   if (resolution - 10 < resolution_bounds[0] or resolution+10 > resolution_bounds[1]):
-    resolution = 80000
+    resolution = 60000
   model = MakeModel.ReduceResolution(model.copy(), resolution, Continuum)
-  model = MakeModel.RebinData(model.copy(), chip.x.copy())
+  model = MakeModel.RebinData(model.copy(), order.x.copy())
 
   #Fit Continuum of the chip, using the model
   #chip = FitContinuum2(chip,model,contlist)
-  chip = FitContinuum3(chip, model, 4)
+  chip = FitContinuum3(order, model, 4)
   #fit_order = const_pars[8]
   #chip = FitContinuum(chip, model, condition=0.99, tol=3, order=fit_order)
   
   #Fit model wavelength to the chip
   #model = FitWavelength(chip,model,linelist)
 
-  modelfcn, mean = FitWavelength2(chip.copy(), model.copy(), linelist)
+  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist)
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
 
   #Fit resolution
-  model, resolution = FitResolution(chip.copy(), model_original.copy(), resolution, plotflg)
+  model, resolution = FitResolution(order.copy(), model_original.copy(), resolution, plotflg)
   const_pars[6] = resolution
-  #pylab.plot(chip.x, chip.y/chip.cont, label="data")
-  #pylab.plot(model.x, model.y, label="model")
-  #pylab.legend()
-  #pylab.show()
+
+  pylab.plot(order.x, order.y/model.y)
+  pylab.show()
   
-  #pylab.plot(chip.x, chip.y, label="data")
-  #pylab.plot(model.x, model.y, label="model")
-  #pylab.legend(loc=3)
-  #pylab.show()
-  
-  weights = 1.0/chip.err
+  weights = 1.0/order.err
   weights = weights/weights.sum()
-  return_array = ((chip.y  - chip.cont*model.y)**2*weights + bound(ch4_bounds,pars[0]) + 
+  return_array = ((order.y  - order.cont*model.y)**2*weights + bound(ch4_bounds,pars[0]) + 
                                           bound(humidity_bounds,pars[1]) +
                                   	  bound(co_bounds, pars[2]))
   					  #bound(angle_bounds, pars[2]))
@@ -598,16 +568,16 @@ def WavelengthErrorFunction(shift, data, model):
   returnvec = (data.y - newmodel)**2*weight
   return returnvec
 
-def FitWavelength2(chip, telluric, linelist, tol=0.05, oversampling = 4, debug=False):
+def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=False):
   old = []
   new = []
 
   #Interpolate to finer spacing
-  DATA_FCN = UnivariateSpline(chip.x, chip.y, s=0)
-  CONT_FCN = UnivariateSpline(chip.x, chip.cont, s=0)
+  DATA_FCN = UnivariateSpline(order.x, order.y, s=0)
+  CONT_FCN = UnivariateSpline(order.x, order.cont, s=0)
   MODEL_FCN = UnivariateSpline(telluric.x, telluric.y, s=0)
-  data = DataStructures.xypoint(chip.x.size*oversampling)
-  data.x = numpy.linspace(chip.x[0], chip.x[-1], chip.x.size*oversampling)
+  data = DataStructures.xypoint(order.x.size*oversampling)
+  data.x = numpy.linspace(order.x[0], order.x[-1], order.x.size*oversampling)
   data.y = DATA_FCN(data.x)
   data.cont = CONT_FCN(data.x)
   model = DataStructures.xypoint(data.x.size)
@@ -714,27 +684,27 @@ def GaussianErrorFunction(params, x, y):
 
 
 #This function will fit the continuum in the regions given
-def FitContinuum(chip,model,contlist):
+def FitContinuum(order,model,contlist):
   wave = []
   cont = []
   weight = []
-  minimum = chip.x[0]
-  maximum = chip.x[-1]
+  minimum = order.x[0]
+  maximum = order.x[-1]
     
   #loop over the segments
   fig1 = pylab.figure(1)
-  pylab.plot(chip.x, chip.y, 'r-')
+  pylab.plot(order.x, order.y, 'r-')
   fig2 = pylab.figure(2)
   pylab.plot(model.x, model.y, 'r-')
   for i in range(contlist.low.size):
     if contlist.high[i] > minimum and contlist.low[i] < maximum:
-      left = numpy.searchsorted(chip.x, contlist.low[i])
-      right = numpy.searchsorted(chip.x, contlist.high[i])
-      data = (numpy.mean(chip.y[left:right]))
+      left = numpy.searchsorted(order.x, contlist.low[i])
+      right = numpy.searchsorted(order.x, contlist.high[i])
+      data = (numpy.mean(order.y[left:right]))
       pylab.figure(1)
-      pylab.plot(chip.x[left:right], chip.y[left:right], 'b-')
+      pylab.plot(order.x[left:right], order.y[left:right], 'b-')
         
-      wave.append(chip.x[(left+right)/2])
+      wave.append(order.x[(left+right)/2])
         
       left = numpy.searchsorted(model.x, contlist.low[i])
       right = numpy.searchsorted(model.x, contlist.high[i])
@@ -757,7 +727,7 @@ def FitContinuum(chip,model,contlist):
   """
   for i in range(chisq.size):
     fit = UnivariateSpline(wave,cont,w=weight,k=i+1)
-    chisq[i] = numpy.sum((model.y - chip.y/fit(chip.x))**2)
+    chisq[i] = numpy.sum((model.y - order.y/fit(order.x))**2)
     #chisq[i] = fit.get_residual()
     print "k = ",i+1,": ",chisq[i]
  
@@ -769,32 +739,32 @@ def FitContinuum(chip,model,contlist):
   pars, success = leastsq(ContFitFcn, pars, args=(wave,cont,weight))
   fit = numpy.poly1d(pars)
   
-  chip.cont = fit(chip.x)
+  order.cont = fit(order.x)
   
   pylab.plot(wave, cont, 'ro')
-  pylab.plot(chip.x, chip.cont)
-  pylab.plot(chip.x, chip.y)
+  pylab.plot(order.x, order.cont)
+  pylab.plot(order.x, order.y)
   pylab.show()
-  pylab.plot(chip.x, chip.y/chip.cont)
+  pylab.plot(order.x, order.y/order.cont)
   pylab.plot(model.x, model.y)
   pylab.show()
   
-  #pylab.plot(chip.x, chip.y, label="data")
+  #pylab.plot(order.x, order.y, label="data")
   #pylab.plot(wave, cont/fit(wave), 'ro')
   #pylab.plot(model.x, model.y, label="model")
   #pylab.legend(loc=3)
   #pylab.show()
 
-  return chip
+  return order
   
 #This function will fit the continuum in the regions given
-def FitContinuum2(chip,model,contlist):
+def FitContinuum2(order,model,contlist):
   wave = []
   cont = []
   data = []
   weight = []
-  minimum = chip.x[0]
-  maximum = chip.x[-1]
+  minimum = order.x[0]
+  maximum = order.x[-1]
   model_high = 0.0  
   data_high = 0.0
   
@@ -803,12 +773,12 @@ def FitContinuum2(chip,model,contlist):
   #loop over the segments
   for i in range(contlist.low.size):
     if contlist.high[i] > minimum and contlist.low[i] < maximum:
-      left = numpy.searchsorted(chip.x, contlist.low[i])
-      right = numpy.searchsorted(chip.x, contlist.high[i])
+      left = numpy.searchsorted(order.x, contlist.low[i])
+      right = numpy.searchsorted(order.x, contlist.high[i])
       for i in range(left,right):
-        #data.append(float(chip.y[i]/Model(chip.x[i])))
-        data.append(chip.y[i]/model.y[i])
-        wave.append(chip.x[i])
+        #data.append(float(order.y[i]/Model(order.x[i])))
+        data.append(order.y[i]/model.y[i])
+        wave.append(order.x[i])
         weight.append(numpy.sqrt(model.y[i]))
  
   #Interpolate/Extrapolate the continuum:
@@ -822,8 +792,8 @@ def FitContinuum2(chip,model,contlist):
   pars = numpy.polyfit(wave,data,4)
   pars, success = leastsq(ContFitFcn, pars, args=(wave,data,weight))
   fit = numpy.poly1d(pars)
-  chip.cont = fit(chip.x)
-  return chip
+  order.cont = fit(order.x)
+  return order
  
 
 def ContFitFcn(pars, x, y, w):
@@ -833,16 +803,16 @@ def ContFitFcn(pars, x, y, w):
     retval = retval + pars[i]*x**float(len(pars) - 1 - i)
   return (retval - y)*w
   
-def FitContinuum3(chip,model,order=2):
-  wave = chip.x.copy()
-  flux = chip.y.copy()
+def FitContinuum3(order,model,fitorder=2):
+  wave = order.x.copy()
+  flux = order.y.copy()
   model2 = model.y.copy()
   weight = (model2/model2.max())**10
   done = False
   while not done:
     done = True
     wave_mean = numpy.mean(wave)
-    pars = numpy.polyfit(wave - wave_mean, flux/model2, order)
+    pars = numpy.polyfit(wave - wave_mean, flux/model2, fitorder)
     pars, success = leastsq(ContFitFcn, pars, args=(wave - wave_mean, flux/model2, weight))
     fit = numpy.poly1d(pars)
     residuals = flux/(model2*fit(wave - wave_mean))
@@ -855,27 +825,27 @@ def FitContinuum3(chip,model,order=2):
     weight = numpy.delete(weight, badindices)
     if badindices.size > 0:
       done = False
-  chip.cont = fit(chip.x - wave_mean)
-  return chip
+  order.cont = fit(order.x - wave_mean)
+  return order
 
  
-def FitContinuum(chip, model, condition=0.95, tol=3, order=5):
+def FitContinuum(order, model, condition=0.95, tol=3, fitorder=5):
   #Fit continuum, using all points with model transmission > condition
   done = False
   while not done:
     done = True
     wave = model.x[model.y > condition]
-    cont = chip.y[model.y > condition]/model.y[model.y > condition]
+    cont = order.y[model.y > condition]/model.y[model.y > condition]
   
-    #make sure there are some points on the edges of the chip
-    if wave[0] > chip.x[0] + 1.0 or wave[-1] < chip.x[-1] - 1.0:
+    #make sure there are some points on the edges of the order
+    if wave[0] > order.x[0] + 1.0 or wave[-1] < order.x[-1] - 1.0:
       condition = condition - 0.005
       done = False
   
   done = False
   while not done:
     done = True
-    fit = numpy.poly1d(numpy.polyfit(wave - wave.mean(), cont, order))
+    fit = numpy.poly1d(numpy.polyfit(wave - wave.mean(), cont, fitorder))
     resid = cont - fit(wave - wave.mean())
     mean = numpy.mean(resid)
     std = numpy.std(resid)
@@ -891,9 +861,9 @@ def FitContinuum(chip, model, condition=0.95, tol=3, order=5):
     wave = numpy.delete(wave, deleteindices)
       
   fit = numpy.poly1d(numpy.polyfit(wave - wave.mean(), cont, order))
-  chip.cont = fit(chip.x - wave.mean())
+  order.cont = fit(order.x - wave.mean())
   
-  return chip
+  return order
   
   
 #allows interp1d to extrapolate
@@ -929,6 +899,7 @@ if __name__=="__main__":
   resolution=None
   angle=None
   co=None
+  o2 = None
   for i in range(j,len(sys.argv)):
     if j >=len(sys.argv):
       break
@@ -952,7 +923,11 @@ if __name__=="__main__":
       co = float(sys.argv[j+1])
       j = j+1
       print "CO = ", co
+    elif "o2" in sys.argv[j]:
+      o2 = float(sys.argv[j+1])
+      j = j+1
+      print "O2 = ", o2
     j = j+1 
-  Main(filename, humidity=water, resolution=resolution, angle=angle, ch4=ch4, co=co)
+  Main(filename, humidity=water, resolution=resolution, angle=angle, ch4=ch4, co=co, o2=o2)
   
   

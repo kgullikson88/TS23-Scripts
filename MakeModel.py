@@ -13,78 +13,22 @@ if sys.platform.startswith("linux"):
 else:
   ModelDir = TelluricModelingDir + "OutputFiles/"
 
-"""
-class xypoint:
-  def __init__(self,size):
-    self.x = numpy.zeros(size)
-    self.y = numpy.zeros(size)
-    self.cont = numpy.ones(size)
-  def copy(self):
-    copy = xypoint(self.x.size)
-    copy.x = self.x.copy()
-    copy.y = self.y.copy()
-    copy.cont = self.cont.copy()
-    return copy
-"""
 
-def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co, wavegrid, resolution):
+def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co, o2, wavegrid, resolution):
     #First, check to make sure the model does not already exist
     print "\n\n\n\n****************************************************"
-    print "CH4: %.15f" %ch4
+    print "O2: %.15f" %o2
     print "H20: %.15f " %humidity
     print "P: %.15f" %pressure
     print "T: %.15f" %temperature
     print "Angle: %.15f" %angle
     print "Resolution: %.15f" %resolution
     print "CO: %.15f" %co
+    print "CH4: %.15f" %ch4
+    print "O3: %.15f" %o3
  
-    model_name = ModelDir + "transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*10)
-    """
-    all_files = os.listdir("/media/FreeAgent_Drive/TelluricLibrary/")
-    if model_name.split("/")[-1] in all_files:
-      print "Found model in library already! Not re-making"
-      print model_name.split("/")[-1]
-      #Append model name to library_list
-      outfile = open("library_list", "a")
-      outfile.write(model_name+"\n")
-      outfile.close()
-      
-      #Read in file:
-      wavelength, transmission = numpy.loadtxt(model_name, unpack=True)
-      
-      #Interpolate model to wavelength grid (given in numpy array wavegrid)
-      #For now, just interpolate to the right spacing
-      xspacing = wavegrid[2] - wavegrid[1]
-      wavelength = wavelength[::-1]*1000.0
-      transmission = transmission[::-1]
-      print "size: ", wavelength.size
-      Model = scipy.interpolate.interp1d(wavelength, transmission, kind='linear')
-      model = xypoint(wavelength.size)
-      model.x = numpy.arange(wavelength[0], wavelength[-1], xspacing)
-      model.y = Model(model.x)
-      print model.x
-      print wavelength
-    
-      #Convolve with gaussian to reduce resolution
-      centralwavelength = (model.x[0] + model.y[0])/2.0
-      FWHM = centralwavelength/resolution;
-      sigma = FWHM/(2.0*numpy.sqrt(2*numpy.log(2)))
-      left = 0
-      right = numpy.searchsorted(model.x, 10*sigma)
-      x = numpy.arange(0,10*sigma, xspacing)
-      gaussian = numpy.exp(-(x-5*sigma)**2/(2*sigma**2))
-      mean_before = numpy.mean(model.y)
-      model.y = numpy.convolve(model.y, gaussian, mode="same")
-      mean_after = numpy.mean(model.y)
-      model.y = model.y*mean_before/mean_after
-    
-      #Re-interpolate onto wavegrid
-      Model = scipy.interpolate.interp1d(model.x, model.y, kind='linear')
-      model.x = wavegrid
-      model.y = Model(wavegrid)
-      
-      return model
-    """
+    model_name = ModelDir + "transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*10) + "-.2f" %(o2/1e5)
+   
     
     #Read in MIPAS_atmosphere_profile
     print "Generating new atmosphere profile"
@@ -99,6 +43,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     COindex = 0
     CH4index = 0
     O3index = 0
+    O2index = 0
     for i in range(len(lines)):
         line = lines[i]
         if line.find("HGT") > 0 and line.find("[") > 0:
@@ -107,6 +52,8 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
             pressureindex = i
         elif line.find("TEM") > 0 and line.find("[") > 0:
             temperatureindex = i
+        elif line.find("O2 ") == 1 and line.find("[") > 0:
+            O2index = i
         elif line.find("H2O ") == 1 and line.find("[") > 0:
             H2Oindex = i
         elif line.find("CO2 ") == 1 and line.find("[") > 0:
@@ -122,7 +69,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     levelsperline = 5.0
     linespersection = int(numlevels/levelsperline + 0.9)
     #assume the order in which parameters appear is:
-    #pressure, temperature, CO2, O3, H20, CH4, CO
+    #pressure, temperature, O2, CO2, O3, H20, CH4, CO
     for line in lines[:pressureindex+1]:
         outputlines.append(line)
     #Loop over the pressure indices
@@ -155,9 +102,26 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
         newline = newline + "\n"
         outputlines.append(newline)
         
-    #Loop over everything from temperature to CO2
-    for i in range(temperatureindex+1+linespersection, CO2index+1):
+    #Loop over everything from temperature to O2
+    for i in range(temperatureindex+1+linespersection, O2index+1):
         outputlines.append(lines[i])
+
+    #Loop over O2 indices
+    oldo2 = float(lines[O2index+1].split()[2])
+    scalefactor = o2/oldo2
+    for i in range(O2index+1, O2index+1+linespersection):
+        line = lines[i]
+        levels = line.split()
+        newline = ""
+        for level in levels:
+            level = float(level)*scalefactor
+            newline = newline + " " + "%.3e" %level
+        newline = newline + "\n"
+        outputlines.append(newline)
+  
+    #loop over everything from O2 to CO2:
+    for i in range (O2index+1+linespersection, CO2index+1):
+        outputlines.append(lines[i])   
 
     #Loop over CO2 indices
     oldno2 = float(lines[CO2index+1].split()[2])
@@ -261,17 +225,6 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     ###########################################################
     lines = convert.Main(outputlines)
     
-    """
-    #Finally, output the new atmosphere model
-    outfilename = "temp_atmosphere"
-    outfile = open(outfilename, "w")
-    for line in outputlines:
-        outfile.write(line)
-    outfile.close()
-    
-    print "Converting atmosphere profile to lblrtm format"
-    convert.Main(outfilename)
-    """
     
     #Read in the new file and ParameterFile, and replace the atmosphere section of ParameterFile
     #Note: this method assumes that ParameterFile has the same number of atmosphere layers as the new atmosphere. May not necessarily be true!
@@ -304,11 +257,11 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
                 line = outputlines[i]
                 if line.find("V1....") != -1:
                     #change frequency to lowfreq
-                    string = line.split()[0] + "    " + str(lowfreq) + "\n"
+                    string = line.split()[0] + "    %.2f" %(lowfreq) + "\n"
                     outputlines[i] = string
                 elif line.find("V2...") != -1:
                     #change frequency to highfreq
-                    string = line.split()[0] + "    " + str(lowfreq + 2000.0) + "\n"
+                    string = line.split()[0] + "    %.2f" %(lowfreq + 2000.0) + "\n"
                     outputlines[i] = string
             lowfreq = lowfreq + 2000.0
             
@@ -344,13 +297,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
         command = subprocess.check_call(cmd, shell=True)
 
     #Convert from frequency to wavelength units
-    #freq2wave.Fix("FullSpectrum.freq")
     wavelength, transmission = FixTelluric(TelluricModelingDir + "FullSpectrum.freq")
-    
-    #Move FullSpectrum.wave into a folder with model files
-    #model_name = "/media/FreeAgent_Drive/TelluricLibrary/transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2*10) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*1e19)
-    #cmd = "mv " + TelluricModelingDir + "FullSpectrum.wave " + model_name
-    #command = subprocess.check_call(cmd, shell=True)
     
     if "FullSpectrum.freq" in os.listdir(TelluricModelingDir):
       cmd = "rm " + TelluricModelingDir + "FullSpectrum.freq"
@@ -374,7 +321,6 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     Model = scipy.interpolate.UnivariateSpline(wavelength, transmission, s=0)
     model = DataStructures.xypoint(right-left+1)
     model.x = numpy.arange(wavelength[left], wavelength[right], xspacing)
-    #model.x = numpy.copy(wavegrid)
     model.y = Model(model.x)
     
     print "All done! Output Transmission spectrum is located in the file below:"
@@ -398,19 +344,7 @@ def RebinData(data,xgrid):
   newdata = DataStructures.xypoint(xgrid.size)
   newdata.x = numpy.copy(xgrid)
   newdata.y = Model(newdata.x)
-  """
-  outfile = open("RebinData.log", "w")
-  left =  numpy.searchsorted(data.x, (3*xgrid[0]-xgrid[1])/2.0)
-  right = right = numpy.searchsorted(data.x, (3*xgrid[-1]-xgrid[-2])/2.0)
-  for i in range(xgrid.size-1):
-    outfile.write("%.10g\t" %xgrid[i] + "%.10g\n" %(xgrid[i+1]-xgrid[i]))
-  outfile.write("\n\n\n\n")
-  for i in range(data.x[left:right].size):
-    outfile.write("%.10g\t" %data.x[i+left] + "%.10g\n" %(data.x[left+i+1]-data.x[left+i]))
-  outfile.write("\n\n\n\n") 
-  """
-  #print "RebinData: ", xgrid[0], (3*xgrid[0]-xgrid[1])/2.0
-  #print xgrid[-1], (3*xgrid[-1]-xgrid[-2])/2.0
+  
   left = numpy.searchsorted(data.x, (3*xgrid[0]-xgrid[1])/2.0)
   for i in range(xgrid.size-1):
     right = numpy.searchsorted(data.x, (xgrid[i]+xgrid[i+1])/2.0)
