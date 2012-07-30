@@ -24,10 +24,11 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     print "Angle: %.15f" %angle
     print "Resolution: %.15f" %resolution
     print "CO: %.15f" %co
+    print "CO2: %.15f" %co2
     print "CH4: %.15f" %ch4
     print "O3: %.15f" %o3
  
-    model_name = ModelDir + "transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*10) + "-.2f" %(o2/1e5)
+    model_name = ModelDir + "transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*10) + "-%.2f" %(o2/1e5)
    
     
     #Read in MIPAS_atmosphere_profile
