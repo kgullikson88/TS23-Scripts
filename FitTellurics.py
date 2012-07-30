@@ -162,22 +162,25 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     std = numpy.std(residuals)
     covariance = numpy.sqrt(fitout[1]*std)
 
-    #For very deep lines, just set the line cores equal to the model (will destroy an info in the line, but will prevent huge residuals)
+    #For very deep lines, just set the line cores equal to the model (will destroy any info in the line, but will prevent huge residuals)
     indices = numpy.where(model2 < 0.05)[0]
-    order.y[indices] = model2[indices]*order.cont[indices]
+    order.y = order.y.astype('float64')
+    if indices.size > 0:
+      order.y[indices] = model2[indices]*order.cont[indices]
 
     #Output
     if not debug:
       outfile.write("#Temperature: " + str(const_pars[0]) + "\n")
       outfile.write("#Pressure: " + str(const_pars[1]) + "\n")
-      outfile.write("#CH4: " + str(fitpars[0]) + " +/- " + str(covariance[0][0]) + "\n")
-      outfile.write("#Humidity: " + str(fitpars[1]) + " +/- " + str(covariance[1][1]) + "\n")
-      outfile.write("#CO: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")
+      outfile.write("#Humidity: " + str(fitpars[0]) + " +/- " + str(covariance[0][0]) + "\n")
+      outfile.write("#O2: " + str(fitpars[1]) + " +/- " + str(covariance[1][1]) + "\n")
+      outfile.write("#CH4: " + str(const_pars[8]) + "\n")
+      outfile.write("#CO: " + str(const_pars[9]) + "\n")
       outfile.write("#Angle: " + str(const_pars[7]) + "\n")# + " +/- " + str(covariance[2][2]) + "\n")
       outfile.write("#Resolution: " + str(resolution) + "\n")
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
-      for j in range(chips[i].x.size):
+      for j in range(order.x.size):
         outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
     
