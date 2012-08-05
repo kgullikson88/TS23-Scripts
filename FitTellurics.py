@@ -657,6 +657,7 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
   #Iteratively fit to a cubic with sigma-clipping
   order = 3
   done = False
+  print "Number of wavelength points: ", len(old), "\t", len(new)
   while not done:
     done = True
     mean = numpy.mean(old)
