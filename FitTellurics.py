@@ -117,6 +117,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     
     if not debug:
       #const_pars[8] = continuum_fit_order[i]
+      model = FitFunction(order, pars, const_pars)
       order = ImproveWavelengthSolution.CCImprove(order, model)
       fitout = leastsq(ErrorFunction, pars, args=(order, const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
       fitpars = fitout[0]
