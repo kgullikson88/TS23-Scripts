@@ -1,1 +1,1 @@
-/Users/kgulliks/School/Research/CRIRES_data/Scripts/FitsUtils.py
+../../CRIRES_data/Scripts/FitsUtils.py

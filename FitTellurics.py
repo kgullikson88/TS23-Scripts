@@ -113,10 +113,11 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i+3]
     
-    print "Fitting order ", i+1, "with size ", order.x.size
+    print "Fitting order ", i+3, "with size ", order.x.size
     
     if not debug:
       #const_pars[8] = continuum_fit_order[i]
+      order = ImproveWavelengthSolution.CCImprove(order, model)
       fitout = leastsq(ErrorFunction, pars, args=(order, const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
       fitpars = fitout[0]
       pars = fitpars
@@ -279,7 +280,7 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #Fit model wavelength to the chip
   #model = FitWavelength(chip,model,linelist)
   
-  order = ImproveWavelengthSolution.CCImprove(order, model)
+  #order = ImproveWavelengthSolution.CCImprove(order, model)
   modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist)
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
@@ -330,15 +331,18 @@ def FitResolution(data, model, resolution=75000, plotflg = False):
   #errfunc = lambda R, data, model: (data.y - MakeModel.ReduceResolutionAndRebinData(model,R,data.x).y - bound(resolution_bounds, R))
   #Do a brute force grid search first, then refine with Levenberg-Marquardt
   searchgrid = (resolution_bounds[0], resolution_bounds[1], 5000)
-  resolution = brute(ResolutionFitErrorBrute,(searchgrid,), args=(data,newmodel,Continuum)) #, finish=fmin)
-  resolution, success = leastsq(ResolutionFitError, resolution, args=(data, newmodel, Continuum), epsfcn=10)
+  #resolution = brute(ResolutionFitErrorBrute,(searchgrid,), args=(data,newmodel,Continuum)) #, finish=fmin)
+  resolution = brute(ResolutionFitErrorBrute,(searchgrid,), args=(data,newmodel))
+  resolution, success = leastsq(ResolutionFitError, resolution, args=(data, newmodel), epsfcn=10)
+  #resolution, success = leastsq(ResolutionFitError, resolution, args=(data, newmodel, Continuum), epsfcn=10)
   #resolution, success = leastsq(ResolutionFitError, resolution, args=(data,newmodel))
   print "Optimal resolution found at R = ", float(resolution)
-  newmodel = MakeModel.ReduceResolution(newmodel, float(resolution), Continuum)
+  #newmodel = MakeModel.ReduceResolution(newmodel, float(resolution), Continuum)
+  newmodel = MakeModel.ReduceResolution(newmodel, float(resolution))
   return MakeModel.RebinData(newmodel, data.x), float(resolution)
   
   
-def ResolutionFitError(resolution, data, model, cont_fcn):
+def ResolutionFitError(resolution, data, model, cont_fcn=None):
   newmodel = MakeModel.ReduceResolution(model, resolution, cont_fcn)
   newmodel = MakeModel.RebinData(newmodel, data.x)
   weights = 1.0/data.err
@@ -355,7 +359,7 @@ def ResolutionFitError(resolution, data, model, cont_fcn):
     outfile.close()
   return returnvec
  
-def ResolutionFitErrorBrute(resolution, data, model, cont_fcn):
+def ResolutionFitErrorBrute(resolution, data, model, cont_fcn=None):
   return numpy.sum(ResolutionFitError(resolution, data, model, cont_fcn))
 
 
@@ -658,6 +662,10 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
   order = 3
   done = False
   print "Number of wavelength points: ", len(old), "\t", len(new)
+  if len(old) < order:
+    fit = numpy.poly1d((1,0))
+    return fit, 0.0 
+
   while not done:
     done = True
     mean = numpy.mean(old)
