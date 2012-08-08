@@ -26,13 +26,14 @@ import ImproveWavelengthSolution
 
 homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
-LineListFile = homedir + "/School/Research/McDonaldData/LineList.dat"
+LineListFile = homedir + "/School/Research/McDonaldData/LineList2.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
 
 #Define some bounds. Bound functions are defined below
 o2_bounds = [1.8e5, 2.5e5]
 humidity_bounds = [0,100]
 resolution_bounds = [35000,90000]
+angle_bounds = [0.0, 80.0]
 searchgrid = ((1.8e5,2.5e5,1e4),(20,90, 5))
 
 
@@ -100,7 +101,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
   continuum_fit_order = [5,3,3,3]
   const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, 5]
-  pars = [humidity, o2]
+  pars = [humidity, o2, angle]
   
   #Make outfilename from the input fits file
   outfilename = "Corrected_" + filename[3:].split("-")[0] + ".dat"
@@ -183,7 +184,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#O2: " + str(fitpars[1]) + " +/- " + str(covariance[1][1]) + "\n")
       outfile.write("#CH4: " + str(const_pars[8]) + "\n")
       outfile.write("#CO: " + str(const_pars[9]) + "\n")
-      outfile.write("#Angle: " + str(const_pars[7]) + "\n")# + " +/- " + str(covariance[2][2]) + "\n")
+      outfile.write("#Angle: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")# + " +/- " + str(covariance[2][2]) + "\n")
       outfile.write("#Resolution: " + str(resolution) + "\n")
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
@@ -222,7 +223,7 @@ def FitFunction(order, pars, const_pars):
   co = const_pars[8]
   humidity = pars[0]
   o2 = pars[1]
-  #angle = pars[2]
+  angle = pars[2]
   plotflg = False
 
   wave_start = order.x[0] - 10.
@@ -298,8 +299,8 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   weights = 1.0/order.err
   weights = weights/weights.sum()
   return_array = ((order.y  - order.cont*model.y)**2*weights + bound(humidity_bounds,pars[0]) + 
-                                          bound(o2_bounds,pars[1]))
-  					  #bound(angle_bounds, pars[2]))
+                                          bound(o2_bounds,pars[1]) + 
+  					  bound(angle_bounds, pars[2]))
   print "X^2 = ", numpy.sum(return_array)/float(weights.size)
   outfile = open("chisq_summary.dat", 'a')
   outfile.write(str(pars[0])+"\t"+str(pars[1])+"\t"+str(resolution)+"\t"+str(numpy.sum(return_array)/float(weights.size))+"\n")
