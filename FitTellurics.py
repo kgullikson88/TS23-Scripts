@@ -26,7 +26,7 @@ import ImproveWavelengthSolution
 
 homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
-LineListFile = homedir + "/School/Research/McDonaldData/LineList2.dat"
+LineListFile = homedir + "/School/Research/McDonaldData/Scripts/Linelist2.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
 
 #Define some bounds. Bound functions are defined below
@@ -110,11 +110,11 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(len(orders)-4):
+  for i in range(9,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
-    order = orders[i+3]
+    order = orders[i]
     
-    print "Fitting order ", i+3, "with size ", order.x.size
+    print "Fitting order ", i, "with size ", order.x.size
     
     if not debug:
       #const_pars[8] = continuum_fit_order[i]
@@ -137,7 +137,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     outfile2.close()
     
     print fitpars
-    print "Done fitting chip ", i+3, "\n\n\n"
+    print "Done fitting chip ", i, "\n\n\n"
     model = FitFunction(order, fitpars, const_pars)
     model_original = model.copy()
   
@@ -189,7 +189,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
       for j in range(order.x.size):
-        outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
+        outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t%.15f" %order.y[j] + "\t%.15f" %model2[j] + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
     
     #pylab.plot(chips[i].x, chips[i].y/chips[i].cont, label="data")
@@ -606,6 +606,7 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
   model.x = numpy.copy(data.x)
   model.y = MODEL_FCN(model.x)
   
+  
   #Begin loop over the lines
   for line in linelist:
     if line-tol > data.x[0] and line+tol < data.x[-1]:
@@ -694,6 +695,7 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
   #if len(old) > 0:
     #This is just to ensure that we didn't remove all of the points in the sigma-clipping
   #  telluric.x = fit(telluric.x - mean)
+
   return fit, mean
   
 

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import FitsUtils
 import pyfits
 import Units
+import os
 
 
 bclength = 1000  #Boxcar smoothing length
@@ -46,7 +47,7 @@ def main1():
 
 
 def main2():
-  filename = "/Users/kgulliks/School/Research/lblrtm/run_examples/MyModel/OutputFiles/transmission-743.15-283.38-50.0-35.0-368.50-4.00-1.71-1.40"
+  filename = os.environ["HOME"] + "/School/Research/lblrtm/run_examples/MyModel/OutputFiles/LongIntegrationTest/transmission-743.15-283.38-50.0-35.0-368.50-4.00-1.71-1.40"
   x,trans = numpy.loadtxt(filename, unpack=True)
   x = x[::-1]*Units.nm/Units.micron
 
@@ -80,6 +81,7 @@ def main2():
         yval = trans[minindex]
       points = [int(line),]
 
+  """
   #Make sure there are no points too close to each other
   tol = 0.05
   lines = sorted(lines)
@@ -94,7 +96,7 @@ def main2():
       index = numpy.searchsorted(x,lines[i]) - 1
       yval = trans[index]
       plt.plot((lines[i], lines[i]), (yval-0.05, yval-0.1), 'r-')
-  
+  """
   plt.plot(x, trans, 'k-')
   plt.show()
   numpy.savetxt("Linelist2.dat", lines, fmt="%.8f")
