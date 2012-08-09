@@ -153,7 +153,6 @@ class MainSequence:
       #Convert key to a number
       xpoints.append(self.SpT_To_Number(key))
       ypoints.append(dictionary[key])
-      print key, dictionary[key]
       
     sorting_indices = [i[0] for i in sorted(enumerate(xpoints), key=lambda x:x[1])]
     for index in range(len(dictionary)):
