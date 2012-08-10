@@ -161,7 +161,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
-    modelfcn, mean = FitWavelength2(order, model, fitpars[3], linelist, debug=True)
+    modelfcn, mean = FitWavelength2(order, model, linelist, const_pars[12], debug=True)
     model_original.x = modelfcn(model_original.x - mean)    
 
     #Fit resolution:
@@ -190,7 +190,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#CO: " + str(const_pars[9]) + "\n")
       outfile.write("#Angle: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")
       outfile.write("#Resolution: " + str(resolution) + "\n")
-      outfile.write("#Vsini: " + str(fitpars[3]) + " +/- " + str(covariance[3][3]) + "\n")
+      outfile.write("#Vsini: " + str(const_pars[12]) + "\n")
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
       for j in range(order.x.size):
