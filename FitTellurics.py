@@ -22,18 +22,21 @@ import DataStructures
 import FitsUtils
 import Units
 import ImproveWavelengthSolution
+import RotBroad
 
 
 homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
 LineListFile = homedir + "/School/Research/McDonaldData/Scripts/Linelist2.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
+Bstarfile = homedir + "/School/Research/McDonaldData/BstarModels/BG19000g425v2.vis.7"
 
 #Define some bounds. Bound functions are defined below
 o2_bounds = [1.8e5, 2.5e5]
 humidity_bounds = [0,100]
 resolution_bounds = [35000,90000]
 angle_bounds = [0.0, 80.0]
+vsini_bounds = [1.0,1000.0]
 searchgrid = ((1.8e5,2.5e5,1e4),(20,90, 5))
 
 
@@ -98,9 +101,10 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     co = 0.14
   o3 = 4e-2
   o2 = 2.12e5
+  vsini = 140*Units.cm/Units.km
   
   continuum_fit_order = [5,3,3,3]
-  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, 5]
+  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, humidity, o2, vsini]
   pars = [humidity, o2, angle]
   
   #Make outfilename from the input fits file
@@ -110,7 +114,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(9,len(orders)-2):
+  for i in range(12,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -157,7 +161,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
-    modelfcn, mean = FitWavelength2(order, model, linelist)
+    modelfcn, mean = FitWavelength2(order, model, fitpars[3], linelist, debug=True)
     model_original.x = modelfcn(model_original.x - mean)    
 
     #Fit resolution:
@@ -184,8 +188,9 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#O2: " + str(fitpars[1]) + " +/- " + str(covariance[1][1]) + "\n")
       outfile.write("#CH4: " + str(const_pars[8]) + "\n")
       outfile.write("#CO: " + str(const_pars[9]) + "\n")
-      outfile.write("#Angle: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")# + " +/- " + str(covariance[2][2]) + "\n")
+      outfile.write("#Angle: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")
       outfile.write("#Resolution: " + str(resolution) + "\n")
+      outfile.write("#Vsini: " + str(fitpars[3]) + " +/- " + str(covariance[3][3]) + "\n")
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
       for j in range(order.x.size):
@@ -224,6 +229,7 @@ def FitFunction(order, pars, const_pars):
   humidity = pars[0]
   o2 = pars[1]
   angle = pars[2]
+  vsini = const_pars[12]
   plotflg = False
 
   wave_start = order.x[0] - 10.
@@ -288,7 +294,7 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #model = FitWavelength(chip,model,linelist)
   
   #order = ImproveWavelengthSolution.CCImprove(order, model)
-  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist)
+  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist, const_pars[12])
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
 
@@ -589,10 +595,14 @@ def WavelengthErrorFunction(shift, data, model):
   returnvec = (data.y - newmodel)**2*weight
   return returnvec
 
-def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=False):
+def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampling = 4, debug=False):
   print "Fitting wavelength"
   old = []
   new = []
+
+  #Get stellar model first, rotationally broadened
+  starmodel = RotBroad.Broaden(Bstarfile, parent_vsini)
+  STAR = UnivariateSpline(starmodel.x, starmodel.y/starmodel.cont, s=0)
 
   #Interpolate to finer spacing
   DATA_FCN = UnivariateSpline(order.x, order.y, s=0)
@@ -604,7 +614,7 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
   data.cont = CONT_FCN(data.x)
   model = DataStructures.xypoint(data.x.size)
   model.x = numpy.copy(data.x)
-  model.y = MODEL_FCN(model.x)
+  model.y = MODEL_FCN(model.x)*STAR(model.x)
   
   
   #Begin loop over the lines
@@ -655,9 +665,9 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
       if (debug):
         print argdata.x[0], argdata.x[-1], argdata.x.size
         print "wave: ", mean, "\tshift: ", shift, "\tsuccess = ", success
-        pylab.plot(model.x[left:right]-shift, model.y[left:right])
-        pylab.plot(argmodel.x, argmodel.y)
-        pylab.plot(argdata.x, argdata.y)
+        pylab.plot(model.x[left:right]-shift, model.y[left:right], 'g-')
+        pylab.plot(argmodel.x, argmodel.y, 'r-')
+        pylab.plot(argdata.x, argdata.y, 'k-')
       if (success < 5):
         old.append(mean)
         new.append(mean - float(shift))
@@ -916,6 +926,11 @@ def extrap1d(interpolator):
         return numpy.array(map(pointwise, numpy.array(xs)))
 
     return ufunclike
+
+
+for arg in sys.argv:
+  if "debug" in arg:
+    debug = True
 
 if __name__=="__main__":
   #Parse command-line arguments for filename as well as optional abundances

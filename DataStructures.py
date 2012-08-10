@@ -52,7 +52,6 @@ class xypoint:
     return output
 
 
-
 def ReadGridSearchFile(filename, headerflag=False):
   infile = open(filename)
   lines = infile.readlines()

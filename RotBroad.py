@@ -1,0 +1,103 @@
+import pylab
+import numpy
+import Units
+from scipy.interpolate import UnivariateSpline
+import sys
+import DataStructures
+import SpectralTypeRelations
+
+
+pi = numpy.pi
+
+
+def CombineIntervals(intervals, overlap=0):
+  
+  iteration = 0
+  for interval in intervals:
+    lastindex = interval.x.size - overlap
+    if iteration == 0:
+      firstindex = overlap
+      master_x = interval.x[firstindex:lastindex]
+      master_y = interval.y[firstindex:lastindex]
+      master_cont = interval.cont[firstindex:lastindex]
+    else:
+      firstindex = numpy.searchsorted(interval.x, master_x[-1])
+      master_x = numpy.append(master_x, interval.x[firstindex:lastindex])
+      master_y = numpy.append(master_y, interval.y[firstindex:lastindex])
+      master_cont = numpy.append(master_cont, interval.cont[firstindex:lastindex])
+    iteration += 1
+
+  output = DataStructures.xypoint(master_x.size)
+  output.x = master_x.copy()
+  output.y = master_y.copy()
+  output.cont = master_cont.copy()
+
+  return output
+
+def Broaden(filename, vsini, intervalsize=50.0, alpha=0.5):
+  """
+    filename:        input filename of the spectrum. The continuum data is assumed to be in filename[:-1]+".17"
+    vsini:           the velocity (times sin(i) ) of the star
+    intervalsize:    The size (in nm) of the interval to use for broadening. Since it depends on wavelength, you don't want to do all at once
+    alpha:           Something to do with limb broadening...
+  """
+
+  print "Rotationally broadening spectrum with vsini = ", vsini
+  #Read in file
+  x,y = numpy.loadtxt(filename, unpack=True)
+  model = DataStructures.xypoint(x.size)
+  model.x = x.copy()*Units.nm/Units.angstrom
+  model.y = y.copy()
+  #Read in continuum
+  x,y = numpy.loadtxt(filename[:-1]+"17", unpack=True)
+  cont_fcn = UnivariateSpline(x*Units.nm/Units.angstrom, y, s=0)
+  model.cont = cont_fcn(model.x)
+  model_fcn = UnivariateSpline(model.x, model.y, s=0)
+
+  #Will convolve with broadening profile in steps, to keep accuracy
+  #interval size is set as a keyword argument
+  profilesize = -1
+  firstindex = 0
+  lastindex = 0
+  intervals = []
+
+  while lastindex < model.x.size - 1:
+    lastindex = numpy.searchsorted(model.x, model.x[firstindex] + intervalsize) - 1
+    interval = DataStructures.xypoint(lastindex - firstindex + 1)
+    interval.x = numpy.linspace(model.x[firstindex], model.x[lastindex], lastindex - firstindex + 1)
+    interval.y = model_fcn(interval.x)
+    interval.cont = cont_fcn(interval.x)
+
+    #Make broadening profile
+    beta = alpha/(1-alpha)
+    wave0 = interval.x[interval.x.size/2]
+    zeta = wave0*vsini/Units.c
+    xspacing = interval.x[1] - interval.x[0]
+
+    wave = numpy.arange(wave0 - zeta, wave0 + zeta, xspacing)
+    x = numpy.linspace(-1.0, 1.0, wave.size)
+    flux = pi/2.0*(1.0 - 1.0/(1. + 2*beta/3.)*(2/pi*numpy.sqrt(1-x**2) + beta/2*(1-x**2)))
+    profile = -(flux - flux.max())
+
+    interval.y = numpy.convolve(interval.y, profile/profile.sum(), mode="same")
+    intervals.append(interval)
+    #pylab.plot(interval.x, interval.y)
+
+    if profile.size > profilesize:
+      profilesize = profile.size
+    firstindex = lastindex - 2*profile.size
+
+  return CombineIntervals(intervals, overlap=profilesize)
+
+  
+
+
+if __name__ == "__main__":
+  filename = sys.argv[1]
+  SpT = sys.argv[2]
+  vsini = float(sys.argv[3]) #MUST BE GIVEN IN KM S^1
+  
+  spectrum = Broaden(filename, vsini*Units.cm/Units.km)
+  outfilename = "Broadened_" + SpT + "_v%.0f.dat" %(vsini)
+  print "Outputting to ", outfilename
+  numpy.savetxt(outfilename, numpy.transpose((spectrum.x, spectrum.y/spectrum.cont)), fmt='%.8f\t%.8g')
