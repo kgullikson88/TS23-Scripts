@@ -28,11 +28,13 @@ class GridSearchOut:
     output.cont = self.cont.copy()
     return output
 
+
+
 class xypoint:
   def __init__(self, size):
       self.x = numpy.zeros(size)
       self.y = numpy.zeros(size)
-      self.cont = numpy.zeros(size)
+      self.cont = numpy.ones(size)
       self.err = numpy.zeros(size)
   def copy(self):
       copy = xypoint(self.x.size)
