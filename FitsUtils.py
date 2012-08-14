@@ -1,0 +1,240 @@
+import pyfits
+import numpy
+from numpy.polynomial import chebyshev
+import pylab
+import DataStructures
+import Units
+import subprocess
+
+
+#Make a dictionary for converting from standard polynomial to chebyshev
+#   For now, only go up to order 5
+standard_to_cheb = {0: [[1,],],
+                    1: [[1,0], [0,1]],
+                    2: [[1,0,0.5], [0,1,0], [0,0,0.5]],
+                    3: [[1,0,0.5,0], [0,1,0,0.75], [0,0,0.5,0], [0,0,0,0.25]], 
+                    4: [[1,0,0.5,0,0.625], [0,1,0,0.75,0], [0,0,0.5,0,-0.5], [0,0,0,0.25,0], [0,0,0,0,0.125]], 
+                    5: [[1,0,0.5,0,0.625, 0], [0,1,0,0.75,0,0.625], [0,0,0.5,0,-0.5,0], [0,0,0,0.25,0,5./16.], [0,0,0,0,0.125,0], [0,0,0,0,0,1./16.]]}
+
+def Chebyshev(pvals, coefficients):
+  order = coefficients.size
+  pmid = pvals[pvals.size/2]
+  prange = pvals[-1] - pvals[0]
+  nvals = (pvals - pmid)/(prange/2.0)
+  wave = numpy.zeros(pvals.size)
+  x = []
+  x.append(numpy.ones(pvals.size))
+  x.append(nvals)
+  for i in range(2,order):
+    x.append(2.0*nvals*x[i-1] - x[i-2])
+  for i in range(order):
+    wave = wave + coefficients[i]*x[i]
+  return wave
+  
+  
+  
+def GetChebyshevCoeffs(data, pvals, order=5):
+  pmid = pvals[pvals.size/2]
+  prange = pvals[-1] - pvals[0]
+  nvals = (pvals - pmid)/(prange/2.0)
+  
+  return chebyshev.chebfit(nvals, data.x, order)
+  
+
+#Takes a fits file, with nonlinear wavelength calibration given in the header,
+#  and generates a DataStructures.xypoint object for each spectral order
+#TODO: make it work for functions other than chebyshev, and for linear/log-linear spacing
+#      allow for multiple functions. Right now it only works for one type, while fits allows many
+def MakeXYpoints(header, data):
+  try:
+    ltv = header['ltv1']
+  except KeyError:
+    ltv = 0.0
+  try:
+    ltm = header['ltm1_1']
+  except KeyError:
+    ltm = 1.0
+
+  #Make list of the wavelength data for each order
+  string = ""
+  wave_factor = 1.0   #factor to multiply wavelengths by to get them in nanometers
+  for key in sorted(header.keys()):
+    if "WAT2" in key:
+      string = string + header[key]
+      #print key, header[key]
+      for i in range(len(header[key]), 68):
+        string = string + " "
+    elif "WAT1" in key:
+      #Get wavelength units
+      if "label=Wavelength"  in header[key] and "units" in header[key]:
+        units = header[key].split("units=")[-1]
+        if units == "angstroms" or units == "Angstroms":
+          wave_factor = Units.nm/Units.angstrom
+          print "scaling wavelength by ", wave_factor
+  orders = string.split(" spec")
+
+  #Make a list of xypoints called DATA
+  DATA = []
+  index = 0
+  for order in orders[1:]:
+    #print order
+    order = order.split("=")[-1].split('"')[1]
+    segments = order.split()
+    size = int(float(segments[5]))
+    z = float(segments[6])  #Dopplar correction: 1/(1+z)
+    
+    xypt = DataStructures.xypoint(size)
+    pvals = (numpy.arange(size) - ltv)/ltm
+
+    wlen0 = float(segments[10])
+    func_type = int(float(segments[11]))
+    if func_type == 1:
+      #Chebyshev
+      func_order = int(float(segments[12]))
+      pmin = int(float(segments[13]))
+      pmax = int(float(segments[14]))
+      coefficients = []
+      for segment in segments[15:]:
+        coefficients.append(float(segment))
+      xypt.x = (wlen0 + Chebyshev(pvals, numpy.array(coefficients)))/(1.0+z)*wave_factor
+      xypt.y = data[index]
+    else:
+      print "Sorry! This function type is not currently implemented!"
+
+    DATA.append(xypt)
+    index += 1
+
+  return DATA
+  
+  
+  
+#Function to output a fits file with the same format
+#as the template function. Only implementing Chebyshev for now...
+def OutputFitsFile(template, orders):
+  hdulist = pyfits.open(template)
+  header = hdulist[0].header
+  
+  #First, get what the current wavelength calibration is from the header
+  try:
+    ltv = header['ltv1']
+  except KeyError:
+    ltv = 0.0
+  try:
+    ltm = header['ltm1_1']
+  except KeyError:
+    ltm = 1.0
+
+  #Make list of the wavelength data for each order
+  string = ""
+  wave_factor = 1.0   #factor to multiply wavelengths by to get them in nanometers
+  for key in sorted(header.keys()):
+    if "WAT2" in key:
+      string = string + header[key]
+      #print key, header[key]
+      for i in range(len(header[key]), 68):
+        string = string + " "
+    elif "WAT1" in key:
+      #Get wavelength units
+      if "label=Wavelength"  in header[key] and "units" in header[key]:
+        units = header[key].split("units=")[-1]
+        if units == "angstroms" or units == "Angstroms":
+          header.update(key,"wtype=multispec label=Wavelength units=nanometers")
+        
+  waveinfo = string.split(" spec")
+  output_string = waveinfo[0]
+  for info, i in zip(waveinfo[1:], range(1,len(waveinfo))):
+    output_string = output_string + " spec" + info.split('"')[0] + '"'
+    segments = info.split('"')[1].split()
+    for segment in segments[:15]:
+      output_string = output_string + segment + " "
+    size = int(float(segments[5]))
+    z = float(segments[6])  #Dopplar correction: 1/(1+z)
+    
+    xypt = DataStructures.xypoint(size)
+    pvals = (numpy.arange(size) - ltv)/ltm
+
+    wlen0 = float(segments[10])
+    func_type = int(float(segments[11]))
+    if func_type == 1:
+      #Chebyshev
+      func_order = int(float(segments[12]))
+      pmin = int(float(segments[13]))
+      pmax = int(float(segments[14]))
+      coefficients = GetChebyshevCoeffs(orders[i-1], pvals, func_order-1)
+      coefficients[0] = coefficients[0]
+      for coeff in coefficients:
+        output_string = output_string + ("%.14g " %coeff).replace("e","E")
+     
+    else:
+      print "Sorry! This function type is not currently implemented!"
+
+    output_string = output_string[:-1] + '"'
+  
+  #Split output string so it isn't too many characters
+  size = 68
+  leftindex=0
+  rightindex = size
+  keyindex = 1
+  while rightindex < len(output_string):
+    key = "WAT2_"
+    if len(str(keyindex)) == 1:
+      key = key + "00"
+    elif len(str(keyindex)) == 2:
+      key = key + "0"
+    key = key+str(keyindex)
+    
+    #print key, output_string[leftindex:rightindex]
+    header.update(key, output_string[leftindex:rightindex])
+    leftindex = rightindex
+    rightindex = min(leftindex+size, len(output_string))
+    keyindex += 1
+  
+  #Do the last one outside of the loop
+  key = "WAT2_"
+  if len(str(keyindex)) == 1:
+    key = key + "00"
+  elif len(str(keyindex)) == 2:
+    key = key + "0"
+  key = key+str(keyindex)
+  #print key, output_string[leftindex:rightindex]
+  header.update(key, output_string[leftindex:rightindex])
+  
+  #Delete any WAT2 keys that were not used
+  for key in sorted(header.keys()):
+    if "WAT2" in key:
+      if int(key[-3:]) > keyindex:
+        del header[key]
+    
+  hdulist[0].header = header
+  if "-" in template:
+    i = int(template.split("-")[-1].split(".fits")[0])
+    outfilename = template.split("-")[0] + "-" + str(i+1) + ".fits"
+  else:
+    outfilename = template.split(".fits")[0] + "-0.fits"
+  print "Outputting to ", outfilename
+  try:
+    hdulist.writeto(outfilename)
+  except IOError:
+    cmd = subprocess.check_call("rm "+outfilename, shell=True)
+    hdulist.writeto(outfilename)
+  hdulist.close()
+  
+  
+if __name__ == "__main__":
+  hdulist = pyfits.open("output-1.fits")
+  orders = MakeXYpoints(hdulist[0].header, hdulist[0].data)
+  OutputFitsFile("output-1.fits", orders)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
