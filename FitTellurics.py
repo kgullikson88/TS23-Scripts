@@ -27,7 +27,7 @@ import RotBroad
 
 homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
-LineListFile = homedir + "/School/Research/McDonaldData/Scripts/Linelist2.dat"
+LineListFile = homedir + "/School/Research/McDonaldData/MyLinelist.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
 Bstarfile = homedir + "/School/Research/McDonaldData/BstarModels/BG19000g425v2.vis.7"
 

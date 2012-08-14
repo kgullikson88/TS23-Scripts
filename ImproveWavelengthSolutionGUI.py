@@ -47,7 +47,7 @@ class Improve:
     self.telluric = DataStructures.xypoint(wave.size)
     self.telluric.x = wave[::-1]*Units.nm/Units.um
     self.telluric.y = trans[::-1]
-    self.telluric = MakeModel.ReduceResolution(self.telluric, 60000)
+    self.telluric = MakeModel.ReduceResolution(self.telluric, 70000)
     
     
     
@@ -63,7 +63,7 @@ class Improve:
     linelist = numpy.loadtxt(utils.LineListFile)
     
     #Loop over the spectral orders
-    for i in range(7,len(self.orders)):
+    for i in range(3,4):
       self.orderNum = i
       self.fitpoints = fitpoints()
       wave = self.orders[i].x
@@ -71,7 +71,9 @@ class Improve:
       tell = Telluric(wave)
       
       #Do a cross-correlation first, to get the wavelength solution close
-
+      print wave
+      print flux
+      print tell
       pylab.plot(wave, flux)
       pylab.plot(wave, tell)
       pylab.show()
@@ -82,6 +84,9 @@ class Improve:
       offsets = -lags*distancePerLag
       offsets = offsets[::-1]
       ycorr = ycorr[::-1]
+
+      fit = numpy.poly1d(numpy.polyfit(offsets, ycorr, ycorr.size/100))
+      ycorr = ycorr - fit(offsets)
       left = numpy.searchsorted(offsets, -1.0)
       right = numpy.searchsorted(offsets, +1.0)
       maxindex = ycorr[left:right].argmax() + left
@@ -132,7 +137,7 @@ class Improve:
         while not done:
           #self.fitpoints is filled when you are clicking in the window
           if (len(self.fitpoints.x) > 3):
-            pars = numpy.polyfit(self.fitpoints.x, self.fitpoints.y, 2)
+            pars = numpy.polyfit(self.fitpoints.x, self.fitpoints.y, 3)
           else:
             pars = [0,1,0] #y=x... meaning don't try to improve on this order
           func = numpy.poly1d(pars)
@@ -295,7 +300,7 @@ def GaussianErrorFunction(params, x, y):
 #This assumes that we are already quite close to the correct solution
 #Note: it comes from FitTellurics and is just slightly modified. 
 #      Therefore, it takes FitTellurics structures
-def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=False):
+def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_order=3, debug=False):
   old = []
   new = []
   
@@ -365,7 +370,6 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, debug=
     pylab.show()
   #fit = UnivariateSpline(old, new, k=1, s=0)
   #Iteratively fit to a cubic with sigma-clipping
-  fit_order = 3
   fit = numpy.poly1d((1,0))
   mean = 0.0
   done = False
@@ -398,7 +402,7 @@ if __name__ == "__main__":
   if sys.platform.startswith("linux"):
     outfilename = "/media/FreeAgent_Drive/TelluricLibrary/transmission-743.15-283.38-60.0-40.0-368.50-4.00-1.71-1.40"
   else:
-    outfilename = "/Users/kgulliks/School/Research/lblrtm/run_examples/MyModel/OutputFiles/transmission-742.00-286.00-20.0-50.0-368.50-4.00-2.00-1.40"
+    outfilename = "/Users/kgulliks//School/Research/lblrtm/run_examples/MyModel/OutputFiles/Generic.dat"
 
   if len(sys.argv)>1:
     for fname in sys.argv[1:]:
