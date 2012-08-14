@@ -9,12 +9,12 @@ import subprocess
 
 #Make a dictionary for converting from standard polynomial to chebyshev
 #   For now, only go up to order 5
-standard_to_cheb = {0: [[1,],],
-                    1: [[1,0], [0,1]],
-                    2: [[1,0,0.5], [0,1,0], [0,0,0.5]],
-                    3: [[1,0,0.5,0], [0,1,0,0.75], [0,0,0.5,0], [0,0,0,0.25]], 
-                    4: [[1,0,0.5,0,0.625], [0,1,0,0.75,0], [0,0,0.5,0,-0.5], [0,0,0,0.25,0], [0,0,0,0,0.125]], 
-                    5: [[1,0,0.5,0,0.625, 0], [0,1,0,0.75,0,0.625], [0,0,0.5,0,-0.5,0], [0,0,0,0.25,0,5./16.], [0,0,0,0,0.125,0], [0,0,0,0,0,1./16.]]}
+#standard_to_cheb = {0: [[1,],],
+#                    1: [[1,0], [0,1]],
+#                    2: [[1,0,0.5], [0,1,0], [0,0,0.5]],
+#                    3: [[1,0,0.5,0], [0,1,0,0.75], [0,0,0.5,0], [0,0,0,0.25]], 
+#                    4: [[1,0,0.5,0,0.625], [0,1,0,0.75,0], [0,0,0.5,0,-0.5], [0,0,0,0.25,0], [0,0,0,0,0.125]], 
+#                    5: [[1,0,0.5,0,0.625, 0], [0,1,0,0.75,0,0.625], [0,0,0.5,0,-0.5,0], [0,0,0,0.25,0,5./16.], [0,0,0,0,0.125,0], [0,0,0,0,0,1./16.]]}
 
 def Chebyshev(pvals, coefficients):
   order = coefficients.size
@@ -96,6 +96,7 @@ def MakeXYpoints(header, data):
       coefficients = []
       for segment in segments[15:]:
         coefficients.append(float(segment))
+      print "Order ", index+1, ": ", coefficients
       xypt.x = (wlen0 + Chebyshev(pvals, numpy.array(coefficients)))/(1.0+z)*wave_factor
       xypt.y = data[index]
     else:
@@ -110,7 +111,7 @@ def MakeXYpoints(header, data):
   
 #Function to output a fits file with the same format
 #as the template function. Only implementing Chebyshev for now...
-def OutputFitsFile(template, orders):
+def OutputFitsFile(template, orders, func_order=None):
   hdulist = pyfits.open(template)
   header = hdulist[0].header
   
@@ -145,7 +146,7 @@ def OutputFitsFile(template, orders):
   for info, i in zip(waveinfo[1:], range(1,len(waveinfo))):
     output_string = output_string + " spec" + info.split('"')[0] + '"'
     segments = info.split('"')[1].split()
-    for segment in segments[:15]:
+    for segment in segments[:10]:
       output_string = output_string + segment + " "
     size = int(float(segments[5]))
     z = float(segments[6])  #Dopplar correction: 1/(1+z)
@@ -153,15 +154,22 @@ def OutputFitsFile(template, orders):
     xypt = DataStructures.xypoint(size)
     pvals = (numpy.arange(size) - ltv)/ltm
 
-    wlen0 = float(segments[10])
+    wlen0 = 0.0
     func_type = int(float(segments[11]))
     if func_type == 1:
       #Chebyshev
-      func_order = int(float(segments[12]))
+      if func_order == None:
+        func_order = int(float(segments[12]))
       pmin = int(float(segments[13]))
       pmax = int(float(segments[14]))
       coefficients = GetChebyshevCoeffs(orders[i-1], pvals, func_order-1)
-      coefficients[0] = coefficients[0]
+
+      #Put stuff in output string
+      output_string = output_string + ("%.10g " %wlen0).replace("e","E")
+      output_string = output_string + segments[11] + " "
+      output_string = output_string + str(func_order) + " "
+      output_string = output_string + segments[13] + " "
+      output_string = output_string + segments[14] + " "
       for coeff in coefficients:
         output_string = output_string + ("%.14g " %coeff).replace("e","E")
      

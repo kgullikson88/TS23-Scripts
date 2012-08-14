@@ -21,11 +21,18 @@ import RotBroad
 homedir = os.environ['HOME']
 Bstarfile = homedir + "/School/Research/McDonaldData/BstarModels/BG19000g425v2.vis.7"
 starmodel = RotBroad.Broaden(Bstarfile, 150*Units.cm/Units.km)
-BSTAR = scipy.interpolate.UnivariateSpline(starmodel.x, starmodel.y/starmodel.cont, s=0)
+BSTAR_first = starmodel.x[0]
+BSTAR_last = starmodel.x[-1]
+BSTAR_fcn = scipy.interpolate.UnivariateSpline(starmodel.x, starmodel.y/starmodel.cont, s=0)
+def BSTAR(x):
+  value = BSTAR_fcn(x)
+  value[x < BSTAR_first] = 1.0
+  value[x > BSTAR_last] = 1.0
+  return value
 
 UsedLineList = "UsedLines.log"
-infile = open(UsedLineList, "w")
-infile.close()
+outfile = open(UsedLineList, "w")
+outfile.close()
 
     
 class fitpoints:
@@ -59,24 +66,21 @@ class Improve:
     Telluric = scipy.interpolate.UnivariateSpline(self.telluric.x, self.telluric.y, s=0)
     print "Plotting... press i to begin clicking points, and d when done"
     outfile = open("residuals.log", "w")
+    outfile2 = open("UsedLines.log", "a")
 
     linelist = numpy.loadtxt(utils.LineListFile)
     
     #Loop over the spectral orders
-    for i in range(3,4):
+    for i in range(2,51):
+      print "Fitting order #" + str(i+1)
       self.orderNum = i
       self.fitpoints = fitpoints()
       wave = self.orders[i].x
       flux = self.orders[i].y/self.orders[i].cont
       tell = Telluric(wave)
+      print "wave = ", wave
       
       #Do a cross-correlation first, to get the wavelength solution close
-      print wave
-      print flux
-      print tell
-      pylab.plot(wave, flux)
-      pylab.plot(wave, tell)
-      pylab.show()
       ycorr = scipy.correlate(flux-1.0, tell-1.0, mode="full")
       xcorr = numpy.arange(ycorr.size)
       lags = xcorr - (flux.size-1)
@@ -91,15 +95,12 @@ class Improve:
       right = numpy.searchsorted(offsets, +1.0)
       maxindex = ycorr[left:right].argmax() + left
       print "maximum offset: ", offsets[maxindex], " nm"
-      pylab.plot(offsets, ycorr)
+      pylab.plot(xcorr, ycorr)
       pylab.show()
+      userin = raw_input("Apply Cross-correlation correction?")
+      if "y" in userin:
+        self.orders[i].x = self.orders[i].x + offsets[maxindex]
       
-      #Apply offset
-      self.orders[i].x = self.orders[i].x + offsets[maxindex]
-      pylab.plot(self.orders[i].x, flux)
-      pylab.plot(wave, tell)
-      pylab.show()
-
       #Fit using the (GridSearch) utility function
       data = DataStructures.xypoint(self.orders[i].x.size)
       data.x = numpy.copy(self.orders[i].x)
@@ -122,8 +123,8 @@ class Improve:
           left = numpy.searchsorted(self.telluric.x, self.orders[i].x[data_left])
           right = numpy.searchsorted(self.telluric.x, self.orders[i].x[data_right])
           pylab.plot(self.orders[i].x[data_left:data_right], self.orders[i].y[data_left:data_right]/self.orders[i].cont[data_left:data_right], label="data")
-          pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right], label="model")
-          pylab.legend(loc=3)
+          pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right]*BSTAR(self.telluric.x[left:right]), label="model")
+          pylab.legend(loc='best')
           pylab.title("Order "+str(self.orderNum+1))
           pylab.show()
           data_left = data_right
@@ -172,10 +173,15 @@ class Improve:
         outfile.write("\n\n\n\n")
         pylab.plot(self.fitpoints.x, self.fitpoints.y-func(self.fitpoints.x), 'ro')
         pylab.show()
+
+        #Finally, add the lines to UsedLineList.log
+        for line in self.fitpoints.y:
+          outfile2.write("%.10g\n" %line)
+        
     outfile.close()
     
     #Output calibrated spectrum to file
-    return FitsUtils.OutputFitsFile(self.filename, self.orders)
+    return FitsUtils.OutputFitsFile(self.filename, self.orders, func_order=5)
     
     
     
@@ -300,11 +306,9 @@ def GaussianErrorFunction(params, x, y):
 #This assumes that we are already quite close to the correct solution
 #Note: it comes from FitTellurics and is just slightly modified. 
 #      Therefore, it takes FitTellurics structures
-def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_order=3, debug=False):
+def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_order=3, max_change=2.0, debug=False):
   old = []
   new = []
-  
-  infile = open(UsedLineList, "a")
 
   #Interpolate to finer spacing
   DATA_FCN = scipy.interpolate.UnivariateSpline(order.x, order.y, s=0)
@@ -357,13 +361,12 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_or
       if (debug):
         print argdata.x[0], argdata.x[-1], argdata.x.size
         print "wave: ", mean, "\tshift: ", shift, "\tsuccess = ", success
-        pylab.plot(model.x[left:right]-shift, model.y[left:right])
-        pylab.plot(argmodel.x, argmodel.y)
-        pylab.plot(argdata.x, argdata.y)
+        pylab.plot(model.x[left:right]-shift, model.y[left:right], 'g-')
+        pylab.plot(argmodel.x, argmodel.y, 'r-')
+        pylab.plot(argdata.x, argdata.y, 'k-')
       if (success < 5):
         old.append(mean)
         new.append(mean + float(shift))
-        infile.write(str(mean+float(shift))+"\n")
   if debug:
     pylab.show()
     pylab.plot(old, new, 'ro')
@@ -385,14 +388,26 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_or
     #  pylab.show()
     badindices = numpy.where(numpy.logical_or(residuals > 2*std, residuals < -2*std))[0]
     for badindex in badindices[::-1]:
+      print "Deleting index ", badindex+1, "of ", len(old)
       del old[badindex]
       del new[badindex]
       done = False
+
+  #Check if the function changed things by too much
+  difference = numpy.abs(order.x - fit(order.x - mean))
+  if numpy.any(difference > max_change):
+    fit = numpy.poly1d((1,0))
+    mean = 0.0
+
   if debug:
     pylab.plot(old, fit(old - mean) - new, 'ro')
     pylab.show()
+    pylab.plot(fit(order.x - mean), order.y, 'k-')
+    pylab.plot(model.x, model.y, 'g-')
+    print mean
+    print fit
+    pylab.show()
   
-  infile.close()
   return fit, mean
 
 
