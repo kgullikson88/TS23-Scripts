@@ -191,7 +191,6 @@ def OutputFitsFile(template, orders, func_order=None):
       key = key + "0"
     key = key+str(keyindex)
     
-    #print key, output_string[leftindex:rightindex]
     header.update(key, output_string[leftindex:rightindex])
     leftindex = rightindex
     rightindex = min(leftindex+size, len(output_string))
@@ -226,6 +225,136 @@ def OutputFitsFile(template, orders, func_order=None):
     cmd = subprocess.check_call("rm "+outfilename, shell=True)
     hdulist.writeto(outfilename)
   hdulist.close()
+  
+  
+def GetOrderWaveCalPars(header):
+  string = ""
+  for key in sorted(header.keys()):
+    if "WAT2" in key:
+      string = string + header[key]
+      #print key, header[key]
+      for i in range(len(header[key]), 68):
+        string = string + " "
+        
+  return string.split(" spec")
+  
+  
+def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
+  """
+    This function will copy the wavelength calibration of one or more orders and put it in another file. 
+    copyfrom and copyto should both be filenames
+    The order keyword can be:
+       1: left as None, which will copy all of the orders
+       2: an integer, which will only copy that order (number in fortran style!)
+       3: a list of integers, in which the calibration will be copied for each one
+     scale is a factor to apply to the wavelengths (useful for converting between units)
+  """
+  
+  #First, read in the files
+  hdulistfrom = pyfits.open(copyfrom)
+  hdulistto = pyfits.open(copyto)
+  headerfrom = hdulistfrom[0].header
+  headerto = hdulistto[0].header
+  
+  numorders = hdulistfrom[0].data.shape[0]
+  if numorders != hdulistto[0].data.shape[0]:
+    print "Error in CopyWaveCal! Files have different number of orders!"
+    return -1
+  
+  if type(order) == int:
+    order = [order,]
+  elif order == None:
+    order = range(1,numorders+1)
+  
+  #Now, get all the orders from both files
+  ordersfrom = GetOrderWaveCalPars(headerfrom)
+  ordersto = GetOrderWaveCalPars(headerto)
+  
+  #Do the copy
+  for i in order:
+    print "Copying order ", i
+    ordersto[i] = ordersfrom[i]
+    
+    if scale != 1.0:
+      #Now we have to get more complicated... sigh
+      #Only tested with chebyshev, should work with legendre. Maybe others?
+      segments = ordersto[i].split()
+      print segments
+      
+      #Coefficients start in segment 16
+      for j in range(17,len(segments)):
+        coeff = segments[j]
+        print coeff
+        coeff = "%.14g" %(float(coeff.replace("E","e").strip('"'))*scale)
+        print coeff
+        segments[j] = coeff
+        
+      #re-save as a string
+      ordersto[i] = segments[0]
+      for segment in segments[1:]:
+        ordersto[i] = ordersto[i] + " " + segment
+      ordersto[i] = ordersto[i] + '"'
+  
+  #Convert the orders into one long string
+  output_string = ordersfrom[0]
+  for segment in ordersto[1:]:
+    output_string = output_string + " spec" + segment
+  
+  #Update the header
+  size = 68
+  leftindex=0
+  rightindex = size
+  keyindex = 1
+  while rightindex < len(output_string):
+    key = "WAT2_"
+    if len(str(keyindex)) == 1:
+      key = key + "00"
+    elif len(str(keyindex)) == 2:
+      key = key + "0"
+    key = key+str(keyindex)
+    
+    print key, output_string[leftindex:rightindex]
+    headerto.update(key, output_string[leftindex:rightindex])
+    leftindex = rightindex
+    rightindex = min(leftindex+size, len(output_string))
+    keyindex += 1
+  
+  #Do the last one outside of the loop
+  key = "WAT2_"
+  if len(str(keyindex)) == 1:
+    key = key + "00"
+  elif len(str(keyindex)) == 2:
+    key = key + "0"
+  key = key+str(keyindex)
+  print key, output_string[leftindex:rightindex]
+  headerto.update(key, output_string[leftindex:rightindex])
+  
+  #Delete any WAT2 keys that were not used
+  for key in sorted(headerto.keys()):
+    if "WAT2" in key:
+      if int(key[-3:]) > keyindex:
+        del headerto[key]
+    
+  hdulistto[0].header = headerto
+  
+  #Save with new filename
+  if "-" in copyto:
+    i = int(copyto.split("-")[-1].split(".fits")[0])
+    outfilename = copyto.split("-")[0] + "-" + str(i+1) + ".fits"
+  else:
+    outfilename = copyto.split(".fits")[0] + "-0.fits"
+  print "Outputting to ", outfilename
+  try:
+    hdulistto.writeto(outfilename)
+  except IOError:
+    cmd = subprocess.check_call("rm "+outfilename, shell=True)
+    hdulistto.writeto(outfilename)
+  hdulistto.close()
+  hdulistfrom.close()
+  
+  return 0
+  
+  
   
   
 if __name__ == "__main__":

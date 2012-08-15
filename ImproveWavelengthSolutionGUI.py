@@ -71,7 +71,7 @@ class Improve:
     linelist = numpy.loadtxt(utils.LineListFile)
     
     #Loop over the spectral orders
-    for i in range(2,51):
+    for i in range(37,51):
       print "Fitting order #" + str(i+1)
       self.orderNum = i
       self.fitpoints = fitpoints()
@@ -95,9 +95,9 @@ class Improve:
       right = numpy.searchsorted(offsets, +1.0)
       maxindex = ycorr[left:right].argmax() + left
       print "maximum offset: ", offsets[maxindex], " nm"
-      pylab.plot(xcorr, ycorr)
+      pylab.plot(offsets, ycorr)
       pylab.show()
-      userin = raw_input("Apply Cross-correlation correction?")
+      userin = raw_input("Apply Cross-correlation correction? ")
       if "y" in userin:
         self.orders[i].x = self.orders[i].x + offsets[maxindex]
       
@@ -111,28 +111,37 @@ class Improve:
       
       #Let user fix, if plot is true
       if plot:
+        #First, just plot all at once so user can examine fit
+        left = numpy.searchsorted(self.telluric.x, self.orders[i].x[0])
+        right = numpy.searchsorted(self.telluric.x, self.orders[i].x[-1])
+        pylab.plot(self.orders[i].x, self.orders[i].y/self.orders[i].cont, label="data")
+        pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right]*BSTAR(self.telluric.x[left:right]), label="model")
+        pylab.legend(loc='best')
+        pylab.title("Order "+str(self.orderNum+1))
+        pylab.show()
+      
         #We only want to plot about 3 nm at a time
         spacing = 3.0
         data_left = 0
         data_right = numpy.searchsorted(self.orders[i].x, self.orders[i].x[0]+spacing)
-        while (data_right < self.orders[i].x.size):
+        while (data_left < self.orders[i].x.size):
           #Bind mouseclick:
           self.fig = pylab.figure()
           self.clickid = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
 
           left = numpy.searchsorted(self.telluric.x, self.orders[i].x[data_left])
-          right = numpy.searchsorted(self.telluric.x, self.orders[i].x[data_right])
+          right = numpy.searchsorted(self.telluric.x, self.orders[i].x[min(self.orders[i].x.size-1, data_right)])
           pylab.plot(self.orders[i].x[data_left:data_right], self.orders[i].y[data_left:data_right]/self.orders[i].cont[data_left:data_right], label="data")
           pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right]*BSTAR(self.telluric.x[left:right]), label="model")
           pylab.legend(loc='best')
           pylab.title("Order "+str(self.orderNum+1))
           pylab.show()
           data_left = data_right
-          data_right = numpy.searchsorted(self.orders[i].x, self.orders[i].x[data_left]+spacing)
+          data_right = numpy.searchsorted(self.orders[i].x, self.orders[i].x[min(self.orders[i].x.size-1, data_left)]+spacing)
 
 
         #Once you close the window, you will get past the pylab.show() command
-        #Fit the points to a quadratic
+        #Fit the points to a cubic
         #This is done in a loop, to iteratively remove outliers
         done = False
         while not done:
@@ -177,7 +186,9 @@ class Improve:
         #Finally, add the lines to UsedLineList.log
         for line in self.fitpoints.y:
           outfile2.write("%.10g\n" %line)
-        
+          
+        #Output after every order, in case program crashes
+        FitsUtils.OutputFitsFile(self.filename, self.orders, func_order=5)
     outfile.close()
     
     #Output calibrated spectrum to file
