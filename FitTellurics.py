@@ -114,7 +114,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(3,len(orders)-2):
+  for i in range(2,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -196,6 +196,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       for j in range(order.x.size):
         outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t%.15f" %order.y[j] + "\t%.15f" %model2[j] + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
+      FitsUtils.OutputFitsFile(filename, orders)
     
     #pylab.plot(chips[i].x, chips[i].y/chips[i].cont, label="data")
     #pylab.plot(chips[i].x, model2, label="model")
@@ -595,7 +596,7 @@ def WavelengthErrorFunction(shift, data, model):
   returnvec = (data.y - newmodel)**2*weight
   return returnvec
 
-def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampling = 4, debug=False):
+def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampling = 4, debug=False, max_change=2.0):
   print "Fitting wavelength"
   old = []
   new = []
@@ -699,12 +700,16 @@ def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampli
       del old[badindex]
       del new[badindex]
       done = False
+
+  #Check if the function changed things by too much
+  difference = numpy.abs(telluric.x - fit(telluric.x - mean))
+  if numpy.any(difference > max_change):
+    fit = numpy.poly1d((1,0))
+    mean = 0.0
+
   if debug:
     pylab.plot(old, fit(old - mean) - new, 'ro')
     pylab.show()
-  #if len(old) > 0:
-    #This is just to ensure that we didn't remove all of the points in the sigma-clipping
-  #  telluric.x = fit(telluric.x - mean)
 
   return fit, mean
   
