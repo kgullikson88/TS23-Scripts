@@ -24,7 +24,7 @@ def CCImprove(order, model):
   offsets = -lags*distancePerLag
   print "maximum offset: ", offsets[maxindex], " nm"
 
-  if numpy.abs(offsets[maxindex]) < 1.0:
+  if numpy.abs(offsets[maxindex]) < 0.2:
     #Apply offset
     order.x = order.x + offsets[maxindex]
   return order

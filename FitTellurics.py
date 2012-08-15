@@ -79,9 +79,9 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   xspacing = 1e-4    #Change this to change the interpolation spacing
   #Generate interpolated chip data
   for order in orders:
-    order.x *= Units.nm/Units.angstrom
     order.cont = numpy.ones(order.x.size)
-    order.err = numpy.sqrt(order.y)
+    order.err[order.y > 0.0] = numpy.sqrt(order.y[order.y > 0.0])
+    order.err[order.y <= 0.0] = 1e9
     
     #make sure there are no zeros (fancy indexing)
     order.err[order.err <= 0] = 1e10
@@ -114,11 +114,11 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(2,len(orders)-2):
+  for i in range(3,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
-    print "Fitting order ", i, "with size ", order.x.size
+    print "Fitting order ", i+1, "with size ", order.x.size
     
     if not debug:
       #const_pars[8] = continuum_fit_order[i]

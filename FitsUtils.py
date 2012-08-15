@@ -96,7 +96,6 @@ def MakeXYpoints(header, data):
       coefficients = []
       for segment in segments[15:]:
         coefficients.append(float(segment))
-      print "Order ", index+1, ": ", coefficients
       xypt.x = (wlen0 + Chebyshev(pvals, numpy.array(coefficients)))/(1.0+z)*wave_factor
       xypt.y = data[index]
     else:

@@ -317,7 +317,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     xspacing = (wavelength[-1] - wavelength[0])/float(wavelength.size)
     tol = 10  #Go 10 nm on either side of the chip
     left = numpy.searchsorted(wavelength, wavegrid[0]-tol)
-    right = numpy.searchsorted(wavelength, wavegrid[-1]+tol) 
+    right = min(wavelength.size-1, numpy.searchsorted(wavelength, wavegrid[-1]+tol))
       
     Model = scipy.interpolate.UnivariateSpline(wavelength, transmission, s=0)
     model = DataStructures.xypoint(right-left+1)
