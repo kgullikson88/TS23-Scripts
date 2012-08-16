@@ -196,6 +196,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       for j in range(order.x.size):
         outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t%.15f" %order.y[j] + "\t%.15f" %model2[j] + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
+      orders[i].y /= model2
       FitsUtils.OutputFitsFile(filename, orders)
     
     #pylab.plot(chips[i].x, chips[i].y/chips[i].cont, label="data")
