@@ -169,7 +169,7 @@ class MainSequence:
       
 if __name__ == "__main__":
   sptr = MainSequence()
-  value = sptr.Interpolate(sptr.Radius, "K5.5")
+  value = sptr.Interpolate(sptr.Mass, "A9")
   print "Interpolated value: ", value
     
     

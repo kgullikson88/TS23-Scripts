@@ -17,11 +17,11 @@ from scipy.interpolate import interp1d, UnivariateSpline
 from scipy.optimize import leastsq, brute, fmin
 from scipy.linalg import svd, diagsvd
 from scipy import mat
+from collections import defaultdict
 import MakeModel
 import DataStructures
 import FitsUtils
 import Units
-import ImproveWavelengthSolution
 import RotBroad
 
 
@@ -29,16 +29,35 @@ homedir = os.environ['HOME']
 TelluricModelDir = homedir + "/School/Research/lblrtm/run_examples/MyModel/"
 LineListFile = homedir + "/School/Research/McDonaldData/MyLinelist.dat"
 ContinuumFile = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/ContinuumRegions.dat"
-Bstarfile = homedir + "/School/Research/McDonaldData/BstarModels/BG19000g425v2.vis.7"
+Bstarfiles = {#2.25: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g225v2.vis.7",
+              #2.50: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g250v2.vis.7",
+              #2.75: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g275v2.vis.7",
+              #3.00: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g300v2.vis.7",
+              3.25: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g325v2.vis.7",
+              3.50: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g350v2.vis.7",
+              3.75: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g375v2.vis.7",
+              4.00: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g400v2.vis.7",
+              4.25: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g425v2.vis.7",
+              4.50: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g450v2.vis.7",
+              4.75: homedir + "/School/Research/McDonaldData/BstarModels/BG19000g475v2.vis.7"}
 
 #Define some bounds. Bound functions are defined below
 o2_bounds = [1.8e5, 2.5e5]
 humidity_bounds = [0,100]
 resolution_bounds = [35000,90000]
 angle_bounds = [0.0, 80.0]
-vsini_bounds = [1.0,1000.0]
+vsini_bounds = [1.0,500*Units.cm/Units.km]
+primary_rv_bounds = [-0.1*Units.c, 0.1*Units.c]
 searchgrid = ((1.8e5,2.5e5,1e4),(20,90, 5))
 
+
+#Read in the parent star file as a global variable (don't rotationally broaden yet!), as a function of surface gravity
+bstars = defaultdict(DataStructures.xypoint)
+print "Reading in primary star models"
+for key in Bstarfiles:
+  filename = Bstarfiles[key]
+  print "Reading model ", filename
+  bstars[key] = RotBroad.ReadFile(filename)
 
 class ContinuumSegments:
   def __init__(self,size):
@@ -114,7 +133,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(3,len(orders)-2):
+  for i in range(7,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -128,7 +147,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
 
       order = FitContinuum3(order, model, 4)
 
-      order = ImproveWavelengthSolution.CCImprove(order, model)
+      order = CCImprove(order, model)
       fitout = leastsq(ErrorFunction, pars, args=(order, const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
       fitpars = fitout[0]
       pars = fitpars
@@ -196,6 +215,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       for j in range(order.x.size):
         outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t%.15f" %order.y[j] + "\t%.15f" %model2[j] + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
+
       orders[i].y /= model2
       FitsUtils.OutputFitsFile(filename, orders)
     
@@ -279,29 +299,36 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #  plotflg = True
   
   #Reduce to initial guess resolution
-  Continuum = UnivariateSpline(order.x.copy(), order.cont.copy(), s=0)
+  Continuum = UnivariateSpline(order.x, order.cont, s=0)
   resolution = const_pars[6]
   if (resolution - 10 < resolution_bounds[0] or resolution+10 > resolution_bounds[1]):
     resolution = 60000
   model = MakeModel.ReduceResolution(model.copy(), resolution, Continuum)
   model = MakeModel.RebinData(model.copy(), order.x.copy())
 
+  PRIMARY_STAR = FitPrimary(bstars, model, order.copy(), vsini=150*Units.cm/Units.km, z=10.0)
+
   #Fit Continuum of the chip, using the model
   #chip = FitContinuum2(chip,model,contlist)
-  order = FitContinuum3(order, model, 4)
+  model2 = model.copy()
+  model2.y *= PRIMARY_STAR(model2.x)
+  order.cont = numpy.ones(order.x.size)
+  #order = FitContinuum3(order, model2, 4)
   #fit_order = const_pars[8]
   #chip = FitContinuum(chip, model, condition=0.99, tol=3, order=fit_order)
   
   #Fit model wavelength to the chip
   #model = FitWavelength(chip,model,linelist)
   
-  #order = ImproveWavelengthSolution.CCImprove(order, model)
-  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist, const_pars[12])
+  #order = CCImprove(order, model)
+  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
+  model2 = model_original.copy()
+  model2.y *= PRIMARY_STAR(model2.x)
 
   #Fit resolution
-  model, resolution = FitResolution(order.copy(), model_original.copy(), resolution, plotflg)
+  model, resolution = FitResolution(order.copy(), model2, resolution, plotflg)
   const_pars[6] = resolution
   
   weights = 1.0/order.err
@@ -313,6 +340,7 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   outfile = open("chisq_summary.dat", 'a')
   outfile.write(str(pars[0])+"\t"+str(pars[1])+"\t"+str(resolution)+"\t"+str(numpy.sum(return_array)/float(weights.size))+"\n")
   outfile.close()
+  
   return return_array
   
   
@@ -325,6 +353,75 @@ lbound = lambda p, x: 1e4*numpy.sqrt(p-x) + 1e-3*(p-x) if (x<p) else 0
 ubound = lambda p, x: 1e4*numpy.sqrt(x-p) + 1e-3*(x-p) if (x>p) else 0
 bound  = lambda p, x: lbound(p[0],x) + ubound(p[1],x)
 fixed  = lambda p, x: bound((p,p), x)
+
+
+"""
+Function to fit the radial velocity (z) and rotational velocity (vsini) of the primary star
+"""
+def FitPrimary(bstar_dict, model, order, vsini=150*Units.cm/Units.km, alpha=0.5, intervalsize=50.0, z=0.0):
+  vsini = 100*Units.cm/Units.km
+  z = 10*Units.cm/Units.km/Units.c
+  pars = [vsini, z]
+  order.y /= model.y
+  const_pars = [bstar_dict, order, alpha, intervalsize]
+  pars, success = leastsq(primary_errfunc, pars, args=const_pars, epsfcn=1)
+  print "Best fit vsini: ", pars[0]
+  print "Best fit radial velocity: ", pars[1]*Units.c*Units.km/Units.cm, "km/s"
+
+  broadened, logg = FindBestGravity(const_pars[0], const_pars[1], pars[0], const_pars[2], const_pars[3], pars[1])
+  fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
+
+  return fcn
+
+
+def FindBestGravity(bstar_dict, order, vsini, alpha, intervalsize, z):
+  best_chisq = 1e18
+  best_star = bstar_dict[bstar_dict.keys()[0]].copy()
+  best_logg = 0
+  search = numpy.searchsorted
+  broaden = RotBroad.Broaden
+  add = numpy.sum
+  for logg in sorted(bstar_dict.keys()):
+    left = search(bstar_dict[logg].x*(1+z), 2*order.x[0] - order.x[-1])
+    right = search(bstar_dict[logg].x*(1+z), 2*order.x[-1] - order.x[0])
+    bstar = DataStructures.xypoint(right - left + 1)
+    bstar.x = bstar_dict[logg].x[left:right]*(1+z)
+    bstar.y = bstar_dict[logg].y[left:right]
+    bstar.cont = bstar_dict[logg].cont[left:right]
+    broadened = broaden(bstar, vsini=vsini, alpha=alpha, intervalsize=intervalsize)
+    fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
+
+    chisq = add((order.y - fcn(order.x))**2/order.err**2)
+    if chisq < best_chisq:
+      best_chisq = chisq
+      best_star = broadened.copy()
+      best_logg = logg
+
+  return best_star, best_logg
+
+  
+    
+"""
+Error function for the leastsq call in the 'FitPrimary' function
+"""
+def primary_errfunc(pars, const_pars):
+  order = const_pars[1]
+  vsini = pars[0]
+  RV = pars[1]
+  print "vsini = ", vsini*Units.km/Units.cm, "km/s"
+  print "RV = ", RV*Units.c*Units.km/Units.cm, "km/s"
+  if vsini < vsini_bounds[0]:
+    vsini = 100*Units.cm/Units.km
+  if vsini > vsini_bounds[-1]:
+    vsini = vsini_bounds[-1]
+  broadened, logg = FindBestGravity(const_pars[0], order, vsini, const_pars[2], const_pars[3], RV)
+  fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
+
+  print "log(g) = ", logg
+  print "X^2 = ", numpy.sum((order.y - fcn(order.x))**2/order.err**2), '\n'
+  return (order.y - fcn(order.x))**2/order.err**2 + bound(vsini_bounds,pars[0]) + bound(primary_rv_bounds,pars[1])
+  
+  
 
 
 #Function to fit the resolution
@@ -429,8 +526,28 @@ def Broaden(data, model, oversampling = 5, m = 101, dimension = 15):
   return model
 
 
-#Function to Fit the wavelength solution, using a bunch of telluric lines
-#This assumes that we are already quite close to the correct solution
+"""
+Do a cross-correlation first, to get the wavelength solution close
+"""
+def CCImprove(order, model):
+  ycorr = scipy.correlate(order.y-1.0, model.y-1.0, mode="full")
+  xcorr = numpy.arange(ycorr.size)
+  maxindex = ycorr.argmax()
+  lags = xcorr - (order.y.size-1)
+  distancePerLag = (order.x[-1] - order.x[0])/float(order.x.size)
+  offsets = -lags*distancePerLag
+  print "maximum offset: ", offsets[maxindex], " nm"
+
+  if numpy.abs(offsets[maxindex]) < 0.2:
+    #Apply offset
+    order.x = order.x + offsets[maxindex]
+  return order
+
+
+"""
+Function to Fit the wavelength solution, using a bunch of telluric lines
+This assumes that we are already quite close to the correct solution
+"""
 def FitWavelength(data, model, linelist, tol=2e-2, FWHM=0.05, debug=False):
   print "Fitting wavelength"
   sigma = FWHM/2.65	#approximate relation, but good enough for initial guess
@@ -597,14 +714,13 @@ def WavelengthErrorFunction(shift, data, model):
   returnvec = (data.y - newmodel)**2*weight
   return returnvec
 
-def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampling = 4, debug=False, max_change=2.0):
+def FitWavelength2(order, telluric, linelist, parent_vsini, primary_fcn=None, tol=0.05, oversampling = 4, debug=False, max_change=2.0):
   print "Fitting wavelength"
   old = []
   new = []
 
-  #Get stellar model first, rotationally broadened
-  starmodel = RotBroad.Broaden(Bstarfile, parent_vsini)
-  STAR = UnivariateSpline(starmodel.x, starmodel.y/starmodel.cont, s=0)
+  if primary_fcn == None:
+    primary_fcn = numpy.poly1d([1.0,])
 
   #Interpolate to finer spacing
   DATA_FCN = UnivariateSpline(order.x, order.y, s=0)
@@ -616,7 +732,7 @@ def FitWavelength2(order, telluric, linelist, parent_vsini, tol=0.05, oversampli
   data.cont = CONT_FCN(data.x)
   model = DataStructures.xypoint(data.x.size)
   model.x = numpy.copy(data.x)
-  model.y = MODEL_FCN(model.x)*STAR(model.x)
+  model.y = MODEL_FCN(model.x)*primary_fcn(model.x)
   
   
   #Begin loop over the lines

@@ -1,7 +1,7 @@
 import numpy
 import scipy
 import pylab
-import FitTellurics
+from FitTellurics import FitFunction, FitContinuum3, CCImprove
 import MakeModel
 import FitsUtils
 import pyfits
@@ -12,22 +12,6 @@ import os
 
 homedir = os.environ['HOME']
 LineListFile = homedir + "/School/Research/McDonaldData/LineList.dat"
-
-
-#Do a cross-correlation first, to get the wavelength solution close
-def CCImprove(order, model):
-  ycorr = scipy.correlate(order.y-1.0, model.y-1.0, mode="full")
-  xcorr = numpy.arange(ycorr.size)
-  maxindex = ycorr.argmax()
-  lags = xcorr - (order.y.size-1)
-  distancePerLag = (order.x[-1] - order.x[0])/float(order.x.size)
-  offsets = -lags*distancePerLag
-  print "maximum offset: ", offsets[maxindex], " nm"
-
-  if numpy.abs(offsets[maxindex]) < 0.2:
-    #Apply offset
-    order.x = order.x + offsets[maxindex]
-  return order
 
 
 if __name__ == "__main__":
@@ -71,12 +55,12 @@ if __name__ == "__main__":
     wavenum_end = int(1.0e7/wave_start+1)
     const_pars[4] = wavenum_start
     const_pars[5] = wavenum_end
-    model = FitTellurics.FitFunction(order.copy(), pars, const_pars)
+    model = FitFunction(order.copy(), pars, const_pars)
 
     model = MakeModel.ReduceResolution(model.copy(), resolution)
     model = MakeModel.RebinData(model.copy(), order.x.copy())
 
-    order = FitTellurics.FitContinuum3(order, model, 4)
+    order = FitContinuum3(order, model, 4)
 
     order = CCImprove(order, model)
     pylab.plot(order.x, order.y)

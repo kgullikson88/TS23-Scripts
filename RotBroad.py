@@ -32,17 +32,14 @@ def CombineIntervals(intervals, overlap=0):
   output.y = master_y.copy()
   output.cont = master_cont.copy()
 
+  #Scale continuum so the highest normalized flux = 1.0
+  maxindex = numpy.argmax(output.y/output.cont)
+  factor = output.y[maxindex]/output.cont[maxindex]
+  output.cont *= factor
+
   return output
 
-def Broaden(filename, vsini, intervalsize=50.0, alpha=0.5):
-  """
-    filename:        input filename of the spectrum. The continuum data is assumed to be in filename[:-1]+".17"
-    vsini:           the velocity (times sin(i) ) of the star
-    intervalsize:    The size (in nm) of the interval to use for broadening. Since it depends on wavelength, you don't want to do all at once
-    alpha:           Something to do with limb broadening...
-  """
-
-  print "Rotationally broadening spectrum with vsini = ", vsini
+def ReadFile(filename):
   #Read in file
   x,y = numpy.loadtxt(filename, unpack=True)
   model = DataStructures.xypoint(x.size)
@@ -52,7 +49,25 @@ def Broaden(filename, vsini, intervalsize=50.0, alpha=0.5):
   x,y = numpy.loadtxt(filename[:-1]+"17", unpack=True)
   cont_fcn = UnivariateSpline(x*Units.nm/Units.angstrom, y, s=0)
   model.cont = cont_fcn(model.x)
+
+  return model
+
+
+def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):  
+  """
+    model:           input filename of the spectrum. The continuum data is assumed to be in filename[:-1]+".17"
+                     model can also be a DataStructures.xypoint containing the already-read model (must include continuum!)
+    vsini:           the velocity (times sin(i) ) of the star
+    intervalsize:    The size (in nm) of the interval to use for broadening. Since it depends on wavelength, you don't want to do all at once
+    alpha:           Something to do with limb broadening...
+  """
+
+  
+  if type(model) == str:
+    model = ReadFile(model)
+  
   model_fcn = UnivariateSpline(model.x, model.y, s=0)
+  cont_fcn = UnivariateSpline(model.x, model.cont)
 
   #Will convolve with broadening profile in steps, to keep accuracy
   #interval size is set as a keyword argument
@@ -66,7 +81,7 @@ def Broaden(filename, vsini, intervalsize=50.0, alpha=0.5):
     interval = DataStructures.xypoint(lastindex - firstindex + 1)
     interval.x = numpy.linspace(model.x[firstindex], model.x[lastindex], lastindex - firstindex + 1)
     interval.y = model_fcn(interval.x)
-    interval.cont = cont_fcn(interval.x)
+    interval.cont = cont_fcn(interval.x) 
 
     #Make broadening profile
     beta = alpha/(1-alpha)
@@ -88,7 +103,6 @@ def Broaden(filename, vsini, intervalsize=50.0, alpha=0.5):
     firstindex = lastindex - 2*profile.size
 
   return CombineIntervals(intervals, overlap=profilesize)
-
   
 
 

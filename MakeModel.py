@@ -347,11 +347,13 @@ def RebinData(data,xgrid):
   newdata.y = Model(newdata.x)
   
   left = numpy.searchsorted(data.x, (3*xgrid[0]-xgrid[1])/2.0)
+  search = numpy.searchsorted
+  mean = numpy.mean
   for i in range(xgrid.size-1):
-    right = numpy.searchsorted(data.x, (xgrid[i]+xgrid[i+1])/2.0)
-    newdata.y[i] = numpy.mean(data.y[left:right])
+    right = search(data.x, (xgrid[i]+xgrid[i+1])/2.0)
+    newdata.y[i] = mean(data.y[left:right])
     left = right
-  right = numpy.searchsorted(data.x, (3*xgrid[-1]-xgrid[-2])/2.0)
+  right = search(data.x, (3*xgrid[-1]-xgrid[-2])/2.0)
   newdata.y[xgrid.size-1] = numpy.mean(data.y[left:right])
   
   return newdata
@@ -364,7 +366,7 @@ def ReduceResolution(data,resolution, cont_fcn=None, extend=True):
   sigma = FWHM/(2.0*numpy.sqrt(2.0*numpy.log(2.0)))
   left = 0
   right = numpy.searchsorted(data.x, 10*sigma)
-  x = numpy.arange(0,10*sigma, xspacing)
+  x = numpy.arange(0,8*sigma, xspacing)
   gaussian = numpy.exp(-(x-5*sigma)**2/(2*sigma**2))
   if extend:
     #Extend array to try to remove edge effects (do so circularly)
