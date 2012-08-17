@@ -59,15 +59,20 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
                      model can also be a DataStructures.xypoint containing the already-read model (must include continuum!)
     vsini:           the velocity (times sin(i) ) of the star
     intervalsize:    The size (in nm) of the interval to use for broadening. Since it depends on wavelength, you don't want to do all at once
-    alpha:           Something to do with limb broadening...
+    alpha:           Something to do with limb darkening...
   """
 
   
   if type(model) == str:
     model = ReadFile(model)
   
+  print numpy.all(sorted(model.x) == model.x)
+  print "RotBroad Nan check:"
+  print numpy.any(numpy.isnan(model.x))
+  print numpy.any(numpy.isnan(model.y))
+  print numpy.any(numpy.isnan(model.cont)) 
   model_fcn = UnivariateSpline(model.x, model.y, s=0)
-  cont_fcn = UnivariateSpline(model.x, model.cont)
+  cont_fcn = UnivariateSpline(model.x, model.cont, s=0)
 
   #Will convolve with broadening profile in steps, to keep accuracy
   #interval size is set as a keyword argument
@@ -82,7 +87,10 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
     interval.x = numpy.linspace(model.x[firstindex], model.x[lastindex], lastindex - firstindex + 1)
     interval.y = model_fcn(interval.x)
     interval.cont = cont_fcn(interval.x) 
-
+    print interval.x[0], interval.x[-1]
+    print model.x[0], model.x[-1]
+    print numpy.any(numpy.isnan(interval.x))
+    
     #Make broadening profile
     beta = alpha/(1-alpha)
     wave0 = interval.x[interval.x.size/2]
@@ -93,8 +101,10 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
     x = numpy.linspace(-1.0, 1.0, wave.size)
     flux = pi/2.0*(1.0 - 1.0/(1. + 2*beta/3.)*(2/pi*numpy.sqrt(1-x**2) + beta/2*(1-x**2)))
     profile = -(flux - flux.max())
-
+    print numpy.any(numpy.isnan(interval.y))
+    print numpy.any(numpy.isnan(profile))
     interval.y = numpy.convolve(interval.y, profile/profile.sum(), mode="same")
+    print numpy.any(numpy.isnan(interval.y))
     intervals.append(interval)
     #pylab.plot(interval.x, interval.y)
 

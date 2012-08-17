@@ -133,7 +133,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(7,len(orders)-2):
+  for i in range(3,len(orders)-2):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -392,6 +392,7 @@ def FindBestGravity(bstar_dict, order, vsini, alpha, intervalsize, z):
     fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
 
     chisq = add((order.y - fcn(order.x))**2/order.err**2)
+    print "chisq = ", chisq
     if chisq < best_chisq:
       best_chisq = chisq
       best_star = broadened.copy()
