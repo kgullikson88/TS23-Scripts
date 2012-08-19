@@ -115,13 +115,33 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
   return CombineIntervals(intervals, overlap=profilesize)
   
 
+def Test_fcn(model):
+
+  model_fcn = UnivariateSpline(model.x, model.y, s=0)
+  cont_fcn = UnivariateSpline(model.x, model.cont, s=0)
+
+  print model_fcn(numpy.median(model.x))
+
+  
+
 
 if __name__ == "__main__":
-  filename = sys.argv[1]
-  SpT = sys.argv[2]
-  vsini = float(sys.argv[3]) #MUST BE GIVEN IN KM S^1
-  
-  spectrum = Broaden(filename, vsini*Units.cm/Units.km)
-  outfilename = "Broadened_" + SpT + "_v%.0f.dat" %(vsini)
-  print "Outputting to ", outfilename
-  numpy.savetxt(outfilename, numpy.transpose((spectrum.x, spectrum.y/spectrum.cont)), fmt='%.8f\t%.8g')
+  #filename = sys.argv[1]
+  #SpT = sys.argv[2]
+  #vsini = float(sys.argv[3]) #MUST BE GIVEN IN KM S^1
+
+  filename = "BG19000g400v2.vis.7"
+  fulldata = ReadFile(filename)
+  left = numpy.searchsorted(fulldata.x, 960.37910407)
+  right = numpy.searchsorted(fulldata.x, 1007.98182127)
+  data = DataStructures.xypoint(right-left+1)
+  data.x = fulldata.x[left:right]
+  data.y = fulldata.y[left:right]
+  data.cont = fulldata.cont[left:right]
+  numpy.savetxt("test.out", numpy.transpose((data.x, data.y, data.cont)), fmt="%.8g\t")
+  Test_fcn(data)
+  sys.exit()
+  spectrum = Broaden(data, 150*Units.cm/Units.km)
+  #outfilename = "Broadened_" + SpT + "_v%.0f.dat" %(vsini)
+  #print "Outputting to ", outfilename
+  #numpy.savetxt(outfilename, numpy.transpose((spectrum.x, spectrum.y/spectrum.cont)), fmt='%.8f\t%.8g')
