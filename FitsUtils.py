@@ -45,7 +45,14 @@ def GetChebyshevCoeffs(data, pvals, order=5):
 #  and generates a DataStructures.xypoint object for each spectral order
 #TODO: make it work for functions other than chebyshev, and for linear/log-linear spacing
 #      allow for multiple functions. Right now it only works for one type, while fits allows many
-def MakeXYpoints(header, data):
+def MakeXYpoints(header, data=None):
+  #Header can be the filename, too!
+  if type(header) == str:
+    hdulist = pyfits.open(header)
+    header = hdulist[0].header
+    data = hdulist[0].data
+    hdulist.close()
+  
   try:
     ltv = header['ltv1']
   except KeyError:
@@ -212,6 +219,11 @@ def OutputFitsFile(template, orders, func_order=None):
         del header[key]
     
   hdulist[0].header = header
+
+  #Now, update the data (much easier)
+  for i in range(hdulist[0].data.shape[0]):
+    hdulist[0].data[i] = orders[i].y
+  
   if "-" in template:
     i = int(template.split("-")[-1].split(".fits")[0])
     outfilename = template.split("-")[0] + "-" + str(i+1) + ".fits"
