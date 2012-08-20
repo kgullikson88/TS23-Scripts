@@ -145,12 +145,18 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       model = MakeModel.ReduceResolution(model.copy(), resolution)
       model = MakeModel.RebinData(model.copy(), order.x.copy())
 
-      order = FitContinuum3(order, model, 4)
+      #Don't bother fitting if there are no telluric lines here!
+      if numpy.min(model.y) < 0.999:
+        order = FitContinuum3(order, model, 4)
 
-      order = CCImprove(order, model)
-      fitout = leastsq(ErrorFunction, pars, args=(order, const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
-      fitpars = fitout[0]
-      pars = fitpars
+        order = CCImprove(order, model)
+        fitout = leastsq(ErrorFunction, pars, args=(order, const_pars, linelist, segments), full_output=True, epsfcn = 0.0005, maxfev=1000)
+        fitpars = fitout[0]
+        covariance = fitout[1]
+        pars = fitpars
+      else:
+        fitpars = pars
+        covariance = numpy.zeros((len(pars), len(pars)))
     else:
       fitout = brute(ErrorFunctionBrute, searchgrid, args=(order, const_pars, linelist, segments))
       fitpars = pars
@@ -172,7 +178,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     
     #Fit Continuum of the chip, using the model
     #chips[i] = FitContinuum2(chips[i+2],model,segments)
-    order = FitContinuum3(order, model,4)
+    order = FitContinuum3(order, model,2)
     #if i == 0:
     #  chips[i] = FitContinuum(chips[i], model, condition=0.99)
     #else:
@@ -191,7 +197,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     model2 = Model(order.x)
     residuals = model2 - order.y
     std = numpy.std(residuals)
-    covariance = numpy.sqrt(fitout[1]*std)
+    covariance = numpy.sqrt(covariance*std)
 
     #For very deep lines, just set the line cores equal to the model (will destroy any info in the line, but will prevent huge residuals)
     indices = numpy.where(model2 < 0.05)[0]
@@ -312,8 +318,8 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #chip = FitContinuum2(chip,model,contlist)
   model2 = model.copy()
   model2.y *= PRIMARY_STAR(model2.x)
-  order.cont = numpy.ones(order.x.size)
-  #order = FitContinuum3(order, model2, 4)
+  #order.cont = numpy.ones(order.x.size)
+  order = FitContinuum3(order, model2, 2)
   #fit_order = const_pars[8]
   #chip = FitContinuum(chip, model, condition=0.99, tol=3, order=fit_order)
   
