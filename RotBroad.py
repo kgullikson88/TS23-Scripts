@@ -65,12 +65,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
   
   if type(model) == str:
     model = ReadFile(model)
-  
-  print numpy.all(sorted(model.x) == model.x)
-  print "RotBroad Nan check:"
-  print numpy.any(numpy.isnan(model.x))
-  print numpy.any(numpy.isnan(model.y))
-  print numpy.any(numpy.isnan(model.cont)) 
+   
   model_fcn = UnivariateSpline(model.x, model.y, s=0)
   cont_fcn = UnivariateSpline(model.x, model.cont, s=0)
 
@@ -87,9 +82,6 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
     interval.x = numpy.linspace(model.x[firstindex], model.x[lastindex], lastindex - firstindex + 1)
     interval.y = model_fcn(interval.x)
     interval.cont = cont_fcn(interval.x) 
-    print interval.x[0], interval.x[-1]
-    print model.x[0], model.x[-1]
-    print numpy.any(numpy.isnan(interval.x))
     
     #Make broadening profile
     beta = alpha/(1-alpha)
@@ -101,10 +93,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5):
     x = numpy.linspace(-1.0, 1.0, wave.size)
     flux = pi/2.0*(1.0 - 1.0/(1. + 2*beta/3.)*(2/pi*numpy.sqrt(1-x**2) + beta/2*(1-x**2)))
     profile = -(flux - flux.max())
-    print numpy.any(numpy.isnan(interval.y))
-    print numpy.any(numpy.isnan(profile))
     interval.y = numpy.convolve(interval.y, profile/profile.sum(), mode="same")
-    print numpy.any(numpy.isnan(interval.y))
     intervals.append(interval)
     #pylab.plot(interval.x, interval.y)
 
