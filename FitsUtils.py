@@ -105,6 +105,8 @@ def MakeXYpoints(header, data=None):
         coefficients.append(float(segment))
       xypt.x = (wlen0 + Chebyshev(pvals, numpy.array(coefficients)))/(1.0+z)*wave_factor
       xypt.y = data[index]
+      xypt.cont = numpy.ones(xypt.x.size)
+      xypt.err = numpy.sqrt(xypt.y)
     else:
       print "Sorry! This function type is not currently implemented!"
 

@@ -31,11 +31,26 @@ class GridSearchOut:
 
 
 class xypoint:
-  def __init__(self, size):
+  def __init__(self, size=100, x=None, y=None, cont=None, err=None):
+    if x == None:
       self.x = numpy.zeros(size)
+    else:
+      self.x = x.copy()
+    if y == None:
       self.y = numpy.zeros(size)
+    else:
+      self.y = y.copy()
+    if cont == None:
       self.cont = numpy.ones(size)
-      self.err = numpy.zeros(size)
+    else:
+      self.cont = cont.copy()
+    if err == None:
+      self.err = numpy.sqrt(self.y)
+    else:
+      self.err = err.copy()
+
+      self.err[self.err <=0] = 1e9    #Making sure we don't divide by zero
+      
   def copy(self):
       copy = xypoint(self.x.size)
       copy.x = self.x.copy()
