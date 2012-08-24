@@ -32,6 +32,15 @@ class GridSearchOut:
 
 class xypoint:
   def __init__(self, size=100, x=None, y=None, cont=None, err=None):
+    if x != None:
+      size = x.size
+    if y != None:
+      size = y.size
+    if cont != None:
+      size = cont.size
+    if err != None:
+      size = err.size
+      
     if x == None:
       self.x = numpy.zeros(size)
     else:
@@ -48,7 +57,6 @@ class xypoint:
       self.err = numpy.sqrt(self.y)
     else:
       self.err = err.copy()
-
       self.err[self.err <=0] = 1e9    #Making sure we don't divide by zero
       
   def copy(self):

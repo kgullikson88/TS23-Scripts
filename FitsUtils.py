@@ -119,7 +119,7 @@ def MakeXYpoints(header, data=None):
   
 #Function to output a fits file with the same format
 #as the template function. Only implementing Chebyshev for now...
-def OutputFitsFile(template, orders, func_order=None):
+def OutputFitsFile(template, orders, func_order=None, outfilename=None):
   hdulist = pyfits.open(template)
   header = hdulist[0].header
   
@@ -225,12 +225,14 @@ def OutputFitsFile(template, orders, func_order=None):
   #Now, update the data (much easier)
   for i in range(hdulist[0].data.shape[0]):
     hdulist[0].data[i] = orders[i].y
+
+  if outfilename == None:
+    if "-" in template:
+      i = int(template.split("-")[-1].split(".fits")[0])
+      outfilename = template.split("-")[0] + "-" + str(i+1) + ".fits"
+    else:
+      outfilename = template.split(".fits")[0] + "-0.fits"
   
-  if "-" in template:
-    i = int(template.split("-")[-1].split(".fits")[0])
-    outfilename = template.split("-")[0] + "-" + str(i+1) + ".fits"
-  else:
-    outfilename = template.split(".fits")[0] + "-0.fits"
   print "Outputting to ", outfilename
   try:
     hdulist.writeto(outfilename)

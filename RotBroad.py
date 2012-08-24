@@ -127,16 +127,15 @@ if __name__ == "__main__":
 
   filename = "BG19000g400v2.vis.7"
   fulldata = ReadFile(filename)
-  left = numpy.searchsorted(fulldata.x, 960.37910407)
-  right = numpy.searchsorted(fulldata.x, 1007.98182127)
+  left = numpy.searchsorted(fulldata.x, 850)
+  right = numpy.searchsorted(fulldata.x, 950)
   data = DataStructures.xypoint(right-left+1)
   data.x = fulldata.x[left:right]
   data.y = fulldata.y[left:right]
   data.cont = fulldata.cont[left:right]
-  numpy.savetxt("test.out", numpy.transpose((data.x, data.y, data.cont)), fmt="%.8g\t")
-  Test_fcn(data)
-  sys.exit()
-  spectrum = Broaden(data, 150*Units.cm/Units.km, RV=50.)
+  spectrum = Broaden(data, 150*Units.cm/Units.km)
+  pylab.plot(spectrum.x, spectrum.y/spectrum.cont)
+  pylab.show()
   #outfilename = "Broadened_" + SpT + "_v%.0f.dat" %(vsini)
   #print "Outputting to ", outfilename
   #numpy.savetxt(outfilename, numpy.transpose((spectrum.x, spectrum.y/spectrum.cont)), fmt='%.8f\t%.8g')
