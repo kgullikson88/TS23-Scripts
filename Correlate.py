@@ -239,12 +239,6 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     #BUG FIXED IN THE PYTHON VERSION I HAVE FOR LINUX MINT 13
     #if "linux" in sys.platform:
     #  corr.y = corr.y[::-1]
-
-    #j: Finally, output
-    if makefname:
-      outfilename = outdir + filename.split("/")[-1] + "." + star
-    outfile = open(outfilename, "w")
-    print "Outputting to ", outfilename, "\n"
         
     #Fit low-order polynomal to cross-correlation
     left = numpy.searchsorted(corr.x, minvel)
@@ -260,10 +254,12 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
       std = numpy.std(corr)
       corr = (corr - mean)/std
 
-    #output
-    for j in range(vel.size):
-      outfile.write("%.10g\t" %vel[j] + "%.10g\n" %corr[j])
-    outfile.close()
+    #j: Finally, output
+    if makefname:
+      outfilename = outdir + filename.split("/")[-1] + "." + star
+    print "Outputting to ", outfilename, "\n"
+    numpy.savetxt(outfilename, numpy.transpose((vel, corr)), fmt="%.8g")
+    
 
 
 
