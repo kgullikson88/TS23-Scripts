@@ -1,3 +1,4 @@
+#!/opt/local/bin/python
 import numpy
 import os
 import sys
@@ -10,6 +11,18 @@ import Units
 import DataStructures
 import Correlate
 import MakeModel
+
+"""
+   This function performs a sensitivity analysis on reduced spectra
+   You MUST give the name of the input .fits file as the FIRST command line argument
+   After that, you can give optional command line arguments that specify ranges of spectral types
+      for both the primary and secondary stars.
+   Example: To do a sensitivity analysis on file 'foo.fits', for primary spectral types from B4-A5, and
+            secondary spectral types from G0-K5, you type the following:
+            python SensitivityAnalysis.py foo.fits -primary=B4-A5 -secondary=G0-K5
+"""
+
+
 
 homedir = os.environ['HOME'] + "/"
 outfiledir = os.getcwd() + "/Sensitivity/"
@@ -157,6 +170,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
 if __name__ == "__main__":
   import FitsUtils
   import os
+  import sys
   home = os.environ["HOME"]
   datafile = sys.argv[1]
   tolerance = 5    #allow highest cross-correlation peak to be anywhere within 5 km/s of the correct velocity
@@ -166,7 +180,8 @@ if __name__ == "__main__":
   logfile.write("Parent SpT\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
 
   #Make some lists that we will loop through in the analysis
-  parent_spts = ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
+  parent_spts = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
+                 "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
   sec_spts = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
               "G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9",
               "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
@@ -182,9 +197,51 @@ if __name__ == "__main__":
   #Read in data
   orders_original = tuple(FitsUtils.MakeXYpoints(datafile))
 
+  #Check for command line arguments specifying spectral type endpoints
+  p_left = 0
+  p_right = len(parent_spts)
+  s_left = 0
+  s_right = len(sec_spts)
+  print len(sys.argv)
+  if len(sys.argv) > 2:
+    for arg in sys.argv[2:]:
+      if "primary" in arg:
+	first = arg.split("=")[-1].split("-")[0]
+	last = arg.split("=")[-1].split("-")[1]
+	for i in range(len(parent_spts)):
+	  spt = parent_spts[i]
+	  if spt == first:
+	    p_left = i
+	  if spt == last:
+	    p_right = i+1
+	#if p_right < len(p_spt)-1:
+	#  p_right += 1
+      elif "secondary" in arg:
+        first = arg.split("=")[-1].split("-")[0]
+	last = arg.split("=")[-1].split("-")[1]
+	for i in range(len(sec_spts)):
+	  spt = sec_spts[i]
+	  if spt == first:
+	    s_left = i
+	  if spt == last:
+	    s_right = i+1
+	#if s_right < len(s_spt)-1:
+	#  s_right += 1
+
+  if p_left > p_right:
+    temp = p_left
+    p_left = p_right-1
+    p_right = temp+1
+  if s_left > s_right:
+    temp = s_left
+    s_left = s_right-1
+    s_right = temp+1
+
+  ############################################
   #Start looping!
-  for p_spt in parent_spts:
-    for s_spt in sec_spts:
+  ############################################
+  for p_spt in parent_spts[p_left:p_right]:
+    for s_spt in sec_spts[s_left:s_right]:
       found = 0.0
       sig = []
       for velocity in velocitylist:
@@ -236,4 +293,4 @@ if __name__ == "__main__":
       logfile.write(outfilestring)
   
 
-
+  logfile.close()

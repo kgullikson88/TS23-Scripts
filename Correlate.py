@@ -5,6 +5,7 @@ import numpy
 import pylab
 from collections import defaultdict
 from scipy.interpolate import UnivariateSpline
+from scipy.signal import fftconvolve
 import DataStructures
 import Units
 import MakeModel
@@ -226,7 +227,9 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     right = model.x.size - numpy.searchsorted(model.x, data.x[-1])
     delta = left - right
     print "Cross-correlating..."
-    ycorr = numpy.correlate(data.y/data.cont-1.0, model.y/model.cont-1.0, mode="full")
+   
+    #ycorr = numpy.correlate(data.y/data.cont-1.0, model.y/model.cont-1.0, mode="full")
+    ycorr = fftconvolve((data.y/data.cont-1.0)[::-1], model.y/model.cont-1.0, mode="full")[::-1]
     xcorr = numpy.arange(ycorr.size)
     lags = xcorr - (model.x.size + data.x.size - delta -1.0)/2.0
     distancePerLag = model.x[1] - model.x[0]
