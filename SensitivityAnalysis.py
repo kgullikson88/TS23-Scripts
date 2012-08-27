@@ -120,8 +120,12 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
     fluxratio = sec_flux/prim_flux
     print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
 
-    #Get model continuum in this section
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
+    
+    #Reduce resolution
+    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    
+    #Get model continuum in this section
     weights = model2.y**2
     done = False
     x2 = model2.x.copy()
@@ -140,19 +144,11 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
         y2 = numpy.delete(y2, badpoints)
     model2.cont = fit(model2.x - x2.mean())
 
-    #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
-    
-
     #Scale the model by the above scale factor and normalize
-    scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
+    scaled_model = (model2.y/model2.cont)*fluxratio
 
     #Add to the data
-    data2[i].y = (scaled_model - 1.0)*order.cont + order.y
-
-    #pylab.plot(order.x, orders[i].y/order.cont, 'k-')
-    #pylab.plot(order.x, model_fcn(order.x)/model2.cont, 'g-')
-  #pylab.show()
+    data2[i].y = (scaled_model)*order.cont + order.y
 
 
   return data2
@@ -170,11 +166,11 @@ if __name__ == "__main__":
   logfile.write("Parent SpT\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
 
   #Make some lists that we will loop through in the analysis
-  parent_spts = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
-                 "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
+  parent_spts = ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
   sec_spts = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
               "G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9",
-              "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9"]
+              "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
+              "M0", "M1", "M2", "M3", "M4", "M5"]
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
