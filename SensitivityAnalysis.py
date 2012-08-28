@@ -167,9 +167,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
     scaled_model = (model2.y/model2.cont)*fluxratio
 
     #Add noise to the data
-    noise= numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux/prim_radius**2))), size=data2[i].x.size)
-    print "Adding noise with amplitude %.10g" %(numpy.std(noise))
-    data2[i].y += noise
+    data2[i].y += numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux/prim_radius**2))), size=data2[i].x.size)
 
     #Add model to the data
     data2[i].y = (scaled_model)*order.cont + order.y
@@ -192,7 +190,7 @@ if __name__ == "__main__":
   MS = SpectralTypeRelations.MainSequence()  #Class for interpolating stellar info from the spectral type
 
   logfile = open(outfiledir+"summary.dat", "w")
-  logfile.write("Parent SpT\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
+  logfile.write("Parent SpT\tS/N Ratio\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
 
   #Make some lists that we will loop through in the analysis
   parent_spts = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
@@ -285,7 +283,7 @@ if __name__ == "__main__":
         model = DataStructures.xypoint(x=x, y=y)
 
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr)
-        outfilebase = outfiledir+p_spt+"_"+s_spt+"_v%i" %velocity
+        outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
         FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
         #Cross-correlate with original model
@@ -303,7 +301,7 @@ if __name__ == "__main__":
           found += 1.
 
       print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
-      outfilestring = p_spt+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
+      outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
       print outfilestring
       logfile.write(outfilestring)
   
