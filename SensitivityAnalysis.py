@@ -172,7 +172,12 @@ if __name__ == "__main__":
   import os
   import sys
   home = os.environ["HOME"]
-  datafile = sys.argv[1]
+  try:
+    datafile = sys.argv[1]
+    print "Using ", datafile, "as template"
+  except IndexError:
+    print "Error! Must give .fits file!"
+    sys.exit()
   tolerance = 5    #allow highest cross-correlation peak to be anywhere within 5 km/s of the correct velocity
   MS = SpectralTypeRelations.MainSequence()  #Class for interpolating stellar info from the spectral type
 
