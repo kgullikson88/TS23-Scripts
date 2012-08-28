@@ -189,9 +189,6 @@ if __name__ == "__main__":
   tolerance = 5    #allow highest cross-correlation peak to be anywhere within 5 km/s of the correct velocity
   MS = SpectralTypeRelations.MainSequence()  #Class for interpolating stellar info from the spectral type
 
-  logfile = open(outfiledir+"summary.dat", "w")
-  logfile.write("Parent SpT\tS/N Ratio\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
-
   #Make some lists that we will loop through in the analysis
   parent_spts = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
                  "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
@@ -211,7 +208,8 @@ if __name__ == "__main__":
   #Read in data
   orders_original = tuple(FitsUtils.MakeXYpoints(datafile))
 
-  #Check for command line arguments specifying spectral type endpoints
+  #Check for command line arguments specifying spectral type endpoints or the logfile name
+  logfilename = outfiledir + "summary.dat"
   p_left = 0
   p_right = len(parent_spts)
   s_left = 0
@@ -240,6 +238,8 @@ if __name__ == "__main__":
 	    s_right = i+1
 	#if s_right < len(s_spt)-1:
 	#  s_right += 1
+      elif "log" in arg:
+	logfilename = outfiledir + arg.split("=")[-1]
 
   if p_left > p_right:
     temp = p_left
@@ -249,6 +249,9 @@ if __name__ == "__main__":
     temp = s_left
     s_left = s_right-1
     s_right = temp+1
+
+  logfile = open(logfilename, "w")
+  logfile.write("Parent SpT\tS/N Ratio\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
 
   ############################################
   #Start looping!
