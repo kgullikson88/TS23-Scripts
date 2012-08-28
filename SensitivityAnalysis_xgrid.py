@@ -11,9 +11,11 @@ import Units
 import DataStructures
 import Correlate
 import MakeModel
+from subprocess import check_call
 
 """
    This function performs a sensitivity analysis on reduced spectra
+   This version is specifically tailored to use on the x-grid
    You MUST give the name of the input .fits file as the FIRST command line argument
    After that, you can give optional command line arguments that specify ranges of spectral types
       for both the primary and secondary stars.
@@ -23,8 +25,8 @@ import MakeModel
 """
 
 
-
-homedir = os.environ['HOME'] + "/"
+print "Very beginning of script!"
+#homedir = os.environ['HOME'] + "/"
 outfiledir = os.getcwd() + "/Sensitivity/"
 
 def ensure_dir(f):
@@ -33,7 +35,7 @@ def ensure_dir(f):
         os.makedirs(d)
         
 ensure_dir(outfiledir)
-
+print "Sensitivity directory created"
 
 #Define the sections of each order to use (those without telluric contamination)
 good_sections = {1: [[-1,-1],],
@@ -93,18 +95,15 @@ good_sections = {1: [[-1,-1],],
 
 
 
-def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19):
+def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
   """
     This function will add a model to the data. The flux ratio is determined
     from the primary spectral type (prim_spt), the secondary spectral type
-    (sec_spt), and the age of the system.
-    The age keyword argument can be either a string, in which case the main sequence
-           spectral-type - radius relations are used, or a number in which case the
-	   radii of the two stars are determined from evolutionary tracks (NOT YET IMPLEMENTED)
-    The 'vel' keyword gives a radial velocity at which the model should be added (MUST be given in cm/s)
-    The SNR keyword gives the desired signal to noise of the spectrum, in order SN_order. Note
-           that it is only possible to create a spectrum with signal to noise LOWER than that
-	   in the data. SN_order should be given in fortran-style numbering (starting at 1, not 0)
+    (sec_spt), and the age of the system. The age keyword argument can be either
+    a string, in which case the main sequence spectral-type - radius relations are used,
+    or a number in which case the radii of the two stars are determined from 
+    evolutionary tracks. The 'vel' keyword gives a radial velocity at which
+    the model should be added (MUST be given in cm/s)
   """
   if type(age) == str:
     #Main sequence stars!
@@ -126,9 +125,6 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
   for order in data:
     data2.append(order.copy())
 
-  #Figure out how to add noise to the spectrum to get the desired S/N
-  flux = Planck(data2[SN_order-1].x*Units.cm/Units.nm, prim_temp).mean()
-  SN_factor = SNR/numpy.sqrt(flux)
 
   ##############################################################
   #Begin main loop over the orders
@@ -166,13 +162,9 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont)*fluxratio
 
-    #Add noise to the data
-    noise= numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux/prim_radius**2))), size=data2[i].x.size)
-    print "Adding noise with amplitude %.10g" %(numpy.std(noise))
-    data2[i].y += noise
-
-    #Add model to the data
+    #Add to the data
     data2[i].y = (scaled_model)*order.cont + order.y
+
 
   return data2
 
@@ -181,7 +173,6 @@ if __name__ == "__main__":
   import FitsUtils
   import os
   import sys
-  home = os.environ["HOME"]
   try:
     datafile = sys.argv[1]
     print "Using ", datafile, "as template"
@@ -202,8 +193,11 @@ if __name__ == "__main__":
               "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
               "M0", "M1", "M2", "M3", "M4", "M5"]
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
-  SNRlist = [100,200,400,600,800,1000]
-  modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
+
+  #Get the models. Must unpack from archive first
+  print "Unpacking model archive"
+  check_call("tar -xzf models.tar.gz", shell=True)
+  modeldir = "./models/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
   for fname in files:
@@ -218,6 +212,7 @@ if __name__ == "__main__":
   p_right = len(parent_spts)
   s_left = 0
   s_right = len(sec_spts)
+  print len(sys.argv)
   if len(sys.argv) > 2:
     for arg in sys.argv[2:]:
       if "primary" in arg:
@@ -255,8 +250,8 @@ if __name__ == "__main__":
   ############################################
   #Start looping!
   ############################################
+  print "Beginning main loop now!"
   for p_spt in parent_spts[p_left:p_right]:
-   for snr in SNRlist:
     for s_spt in sec_spts[s_left:s_right]:
       found = 0.0
       sig = []
@@ -284,7 +279,7 @@ if __name__ == "__main__":
         y = 10**y
         model = DataStructures.xypoint(x=x, y=y)
 
-        orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr)
+        orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km)
         outfilebase = outfiledir+p_spt+"_"+s_spt+"_v%i" %velocity
         FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
