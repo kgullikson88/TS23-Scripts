@@ -17,9 +17,13 @@ import MakeModel
    You MUST give the name of the input .fits file as the FIRST command line argument
    After that, you can give optional command line arguments that specify ranges of spectral types
       for both the primary and secondary stars.
+   You can also give an argument for what the logfile should be named with the -logfile argument
+
    Example: To do a sensitivity analysis on file 'foo.fits', for primary spectral types from B4-A5, and
-            secondary spectral types from G0-K5, you type the following:
-            python SensitivityAnalysis.py foo.fits -primary=B4-A5 -secondary=G0-K5
+            secondary spectral types from G0-K5, and to save logfile as foo.bar, you type the following:
+            python SensitivityAnalysis.py foo.fits -primary=B4-A5 -secondary=G0-K5 -logfile=foo.bar
+
+   
 """
 
 
