@@ -139,7 +139,7 @@ class MainSequence:
     elif SpectralClass == "M":
       return basenum+60
     else:
-      print "Something weird happened!"
+      print "Something weird happened! Spectral type = ", SpT
       return -1
     
   def Interpolate(self,dictionary, SpT):
@@ -161,8 +161,12 @@ class MainSequence:
       relation.y[index] = ypoints[i]
     
     RELATION = UnivariateSpline(relation.x, relation.y, s=0)
-    
-    return RELATION(self.SpT_To_Number(SpT))
+
+    spnum = self.SpT_To_Number(SpT)
+    if spnum > 0:
+      return RELATION(spnum)
+    else:
+      return spnum
       
       
       

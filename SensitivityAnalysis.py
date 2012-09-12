@@ -201,8 +201,8 @@ if __name__ == "__main__":
               "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
               "M0", "M1", "M2", "M3", "M4", "M5"]
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
-  #SNRlist = [100,200,400,600,800,1000]
-  SNRlist = [400,600]
+  SNRlist = [100,200,400,600,800,1000]
+  #SNRlist = [400,600]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)

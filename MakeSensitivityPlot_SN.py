@@ -1,5 +1,6 @@
 import numpy
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import sys
 from collections import defaultdict
 
@@ -16,12 +17,20 @@ from collections import defaultdict
 	 MassRatio
 	 DetectionRate
 	 AverageSignificance
-     -yaxis: specifies the variable to use for the y axis Choices are the same as for -xaxis
+     -yaxis: specifies the variable to use for the y axis. Choices are the same as for -xaxis
      -infile: specifies the input filename (default is Sensitivity/summary.dat).
          If combine is True, the input filename should be a list of comma-separated 
 	 filenames
+     -oneplot: Uses only the highest S/N observation of a given parent spectral type, and
+         makes a plot similar to MakeSensitivityPlot.py
+     -monochrome: Makes plot black and white
 """
 
+
+#Set up thing to cycle through matplotlib linestyles
+from itertools import cycle
+lines = ["-","--","-.",":"]
+linecycler = cycle(lines)
 
 if __name__ == "__main__":
   #Defaults
@@ -29,6 +38,8 @@ if __name__ == "__main__":
   xaxis = "SecondarySpectralType"
   yaxis = "DetectionRate"
   infilename = "Sensitivity/summary.dat"
+  oneplot = False
+  #palette = cm.hsv
   
   #Command-line overrides
   for arg in sys.argv:
@@ -40,6 +51,16 @@ if __name__ == "__main__":
       yaxis = arg.split("=")[-1]
     elif "infile" in arg:
       infilename = arg.split("=")[-1]
+    elif "oneplot" in arg:
+      oneplot = True
+      #elif "mono" in arg:
+      #palette = cm.Greys
+
+  #Set up colors
+  #colors = []
+  #for i in range(10):
+  #  colors.append(palette(i*10))
+  #colorcycler = cycle(colors)
 
   #Set up dictionaries/lists
   s_spt = defaultdict(lambda: defaultdict(list))       #Secondary spectral type
@@ -76,23 +97,42 @@ if __name__ == "__main__":
   #Finally, plot
   index = 0
   for p_spt in sorted(s_spt.keys()):
-    plt.figure(index)
-    index += 1
-    for snr in sorted(s_spt[p_spt].keys()):
-      x = namedict[xaxis][p_spt][snr]
-      y = namedict[yaxis][p_spt][snr]
+    if oneplot:
+      #Find highest s/n in this spectral type
+      highestsnr = sorted(s_spt[p_spt].keys())[-1]
+      x = namedict[xaxis][p_spt][highestsnr]
+      y = namedict[yaxis][p_spt][highestsnr]
       if "SpectralType" in xaxis:
-        plt.plot(range(len(x)), y, label="S/N = %.0f" %snr)
+        plt.plot(range(len(x)), y, linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
         plt.xticks(range(len(x)), x, size="small")
       elif "SpectralType" in yaxis:
-        plt.plot(x, range(len(y)), label="S/N = %.0f" %snr)
+        plt.plot(x, range(len(y)), linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
         plt.yticks(range(len(y)), y, size="small")
       else:
-        plt.plot(x, y, label="S/N = %.0f" %snr)
+        plt.plot(x, y, linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
+
+    else:
+      plt.figure(index)
+      index += 1
+      for snr in sorted(s_spt[p_spt].keys()):
+        x = namedict[xaxis][p_spt][snr]
+        y = namedict[yaxis][p_spt][snr]
+        if "SpectralType" in xaxis:
+          plt.plot(range(len(x)), y, linestyle=next(linecycler), label="S/N = %.0f" %snr)
+          plt.xticks(range(len(x)), x, size="small")
+        elif "SpectralType" in yaxis:
+          plt.plot(x, range(len(y)), linestyle=next(linecycler), label="S/N = %.0f" %snr)
+          plt.yticks(range(len(y)), y, size="small")
+        else:
+          plt.plot(x, y, linestyle=next(linecycler), label="S/N = %.0f" %snr)
+      plt.legend(loc='best')
+      plt.xlabel(xaxis)
+      plt.ylabel(yaxis)
+      plt.title("Sensitivity for "+p_spt+" Primary")
+  if oneplot:
     plt.legend(loc='best')
     plt.xlabel(xaxis)
     plt.ylabel(yaxis)
-    plt.title("Sensitivity for "+p_spt+" Primary")
   plt.show()
 
 
