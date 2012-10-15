@@ -1,7 +1,6 @@
 import pyfits
 import numpy
 from numpy.polynomial import chebyshev
-import pylab
 import DataStructures
 import Units
 import subprocess

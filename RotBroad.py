@@ -39,6 +39,7 @@ def CombineIntervals(intervals, overlap=0):
 
   return output
 
+
 def ReadFile(filename):
   #Read in file
   x,y = numpy.loadtxt(filename, unpack=True)
@@ -95,19 +96,27 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):
     wave0 = interval.x[interval.x.size/2]
     zeta = wave0*vsini/Units.c
     xspacing = interval.x[1] - interval.x[0]
-
     wave = numpy.arange(wave0 - zeta, wave0 + zeta, xspacing)
     x = numpy.linspace(-1.0, 1.0, wave.size)
     flux = pi/2.0*(1.0 - 1.0/(1. + 2*beta/3.)*(2/pi*numpy.sqrt(1.-x**2) + beta/2*(1.-x**2)))
     profile = -(flux - flux.max())
-    interval.y = numpy.convolve(interval.y, profile/profile.sum(), mode="same")
+
+    #Extend interval to reduce edge effects (basically turn convolve into circular convolution)
+    before = interval.y[-profile.size/2+1:]
+    after = interval.y[:profile.size/2]
+    extended = numpy.append(numpy.append(before, interval.y), after)
+    
+    interval.y = numpy.convolve(extended, profile/profile.sum(), mode="valid")
     intervals.append(interval)
 
     if profile.size > profilesize:
       profilesize = profile.size
     firstindex = lastindex - 2*profile.size
 
-  return CombineIntervals(intervals, overlap=profilesize)
+  if len(intervals) > 1:
+    return CombineIntervals(intervals, overlap=profilesize)
+  else:
+    return intervals[0]
   
 
 def Test_fcn(model):

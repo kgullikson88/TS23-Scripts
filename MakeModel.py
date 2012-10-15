@@ -385,8 +385,7 @@ def ReduceResolution(data,resolution, cont_fcn=None, extend=True, nsigma=8):
     x2 = data.x.copy()
     conv_mode = "same"
 
-  newdata = DataStructures.xypoint(data.x.size)
-  newdata.x = numpy.copy(data.x)
+  newdata = data.copy()
   if cont_fcn != None:
     cont1 = cont_fcn(newdata.x)
     cont2 = cont_fcn(x2)

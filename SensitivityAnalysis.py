@@ -11,6 +11,7 @@ import Units
 import DataStructures
 import Correlate
 import MakeModel
+import RotBroad
 
 """
    This function performs a sensitivity analysis on reduced spectra
@@ -18,6 +19,7 @@ import MakeModel
    After that, you can give optional command line arguments that specify ranges of spectral types
       for both the primary and secondary stars.
    You can also give an argument for what the logfile should be named with the -logfile argument
+   The chip sensitivity can be specified with a filename given after the 'sensitivity' argument
 
    Example: To do a sensitivity analysis on file 'foo.fits', for primary spectral types from B4-A5, and
             secondary spectral types from G0-K5, and to save logfile as foo.bar, you type the following:
@@ -97,7 +99,7 @@ good_sections = {1: [[-1,-1],],
 
 
 
-def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19):
+def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19, sensitivity=lambda x: 1.0, vsini=15.0*Units.cm/Units.km):
   """
     This function will add a model to the data. The flux ratio is determined
     from the primary spectral type (prim_spt), the secondary spectral type
@@ -132,7 +134,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
 
   #Figure out how to add noise to the spectrum to get the desired S/N
   flux = Planck(data2[SN_order-1].x*Units.cm/Units.nm, prim_temp).mean()
-  SN_factor = SNR/numpy.sqrt(flux)
+  SN_factor = SNR/numpy.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
 
   ##############################################################
   #Begin main loop over the orders
@@ -144,9 +146,6 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
     print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
 
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
-    
-    #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
     
     #Get model continuum in this section
     weights = model2.y**2
@@ -167,15 +166,35 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19)
         y2 = numpy.delete(y2, badpoints)
     model2.cont = fit(model2.x - x2.mean())
 
+    #Rotationally broaden
+    model2 = RotBroad.Broaden(model2, vsini)
+    
+    #Reduce resolution
+    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont)*fluxratio
 
+    #pylab.plot(data2[i].x, data2[i].y, 'k-')
+    #pylab.plot(model2.x, scaled_model+0.99, 'r-')
+    
+
     #Add noise to the data
-    data2[i].y += numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux/prim_radius**2))), size=data2[i].x.size)
+    noise = numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
+    data2[i].y += noise
+
 
     #Add model to the data
     data2[i].y = (scaled_model)*order.cont + order.y
 
+    #pylab.plot(data2[i].x, data2[i].y - 0.02, 'b-')
+
+  #pylab.xlabel("Wavelength (nm)")
+  #pylab.ylabel("Normalized Flux")
+  #pylab.ylim((0.97, 1.01))
+  #pylab.xlim((510, 570))
+  #pylab.show()
+  #sys.exit()
   return data2
 
 
@@ -215,6 +234,7 @@ if __name__ == "__main__":
 
   #Check for command line arguments specifying spectral type endpoints or the logfile name
   logfilename = outfiledir + "summary.dat"
+  sensitivity_fcn = lambda x: 1.0
   p_left = 0
   p_right = len(parent_spts)
   s_left = 0
@@ -241,10 +261,13 @@ if __name__ == "__main__":
 	    s_left = i
 	  if spt == last:
 	    s_right = i+1
-	#if s_right < len(s_spt)-1:
-	#  s_right += 1
       elif "log" in arg:
 	logfilename = outfiledir + arg.split("=")[-1]
+      elif "sensitivity" in arg:
+	x,y = numpy.loadtxt(arg.split("=")[-1], unpack=True)
+	x = x[::-1]
+	y = y[::-1]
+	sensitivity_fcn = UnivariateSpline(x,y,s=0)
 
   if p_left > p_right:
     temp = p_left
@@ -291,9 +314,9 @@ if __name__ == "__main__":
         y = 10**y
         model = DataStructures.xypoint(x=x, y=y)
 
-        orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr)
+        orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
-        FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
+        #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
         #Cross-correlate with original model
         Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, outfilename=outfilebase+"_CC.dat")

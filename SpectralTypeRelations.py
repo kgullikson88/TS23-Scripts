@@ -1,5 +1,4 @@
 from collections import defaultdict
-import matplotlib.pyplot as plt
 from scipy.interpolate import UnivariateSpline
 import DataStructures
 import Units

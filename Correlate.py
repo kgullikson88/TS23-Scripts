@@ -2,13 +2,12 @@ import subprocess
 import sys
 import os
 import numpy
-import pylab
 from collections import defaultdict
 from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import DataStructures
 import Units
-import MakeModel
+#import MakeModel
 
 class Resid:
   def __init__(self, size):
@@ -19,6 +18,68 @@ class Resid:
     opterr = numpy.zeros(size)
     cont = numpy.zeros(size)
 
+#This function rebins (x,y) data onto the grid given by the array xgrid
+def RebinData(data,xgrid):
+  Model = UnivariateSpline(data.x, data.y, s=0)
+  newdata = DataStructures.xypoint(xgrid.size)
+  newdata.x = numpy.copy(xgrid)
+  newdata.y = Model(newdata.x)
+  
+  left = numpy.searchsorted(data.x, (3*xgrid[0]-xgrid[1])/2.0)
+  search = numpy.searchsorted
+  mean = numpy.mean
+  for i in range(xgrid.size-1):
+    right = search(data.x, (xgrid[i]+xgrid[i+1])/2.0)
+    newdata.y[i] = mean(data.y[left:right])
+    left = right
+  right = search(data.x, (3*xgrid[-1]-xgrid[-2])/2.0)
+  newdata.y[xgrid.size-1] = numpy.mean(data.y[left:right])
+  
+  return newdata
+
+#This function reduces the resolution by convolving with a gaussian kernel
+def ReduceResolution(data,resolution, cont_fcn=None, extend=True, nsigma=8):
+  centralwavelength = (data.x[0] + data.x[-1])/2.0
+  xspacing = data.x[1] - data.x[0]   #NOTE: this assumes constant x spacing!
+  FWHM = centralwavelength/resolution;
+  sigma = FWHM/(2.0*numpy.sqrt(2.0*numpy.log(2.0)))
+  left = 0
+  right = numpy.searchsorted(data.x, 10*sigma)
+  x = numpy.arange(0,nsigma*sigma, xspacing)
+  gaussian = numpy.exp(-(x-float(nsigma)/2.0*sigma)**2/(2*sigma**2))
+  if extend:
+    #Extend array to try to remove edge effects (do so circularly)
+    before = data.y[-gaussian.size/2+1:]
+    after = data.y[:gaussian.size/2]
+    extended = numpy.append(numpy.append(before, data.y), after)
+
+    first = data.x[0] - float(int(gaussian.size/2.0+0.5))*xspacing
+    last = data.x[-1] + float(int(gaussian.size/2.0+0.5))*xspacing
+    x2 = numpy.linspace(first, last, extended.size) 
+    
+    conv_mode = "valid"
+
+  else:
+    extended = data.y.copy()
+    x2 = data.x.copy()
+    conv_mode = "same"
+
+  newdata = DataStructures.xypoint(data.x.size)
+  newdata.x = numpy.copy(data.x)
+  if cont_fcn != None:
+    cont1 = cont_fcn(newdata.x)
+    cont2 = cont_fcn(x2)
+    cont1[cont1 < 0.01] = 1
+  
+    newdata.y = numpy.convolve(extended*cont2, gaussian/gaussian.sum(), mode=conv_mode)/cont1
+
+  else:
+    newdata.y = numpy.convolve(extended, gaussian/gaussian.sum(), mode=conv_mode)
+    
+  return newdata
+
+
+
 #Ensure a directory exists. Create it if not
 def ensure_dir(f):
     d = os.path.dirname(f)
@@ -28,14 +89,12 @@ def ensure_dir(f):
 
 currentdir = os.getcwd() + "/"
 homedir = os.environ["HOME"]
-correlationdir = homedir + "/School/Research/Models/PlanetFinder/src/CRIRES/"
 outfiledir = currentdir + "Cross_correlations/"
 modeldir = homedir + "/School/Research/Models/Sorted/Stellar/"
 gridspacing = "2e-4"
 minvel = -1000  #Minimum velocity to output, in km/s
 maxvel = 1000  
 
-ensure_dir(outfiledir)
 
 star_list = ["M2", "M1", "M0", "K9", "K8", "K7", "K6", "K5", "K4", "K3", "K2", "K1","K0", "G9", "G8", "G7", "G6", "G5", "G4", "G3", "G2", "G1", "G0", "F9", "F8", "F7", "F6", "F5", "F4", "F3", "F2", "F1"]
 temp_list = [3000, 3200, 3400, 3600, 3800, 4000, 4200, 4400, 4600, 4800, 5000, 5100, 5200, 5225, 5310, 5385, 5460, 5545, 5625, 5700, 5770, 5860, 5940, 6117, 6250, 6395, 6512, 6650, 6775, 6925, 7050, 7185]
@@ -85,6 +144,8 @@ model_list = [modeldir + "lte30-3.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
 #    contamination. Can be a string (default) which will use all of the orders, a list of integers which will
 #    use all of the orders given in the list, or a dictionary of lists which gives the segments of each order to use.
 def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, models=model_list, segments="all", outdir=outfiledir, outfilename=None):
+  
+  ensure_dir(outdir)
   #1: Read in the datafile, if necessary
   if type(filename) == str:
     orders = FitsUtils.MakeXYpoints(filename)
@@ -192,14 +253,14 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     model.y = MODEL(model.x)
 
     #c: Convolve to a resolution of 60000
-    model = MakeModel.ReduceResolution(model.copy(), 60000, extend=False)
+    model = ReduceResolution(model.copy(), 60000, extend=False)
     MODEL = UnivariateSpline(model.x, model.y, s=0)
     model.x = numpy.linspace(numpy.log10(model.x[0]), numpy.log10(model.x[-1]), model.x.size)
     model.y = MODEL(10**model.x)
 
     #d: Rebin to the same spacing as the data (but not the same pixels)
     xgrid = numpy.arange(model.x[0], model.x[-1], data.x[1] - data.x[0])
-    model = MakeModel.RebinData(model.copy(), xgrid)
+    model = RebinData(model.copy(), xgrid)
 
     #e: Find continuum by fitting model to a quadratic. Weight high points more
     weights = model.y**2

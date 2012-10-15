@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import sys
 from collections import defaultdict
+from operator import itemgetter
 
 
 """
@@ -74,6 +75,11 @@ if __name__ == "__main__":
 	      "MassRatio": q,
 	      "DetectionRate": det_rate,
               "AverageSignificance": sig}
+  labeldict = {"SecondarySpectralType": "Secondary Spectral Type",
+              "SecondaryMass": "SecondaryMass (Solar Masses)",
+	      "MassRatio": "Mass Ratio",
+	      "DetectionRate": "Detection Rate (Percent)",
+              "AverageSignificance": "Average Significance"}
 
   #Read in file/files  WARNING! ASSUMES A CERTAIN FORMAT. MUST CHANGE THIS IF THE FORMAT CHANGES!
   if combine:
@@ -96,20 +102,22 @@ if __name__ == "__main__":
 
   #Finally, plot
   index = 0
-  for p_spt in sorted(s_spt.keys()):
+  spt_sorter = {"O": 1, "B": 2, "A": 3, "F": 4, "G": 5, "K": 6, "M": 7}
+  fcn = lambda s: (spt_sorter[itemgetter(0)(s)], itemgetter(1)(s))
+  for p_spt in sorted(s_spt.keys(), key=fcn):
     if oneplot:
       #Find highest s/n in this spectral type
       highestsnr = sorted(s_spt[p_spt].keys())[-1]
       x = namedict[xaxis][p_spt][highestsnr]
       y = namedict[yaxis][p_spt][highestsnr]
       if "SpectralType" in xaxis:
-        plt.plot(range(len(x)), y, linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
+        plt.plot(range(len(x)), y, linestyle=next(linecycler), linewidth=2, label="Primary Spectral Type = " + p_spt)
         plt.xticks(range(len(x)), x, size="small")
       elif "SpectralType" in yaxis:
-        plt.plot(x, range(len(y)), linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
+        plt.plot(x, range(len(y)), linestyle=next(linecycler), linewidth=2, label="Primary Spectral Type = " + p_spt)
         plt.yticks(range(len(y)), y, size="small")
       else:
-        plt.plot(x, y, linestyle=next(linecycler), label="Primary Spectral Type = " + p_spt)
+        plt.plot(x, y, linestyle=next(linecycler), linewidth=2, label="Primary Spectral Type = " + p_spt)
 
     else:
       plt.figure(index)
@@ -118,21 +126,21 @@ if __name__ == "__main__":
         x = namedict[xaxis][p_spt][snr]
         y = namedict[yaxis][p_spt][snr]
         if "SpectralType" in xaxis:
-          plt.plot(range(len(x)), y, linestyle=next(linecycler), label="S/N = %.0f" %snr)
+          plt.plot(range(len(x)), y, linestyle=next(linecycler), linewidth=2, label="S/N = %.0f" %snr)
           plt.xticks(range(len(x)), x, size="small")
         elif "SpectralType" in yaxis:
-          plt.plot(x, range(len(y)), linestyle=next(linecycler), label="S/N = %.0f" %snr)
+          plt.plot(x, range(len(y)), linestyle=next(linecycler), linewidth=2, label="S/N = %.0f" %snr)
           plt.yticks(range(len(y)), y, size="small")
         else:
-          plt.plot(x, y, linestyle=next(linecycler), label="S/N = %.0f" %snr)
+          plt.plot(x, y, linestyle=next(linecycler), linewidth=2, label="S/N = %.0f" %snr)
       plt.legend(loc='best')
-      plt.xlabel(xaxis)
-      plt.ylabel(yaxis)
+      plt.xlabel(labeldict[xaxis])
+      plt.ylabel(labeldict[yaxis])
       plt.title("Sensitivity for "+p_spt+" Primary")
   if oneplot:
     plt.legend(loc='best')
-    plt.xlabel(xaxis)
-    plt.ylabel(yaxis)
+    plt.xlabel(labeldict[xaxis])
+    plt.ylabel(labeldict[yaxis])
   plt.show()
 
 

@@ -1,17 +1,16 @@
-#!/opt/local/bin/python
+print "Very beginning of script!"
 import numpy
 import os
 import sys
-import pylab
 from scipy.interpolate import UnivariateSpline
 import SpectralTypeRelations
 from collections import defaultdict
-from PlotBlackbodies import Planck
 import Units
 import DataStructures
 import Correlate
-import MakeModel
+#import MakeModel
 from subprocess import check_call
+import FitsUtils
 
 """
    This function performs a sensitivity analysis on reduced spectra
@@ -22,7 +21,14 @@ from subprocess import check_call
    Example: To do a sensitivity analysis on file 'foo.fits', for primary spectral types from B4-A5, and
             secondary spectral types from G0-K5, you type the following:
             python SensitivityAnalysis.py foo.fits -primary=B4-A5 -secondary=G0-K5
-"""
+
+
+def Planck(x,T):
+  h = 6.626e-27
+  c = 3e10
+  k = 1.38e-16
+  pi = numpy.pi
+  return 2*pi*h*c**2/x**5*1.0/(numpy.exp(h*c/(x*k*T)) - 1.0)
 
 
 print "Very beginning of script!"
@@ -92,11 +98,11 @@ good_sections = {1: [[-1,-1],],
                  52: [[-1,-1],],
 		 43: [[-1,-1],] }
 
+"""
 
-
-
+"""
 def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
-  """
+    
     This function will add a model to the data. The flux ratio is determined
     from the primary spectral type (prim_spt), the secondary spectral type
     (sec_spt), and the age of the system. The age keyword argument can be either
@@ -104,7 +110,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
     or a number in which case the radii of the two stars are determined from 
     evolutionary tracks. The 'vel' keyword gives a radial velocity at which
     the model should be added (MUST be given in cm/s)
-  """
+    
   if type(age) == str:
     #Main sequence stars!
     MS = SpectralTypeRelations.MainSequence()
@@ -138,7 +144,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
     
     #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    model2 = Correlate.ReduceResolution(model2.copy(), 60000)
     
     #Get model continuum in this section
     weights = model2.y**2
@@ -168,17 +174,18 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
 
   return data2
 
+"""
 
 if __name__ == "__main__":
-  import FitsUtils
-  import os
-  import sys
+  print os.getcwd()
+  """
   try:
     datafile = sys.argv[1]
     print "Using ", datafile, "as template"
   except IndexError:
     print "Error! Must give .fits file!"
     sys.exit()
+  
   tolerance = 5    #allow highest cross-correlation peak to be anywhere within 5 km/s of the correct velocity
   MS = SpectralTypeRelations.MainSequence()  #Class for interpolating stellar info from the spectral type
 
@@ -304,3 +311,4 @@ if __name__ == "__main__":
   
 
   logfile.close()
+  """

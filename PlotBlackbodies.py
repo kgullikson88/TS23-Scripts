@@ -1,4 +1,3 @@
-import pylab
 import numpy
 import sys
 import Units
@@ -14,13 +13,16 @@ def Planck(x,T):
 
 
 if __name__ == "__main__":
+  import pylab
   T1 = float(sys.argv[1])
   T2 = float(sys.argv[2])
   if T2 > T1:
-    T = T1
+    T = T2
     T2 = T1
     T1 = T
-    
+
+  print "T1 = ", T1
+  print "T2 = ", T2
   if len(sys.argv) > 3:
     #Read in a filter file
     #Filter format is two columns: One for wavelength in nanometer
