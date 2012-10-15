@@ -143,7 +143,7 @@ model_list = [modeldir + "lte30-3.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
 #The segments keyword controls which orders of the data to use, and which parts of them. Can be used to ignore telluric
 #    contamination. Can be a string (default) which will use all of the orders, a list of integers which will
 #    use all of the orders given in the list, or a dictionary of lists which gives the segments of each order to use.
-def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, models=model_list, segments="all", outdir=outfiledir, outfilename=None):
+def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, models=model_list, segments="all", save_output=True, outdir=outfiledir, outfilename=None):
   
   ensure_dir(outdir)
   #1: Read in the datafile, if necessary
@@ -318,11 +318,14 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
       std = numpy.std(corr)
       corr = (corr - mean)/std
 
-    #j: Finally, output
-    if makefname:
-      outfilename = outdir + filename.split("/")[-1] + "." + star
-    print "Outputting to ", outfilename, "\n"
-    numpy.savetxt(outfilename, numpy.transpose((vel, corr)), fmt="%.8g")
+    #j: Finally, output or return
+    if save_output:
+      if makefname:
+        outfilename = outdir + filename.split("/")[-1] + "." + star
+      print "Outputting to ", outfilename, "\n"
+      numpy.savetxt(outfilename, numpy.transpose((vel, corr)), fmt="%.8g")
+    else:
+      return vel, corr
     
 
 

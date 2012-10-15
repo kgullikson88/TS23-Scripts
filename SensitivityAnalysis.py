@@ -316,9 +316,9 @@ if __name__ == "__main__":
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
         #Cross-correlate with original model
-        Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, outfilename=outfilebase+"_CC.dat")
+        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False)
 
-        vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
+        #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
         std = corr.std()
         mean = corr.mean()
