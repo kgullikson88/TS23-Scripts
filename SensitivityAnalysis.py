@@ -12,6 +12,7 @@ import DataStructures
 import Correlate
 import MakeModel
 import RotBroad
+import FindContinuum
 
 """
    This function performs a sensitivity analysis on reduced spectra
@@ -126,6 +127,10 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
   #Interpolate Model, and note the endpoints
   first = model.x[0]*(1.+vel/Units.c)
   last = model.x[-1]*(1.+vel/Units.c)
+  a = []
+  for i in range(1, model.x.size):
+    a.append(model.x[i] - model.x[i-1])
+  print min(a)
   model_fcn = UnivariateSpline(model.x, model.y, s=0)
 
   data2 = []
@@ -148,26 +153,10 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
     
     #Get model continuum in this section
-    weights = model2.y**2
-    done = False
-    x2 = model2.x.copy()
-    y2 = model2.y.copy()
-    fit_order = 2
-    while not done:
-      done = True
-      fit = numpy.poly1d(numpy.polyfit(x2 - x2.mean(), y2, fit_order))
-      residuals = y2 - fit(x2 - x2.mean())
-      mean = numpy.mean(residuals)
-      std = numpy.std(residuals)
-      badpoints = numpy.where((residuals - mean) < -std)[0]
-      if badpoints.size > 0 and x2.size - badpoints.size > 5*fit_order:
-        done = False
-        x2 = numpy.delete(x2, badpoints)
-        y2 = numpy.delete(y2, badpoints)
-    model2.cont = fit(model2.x - x2.mean())
+    model2.cont = FindContinuum.Continuum(model2.x, model2.y)
 
     #Rotationally broaden
-    model2 = RotBroad.Broaden(model2, vsini)
+    #model2 = RotBroad.Broaden(model2, vsini)
     
     #Reduce resolution
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
@@ -222,7 +211,7 @@ if __name__ == "__main__":
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
   SNRlist = [100,200,400,600,800,1000]
   #SNRlist = [400,600]
-  SNRlist = [1000,]
+  SNRlist = [10000,]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
@@ -304,6 +293,9 @@ if __name__ == "__main__":
    x = x*Units.nm/Units.angstrom
    y = 10**y
    model = DataStructures.xypoint(x=x, y=y)
+
+   #Rotationally broaden
+   model = RotBroad.Broaden(model, 15*Units.cm/Units.km, findcont=True)
    
    for snr in SNRlist:
     for p_spt in parent_spts[p_left:p_right]:
@@ -314,7 +306,7 @@ if __name__ == "__main__":
 
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
-        #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
+        FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)

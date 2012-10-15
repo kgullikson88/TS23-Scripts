@@ -9,6 +9,7 @@ import DataStructures
 import Units
 import RotBroad
 import MakeModel
+import FindContinuum
 
 class Resid:
   def __init__(self, size):
@@ -259,28 +260,13 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     model.y = MODEL(model.x)
 
     #c: Find continuum by fitting model to a quadratic.
-    done = False
-    x2 = model.x.copy()
-    y2 = model.y.copy()
-    fitorder = 3
-    while not done:
-      done = True
-      fit = numpy.poly1d(numpy.polyfit(x2 - x2.mean(), y2, fitorder))
-      residuals = y2 - fit(x2 - x2.mean())
-      mean = numpy.mean(residuals)
-      std = numpy.std(residuals)
-      badpoints = numpy.where((residuals - mean) < -std)[0]
-      if badpoints.size > 0 and x2.size - badpoints.size > 5*fitorder:
-        done = False
-        x2 = numpy.delete(x2, badpoints)
-        y2 = numpy.delete(y2, badpoints)
-    model.cont = fit(model.x - x2.mean())
+    model.cont = FindContinuum.Continuum(model.x, model.y)
 
     #d: Convolve to a resolution of 60000
     model = MakeModel.ReduceResolution(model.copy(), resolution, extend=False)
 
     #e: Rotationally broaden
-    model = RotBroad.Broaden(model, vsini)
+    #model = RotBroad.Broaden(model, vsini)
 
     #f: Convert to log-space
     MODEL = UnivariateSpline(model.x, model.y, s=0)

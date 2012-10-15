@@ -6,6 +6,7 @@ import scipy.signal
 import sys
 import DataStructures
 import SpectralTypeRelations
+import FindContinuum
 
 
 pi = numpy.pi
@@ -16,13 +17,14 @@ def CombineIntervals(intervals, overlap=0):
   iteration = 0
   for interval in intervals:
     lastindex = interval.x.size - overlap
+    
     if iteration == 0:
-      firstindex = overlap
+      firstindex = 0
       master_x = interval.x[firstindex:lastindex]
       master_y = interval.y[firstindex:lastindex]
       master_cont = interval.cont[firstindex:lastindex]
     else:
-      firstindex = numpy.searchsorted(interval.x, master_x[-1])
+      firstindex = numpy.searchsorted(interval.x, master_x[-1])+1
       master_x = numpy.append(master_x, interval.x[firstindex:lastindex])
       master_y = numpy.append(master_y, interval.y[firstindex:lastindex])
       master_cont = numpy.append(master_cont, interval.cont[firstindex:lastindex])
@@ -55,7 +57,7 @@ def ReadFile(filename):
   return model
 
 
-def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):  
+def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=False):  
   """
     model:           input filename of the spectrum. The continuum data is assumed to be in filename[:-1]+".17"
                      model can also be a DataStructures.xypoint containing the already-read model (must include continuum!)
@@ -63,15 +65,16 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):
     intervalsize:    The size (in nm) of the interval to use for broadening. Since it depends on wavelength, you don't want to do all at once
     alpha:           Something to do with limb darkening...
     linear:          flag for if the x-spacing is already linear. If true, we don't need to make UnivariateSplines and linearize
+    findcont:        flag to decide if the continuum needs to be found
   """
 
-  
   if type(model) == str:
     model = ReadFile(model)
 
   if not linear:
     model_fcn = UnivariateSpline(model.x, model.y, s=0)
-    cont_fcn = UnivariateSpline(model.x, model.cont, s=0)
+    if not findcont:
+      cont_fcn = UnivariateSpline(model.x, model.cont, s=0)
 
   #Will convolve with broadening profile in steps, to keep accuracy
   #interval size is set as a keyword argument
@@ -86,11 +89,17 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):
     if linear:
       interval.x = model.x[firstindex:lastindex]
       interval.y = model.y[firstindex:lastindex]
-      interval.cont = model.cont[firstindex:lastindex]
+      if not findcont:
+        interval.cont = model.cont[firstindex:lastindex]
     else:
       interval.x = numpy.linspace(model.x[firstindex], model.x[lastindex], lastindex - firstindex + 1)
       interval.y = model_fcn(interval.x)
-      interval.cont = cont_fcn(interval.x) 
+      if not findcont:
+        interval.cont = cont_fcn(interval.x)
+
+    if findcont:
+      interval.cont = FindContinuum.Continuum(interval.x, interval.y)
+    
     
     #Make broadening profile
     beta = alpha/(1-alpha)
@@ -107,7 +116,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):
     after = interval.y[:profile.size/2]
     extended = numpy.append(numpy.append(before, interval.y), after)
     
-    interval.y = scipy.signal.convolve(extended, profile/profile.sum(), mode="valid")
+    interval.y = scipy.signal.fftconvolve(extended, profile/profile.sum(), mode="valid")
     intervals.append(interval)
 
     if profile.size > profilesize:
