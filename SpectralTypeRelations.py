@@ -166,14 +166,89 @@ class MainSequence:
       return RELATION(spnum)
     else:
       return spnum
-      
-      
+
+########################################################
+########               Pre-Main Sequence         #######
+########################################################
+import os
+homedir = os.environ["HOME"] + "/"
+tracksfile = homedir + "Dropbox/School/Research/Summer2011/EvolutionaryTracks.dat"
+
+class PreMainSequence:
+  def __init__(self, pms_tracks_file=tracksfile):
+    import numpy
+    import Units
+    infile = open(pms_tracks_file)
+    lines = infile.readlines()
+    infile.close()
+
+    #self.Mass = defaultdict(float)
+    #self.Radius = defaultdict(float)
+    #self.Age = defaultdict(float)
+    M = []   # mass (solar masses)
+    t = []   # age (Myr)
+    T = []   # temperature
+    R = []   # radius (solar radii)
+
+    for line in lines:
+      if not line.startswith("#"):
+        if line != "\n":
+          columns = line.split()
+          mass = float(columns[0])
+          age = 10**float(columns[1])
+          temperature = 10**float(columns[3])
+          g = 10**float(columns[4])
+          radius = numpy.sqrt(Units.G*mass*Units.Msun/g)/Units.Rsun
+          M.append(mass)
+          t.append(age/1e6)
+          T.append(temperature)
+          R.append(radius)
+
+    from scipy.interpolate import SmoothBivariateSpline, interp2d
+    #self.Mass = SmoothBivariateSpline(T, t, M, kx=1, ky=1, s=0)
+    #self.Radius = SmoothBivariateSpline(T, t, R, kx=1, ky=1, s=0)
+    #self.AgeFromTemperatureAndMass = interp2d(T, M, t, kx=1, ky=1, s=0)
+    self.Mass = interp2d(T, t, M)
+    self.Radius = interp2d(T, t, R)
+    self.AgeFromTemperatureAndMass = interp2d(T, M, t)
+
+    #Todo: These interpolation functions not working in simple tests
+    #   (z=x^2 + y^2). Find what I am doing wrong or something that works!
+    #import pylab
+    
+    self.MS = MainSequence()
+
+  def Interpolate(self, SpT, yvar, value):
+    #Get the temperature from the spectral type (use main sequence relations)
+    temperature = self.MS.Interpolate(self.MS.Temperature, SpT)
+    
+    if type(value) == str:
+      if "mass" in value or "Mass" in value:
+        fcn = self.Mass
+      elif "radius" in value or "Radius" in value:
+        fcn = self.Radius
+      elif "age" in value or "Age" in value:
+        fcn = self.AgeFromMassAndTemperature
+      elif "temperature" in value or "Temperature" in value:
+        return temperature
+      else:
+        print "Error! Unknown value: %s" %value
+        return
+    else:
+      fcn = value
+
+
+    return fcn(temperature, yvar)
+          
       
       
 if __name__ == "__main__":
   sptr = MainSequence()
   value = sptr.Interpolate(sptr.Temperature, "A9")
   print "Interpolated value: ", value
+
+  pms = PreMainSequence()
+  print pms.Interpolate("G2", 5000, "mass")
     
     
     
