@@ -3,6 +3,7 @@ import sys
 import subprocess
 import ConvertMIPASto_lblrtm_format as convert
 import scipy.interpolate
+import scipy.signal
 import os
 import DataStructures
 
@@ -391,10 +392,10 @@ def ReduceResolution(data,resolution, cont_fcn=None, extend=True, nsigma=8):
     cont2 = cont_fcn(x2)
     cont1[cont1 < 0.01] = 1
   
-    newdata.y = numpy.convolve(extended*cont2, gaussian/gaussian.sum(), mode=conv_mode)/cont1
+    newdata.y = scipy.signal.fftconvolve(extended*cont2, gaussian/gaussian.sum(), mode=conv_mode)/cont1
 
   else:
-    newdata.y = numpy.convolve(extended, gaussian/gaussian.sum(), mode=conv_mode)
+    newdata.y = scipy.signal.fftconvolve(extended, gaussian/gaussian.sum(), mode=conv_mode)
     
   return newdata
 

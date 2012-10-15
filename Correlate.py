@@ -7,7 +7,8 @@ from scipy.interpolate import UnivariateSpline
 from scipy.signal import fftconvolve
 import DataStructures
 import Units
-#import MakeModel
+import RotBroad
+import MakeModel
 
 class Resid:
   def __init__(self, size):
@@ -18,6 +19,7 @@ class Resid:
     opterr = numpy.zeros(size)
     cont = numpy.zeros(size)
 
+"""
 #This function rebins (x,y) data onto the grid given by the array xgrid
 def RebinData(data,xgrid):
   Model = UnivariateSpline(data.x, data.y, s=0)
@@ -77,7 +79,7 @@ def ReduceResolution(data,resolution, cont_fcn=None, extend=True, nsigma=8):
     newdata.y = numpy.convolve(extended, gaussian/gaussian.sum(), mode=conv_mode)
     
   return newdata
-
+"""
 
 
 #Ensure a directory exists. Create it if not
@@ -143,7 +145,11 @@ model_list = [modeldir + "lte30-3.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
 #The segments keyword controls which orders of the data to use, and which parts of them. Can be used to ignore telluric
 #    contamination. Can be a string (default) which will use all of the orders, a list of integers which will
 #    use all of the orders given in the list, or a dictionary of lists which gives the segments of each order to use.
-def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, models=model_list, segments="all", save_output=True, outdir=outfiledir, outfilename=None):
+#The save_output keyword tells whether to save the cross-correlation or just return the arrays
+#The vsini keyword determines how much to rotationally broaden the model spectrum before
+#    cross-correlating
+#The resolution keyword determines the detector resolution     
+def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, models=model_list, segments="all", vsini=15*Units.cm/Units.km, resolution=60000, save_output=True, outdir=outfiledir, outfilename=None):
   
   ensure_dir(outdir)
   #1: Read in the datafile, if necessary
@@ -252,21 +258,10 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     model.x = numpy.linspace(x2[0], x2[-1], right - left + 1)
     model.y = MODEL(model.x)
 
-    #c: Convolve to a resolution of 60000
-    model = ReduceResolution(model.copy(), 60000, extend=False)
-    MODEL = UnivariateSpline(model.x, model.y, s=0)
-    model.x = numpy.linspace(numpy.log10(model.x[0]), numpy.log10(model.x[-1]), model.x.size)
-    model.y = MODEL(10**model.x)
-
-    #d: Rebin to the same spacing as the data (but not the same pixels)
-    xgrid = numpy.arange(model.x[0], model.x[-1], data.x[1] - data.x[0])
-    model = RebinData(model.copy(), xgrid)
-
-    #e: Find continuum by fitting model to a quadratic. Weight high points more
-    weights = model.y**2
+    #c: Find continuum by fitting model to a quadratic.
     done = False
-    x2 = 10**model.x
-    y2 = model.y
+    x2 = model.x.copy()
+    y2 = model.y.copy()
     fitorder = 3
     while not done:
       done = True
@@ -279,9 +274,24 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
         done = False
         x2 = numpy.delete(x2, badpoints)
         y2 = numpy.delete(y2, badpoints)
-    model.cont = fit(10**model.x - x2.mean())
+    model.cont = fit(model.x - x2.mean())
 
-    #f: Cross-correlate
+    #d: Convolve to a resolution of 60000
+    model = MakeModel.ReduceResolution(model.copy(), resolution, extend=False)
+
+    #e: Rotationally broaden
+    model = RotBroad.Broaden(model, vsini)
+
+    #f: Convert to log-space
+    MODEL = UnivariateSpline(model.x, model.y, s=0)
+    model.x = numpy.linspace(numpy.log10(model.x[0]), numpy.log10(model.x[-1]), model.x.size)
+    model.y = MODEL(10**model.x)
+
+    #g: Rebin to the same spacing as the data (but not the same pixels)
+    xgrid = numpy.arange(model.x[0], model.x[-1], data.x[1] - data.x[0])
+    model = MakeModel.RebinData(model.copy(), xgrid)
+
+    #h: Cross-correlate
     data_rms = numpy.sqrt(numpy.sum((data.y/data.cont-1)**2))
     model_rms = numpy.sqrt(numpy.sum((model.y/model.cont-1)**2))
     left = numpy.searchsorted(model.x, data.x[0])
@@ -304,21 +314,21 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     #if "linux" in sys.platform:
     #  corr.y = corr.y[::-1]
         
-    #Fit low-order polynomal to cross-correlation
+    #i: Fit low-order polynomal to cross-correlation
     left = numpy.searchsorted(corr.x, minvel)
     right = numpy.searchsorted(corr.x, maxvel)
     vel = corr.x[left:right]
     corr = corr.y[left:right]
     fit = numpy.poly1d(numpy.polyfit(vel, corr, 2))
         
-    #Adjust correlation by fit
+    #j: Adjust correlation by fit
     corr = corr - fit(vel)
     if normalize:
       mean = numpy.mean(corr)
       std = numpy.std(corr)
       corr = (corr - mean)/std
 
-    #j: Finally, output or return
+    #k: Finally, output or return
     if save_output:
       if makefname:
         outfilename = outdir + filename.split("/")[-1] + "." + star

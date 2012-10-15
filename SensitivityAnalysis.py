@@ -222,6 +222,7 @@ if __name__ == "__main__":
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
   SNRlist = [100,200,400,600,800,1000]
   #SNRlist = [400,600]
+  SNRlist = [1000,]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
@@ -316,7 +317,7 @@ if __name__ == "__main__":
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 
         #Cross-correlate with original model
-        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False)
+        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()

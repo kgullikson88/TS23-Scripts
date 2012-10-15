@@ -2,6 +2,7 @@ import pylab
 import numpy
 import Units
 from scipy.interpolate import UnivariateSpline
+import scipy.signal
 import sys
 import DataStructures
 import SpectralTypeRelations
@@ -106,7 +107,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False):
     after = interval.y[:profile.size/2]
     extended = numpy.append(numpy.append(before, interval.y), after)
     
-    interval.y = numpy.convolve(extended, profile/profile.sum(), mode="valid")
+    interval.y = scipy.signal.convolve(extended, profile/profile.sum(), mode="valid")
     intervals.append(interval)
 
     if profile.size > profilesize:
