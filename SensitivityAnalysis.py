@@ -285,34 +285,31 @@ if __name__ == "__main__":
   ############################################
   #Start looping!
   ############################################
-  for p_spt in parent_spts[p_left:p_right]:
+  for s_spt in sec_spts[s_left:s_right]:
+   #Figure out what the best model is from the secondary spectral type
+   s_mass = MS.Interpolate(MS.Mass, s_spt)
+   radius = MS.Interpolate(MS.Radius, s_spt)
+   temperature = MS.Interpolate(MS.Temperature, s_spt)
+   logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
+   best_key = modelfiles.keys()[0]
+   for key in modelfiles.keys():
+     if numpy.abs(temperature - key) < numpy.abs(temperature - best_key):
+       best_key = key
+   best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
+   modelfile = modelfiles[best_key][0]
+
+   #Read in model
+   x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
+   x = x*Units.nm/Units.angstrom
+   y = 10**y
+   model = DataStructures.xypoint(x=x, y=y)
+   
    for snr in SNRlist:
-    for s_spt in sec_spts[s_left:s_right]:
+    for p_spt in parent_spts[p_left:p_right]:
       found = 0.0
       sig = []
       for velocity in velocitylist:
-        #Figure out what the best model is from the secondary spectral type
-        s_mass = MS.Interpolate(MS.Mass, s_spt)
         p_mass = MS.Interpolate(MS.Mass, p_spt)
-        radius = MS.Interpolate(MS.Radius, s_spt)
-        temperature = MS.Interpolate(MS.Temperature, s_spt)
-        logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
-        best_key = modelfiles.keys()[0]
-        for key in modelfiles.keys():
-          if numpy.abs(temperature - key) < numpy.abs(temperature - best_key):
-            best_key = key
-        best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
-        modelfile = modelfiles[best_key][0]
-        for fname in modelfiles[best_key]:
-          model_logg = float(fname.split("lte")[-1][3:7])
-          if numpy.abs(logg - model_logg) < numpy.abs(logg - best_logg):
-            best_logg = logg
-            modelfile = fname
-        
-        x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
-        x = x*Units.nm/Units.angstrom
-        y = 10**y
-        model = DataStructures.xypoint(x=x, y=y)
 
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
