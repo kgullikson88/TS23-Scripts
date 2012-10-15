@@ -307,6 +307,7 @@ if __name__ == "__main__":
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
+	print "primary: %s\tsecondary:%s\tvelocity:%g" %(p_spt, s_spt, velocity)
 
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
@@ -321,7 +322,6 @@ if __name__ == "__main__":
         if maxvel-tolerance <= velocity and maxvel+tolerance >= velocity:
           sig.append(significance)
           found += 1.
-	print "primary: %s\tsecondary:%s\tvelocity:%g" %(p_spt, s_spt, velocity)
 
       print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
       outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
