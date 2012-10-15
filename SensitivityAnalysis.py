@@ -211,7 +211,6 @@ if __name__ == "__main__":
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
   SNRlist = [100,200,400,600,800,1000]
   #SNRlist = [400,600]
-  SNRlist = [10000,]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
@@ -307,7 +306,7 @@ if __name__ == "__main__":
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
-	print "primary: %s\tsecondary:%s\tvelocity:%g" %(p_spt, s_spt, velocity)
+	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
 
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
