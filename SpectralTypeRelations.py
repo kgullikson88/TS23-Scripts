@@ -204,7 +204,8 @@ class PreMainSequence:
           T.append(temperature)
           R.append(radius)
 
-    from scipy.interpolate import SmoothBivariateSpline, interp2d
+    from scipy.interpolate import SmoothBivariateSpline, interp2d, griddata
+    
     #self.Mass = SmoothBivariateSpline(T, t, M, kx=1, ky=1, s=0)
     #self.Radius = SmoothBivariateSpline(T, t, R, kx=1, ky=1, s=0)
     #self.AgeFromTemperatureAndMass = interp2d(T, M, t, kx=1, ky=1, s=0)
@@ -244,11 +245,13 @@ class PreMainSequence:
       
 if __name__ == "__main__":
   sptr = MainSequence()
-  value = sptr.Interpolate(sptr.Temperature, "A9")
-  print "Interpolated value: ", value
+  for spt in ["K9", "K5", "K0", "G5", "G0"]:
+    temp = sptr.Interpolate(sptr.Temperature, spt)
+    radius = sptr.Interpolate(sptr.Radius, spt)
+    print "%s:  T=%g\tR=%g" %(spt, temp, radius)
 
-  pms = PreMainSequence()
-  print pms.Interpolate("G2", 5000, "mass")
+  #pms = PreMainSequence()
+  #print pms.Interpolate("G2", 5000, "mass")
     
     
     
