@@ -270,8 +270,10 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
 
     #f: Convert to log-space
     MODEL = UnivariateSpline(model.x, model.y, s=0)
+    CONT = UnivariateSpline(model.x, model.cont, s=0)
     model.x = numpy.linspace(numpy.log10(model.x[0]), numpy.log10(model.x[-1]), model.x.size)
     model.y = MODEL(10**model.x)
+    model.cont = CONT(10**model.x)
 
     #g: Rebin to the same spacing as the data (but not the same pixels)
     xgrid = numpy.arange(model.x[0], model.x[-1], data.x[1] - data.x[0])

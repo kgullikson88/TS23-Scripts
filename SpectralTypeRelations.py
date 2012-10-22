@@ -1,5 +1,6 @@
 from collections import defaultdict
 from scipy.interpolate import UnivariateSpline
+import numpy
 import DataStructures
 import Units
 
@@ -21,6 +22,7 @@ class MainSequence:
     self.Temperature = defaultdict(float)
     self.Radius = defaultdict(float)
     self.Mass = defaultdict(float)
+    self.Lifetime = defaultdict(float)
     self.Temperature['O5'] = 42000
     self.Temperature['O6'] = 39500
     self.Temperature['O7'] = 35800
@@ -119,6 +121,20 @@ class MainSequence:
     self.Mass['M0'] = 0.51
     self.Mass['M2'] = 0.40
     self.Mass['M5'] = 0.21
+
+
+    self.Lifetime['O9.1'] = 8
+    self.Lifetime['B1.1'] = 11
+    self.Lifetime['B2.5'] = 16
+    self.Lifetime['B4.2'] = 26
+    self.Lifetime['B5.3'] = 43
+    self.Lifetime['B6.7'] = 94
+    self.Lifetime['B7.7'] = 165
+    self.Lifetime['B9.7'] = 350
+    self.Lifetime['A1.6'] = 580
+    self.Lifetime['A5'] = 1100
+    self.Lifetime['A8.4'] = 1800
+    self.Lifetime['F2.6'] = 2700
     
   def SpT_To_Number(self, SpT):
     basenum = float(SpT[1:])
@@ -140,6 +156,30 @@ class MainSequence:
     else:
       print "Something weird happened! Spectral type = ", SpT
       return -1
+
+  def Number_To_SpT(self, number):
+    tens_index = 0
+    num = float(number)
+    while num > 0:
+      num -= 10
+      tens_index += 1
+    tens_index = tens_index - 1
+    if tens_index == 0:
+      spt_class = "O"
+    elif tens_index == 1:
+      spt_class = "B"
+    elif tens_index == 2:
+      spt_class = "A"
+    elif tens_index == 3:
+      spt_class = "F"
+    elif tens_index == 4:
+      spt_class = "G"
+    elif tens_index == 5:
+      spt_class = "K"
+    elif tens_index == 6:
+      spt_class = "M"
+    subclass = str(number - 10*tens_index)
+    return spt_class + subclass
     
   def Interpolate(self,dictionary, SpT):
     #First, we must convert the relations above into a monotonically increasing system
@@ -166,6 +206,19 @@ class MainSequence:
       return RELATION(spnum)
     else:
       return spnum
+
+  def GetSpectralType(self, dictionary, value):
+    #Returns the spectral type that is closest to the value (within 0.1 subtypes)
+    testgrid = numpy.arange(self.SpT_To_Number("O1"), self.SpT_To_Number("M9"), 0.1)
+    besttype = "O1"
+    best_difference = 9e9
+    for num in testgrid:
+      spt = self.Number_To_SpT(num)
+      difference = numpy.abs(value - self.Interpolate(dictionary, spt))
+      if difference < best_difference:
+        best_difference = difference
+        besttype = spt
+    return besttype
 
 ########################################################
 ########               Pre-Main Sequence         #######
@@ -206,12 +259,12 @@ class PreMainSequence:
 
     from scipy.interpolate import SmoothBivariateSpline, interp2d, griddata
     
-    #self.Mass = SmoothBivariateSpline(T, t, M, kx=1, ky=1, s=0)
-    #self.Radius = SmoothBivariateSpline(T, t, R, kx=1, ky=1, s=0)
-    #self.AgeFromTemperatureAndMass = interp2d(T, M, t, kx=1, ky=1, s=0)
-    self.Mass = interp2d(T, t, M)
-    self.Radius = interp2d(T, t, R)
-    self.AgeFromTemperatureAndMass = interp2d(T, M, t)
+    self.Mass = SmoothBivariateSpline(T, t, M, kx=1, ky=1, s=0)
+    self.Radius = SmoothBivariateSpline(T, t, R, kx=1, ky=1, s=0)
+    self.AgeFromTemperatureAndMass = SmoothBivariateSpline(T, M, t, kx=1, ky=1, s=0)
+    #self.Mass = interp2d(T, t, M)
+    #self.Radius = interp2d(T, t, R)
+    #self.AgeFromTemperatureAndMass = interp2d(T, M, t)
 
     #Todo: These interpolation functions not working in simple tests
     #   (z=x^2 + y^2). Find what I am doing wrong or something that works!
@@ -245,13 +298,13 @@ class PreMainSequence:
       
 if __name__ == "__main__":
   sptr = MainSequence()
+  pms = PreMainSequence()
   for spt in ["K9", "K5", "K0", "G5", "G0"]:
     temp = sptr.Interpolate(sptr.Temperature, spt)
     radius = sptr.Interpolate(sptr.Radius, spt)
     print "%s:  T=%g\tR=%g" %(spt, temp, radius)
+    print pms.Interpolate(spt, 1000, "radius")
 
-  #pms = PreMainSequence()
-  #print pms.Interpolate("G2", 5000, "mass")
     
     
     
