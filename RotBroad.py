@@ -125,7 +125,9 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=F
     firstindex = lastindex - 2*profile.size
 
   if len(intervals) > 1:
-    return CombineIntervals(intervals, overlap=profilesize)
+    combined = CombineIntervals(intervals, overlap=profilesize)
+    print "Combined y, cont sizes = %i, %i" %(combined.y.size, combined.cont.size)
+    return combined
   else:
     return intervals[0]
   
