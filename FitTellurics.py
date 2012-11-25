@@ -132,7 +132,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(6,len(orders)-2):
+  for i in range(15,len(orders)):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
