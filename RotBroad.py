@@ -117,6 +117,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=F
     extended = numpy.append(numpy.append(before, interval.y), after)
     
     interval.y = scipy.signal.fftconvolve(extended, profile/profile.sum(), mode="valid")
+    print "y, cont sizes = %i, %i" %(interval.y.size, interval.cont.size)
     intervals.append(interval)
 
     if profile.size > profilesize:
