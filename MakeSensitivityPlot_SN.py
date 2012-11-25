@@ -105,14 +105,14 @@ if __name__ == "__main__":
       R1 = MS.Interpolate(MS.Radius, p_spt)
       T2 = MS.Interpolate(MS.Temperature, segments[2])
       R2 = MS.Interpolate(MS.Radius, segments[2])
-      fluxratio = (PlotBlackbodies.Planck(T1, vband)/PlotBlackbodies.Planck(T2, vband)).mean()*(R1/R2)**2
+      fluxratio = (PlotBlackbodies.Planck(vband, T1)/PlotBlackbodies.Planck(vband, T2)).mean()*(R1/R2)**2
       s_spt[p_spt][snr].append(segments[2])
       p_mass[p_spt][snr].append(float(segments[3]))
       s_mass[p_spt][snr].append(float(segments[4]))
       q[p_spt][snr].append(float(segments[5]))
       det_rate[p_spt][snr].append(float(segments[6]))
       sig[p_spt][snr].append(float(segments[7]))
-      magdiff[p_spt][snr].append(2.5*numpy.log(fluxratio))
+      magdiff[p_spt][snr].append(2.5*numpy.log10(fluxratio))
 
 
   #Finally, plot

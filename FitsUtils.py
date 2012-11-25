@@ -76,7 +76,7 @@ def MakeXYpoints(header, data=None):
         units = header[key].split("units=")[-1]
         if units == "angstroms" or units == "Angstroms":
           wave_factor = Units.nm/Units.angstrom
-          print "scaling wavelength by ", wave_factor
+          print "Wavelength units are Angstroms. Scaling wavelength by ", wave_factor
   orders = string.split(" spec")
 
   #Make a list of xypoints called DATA

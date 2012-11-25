@@ -100,7 +100,6 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   for order in orders:
     order.cont = numpy.ones(order.x.size)
     order.err[order.y > 0.0] = numpy.sqrt(order.y[order.y > 0.0])
-    order.err[order.y <= 0.0] = 1e9
     
     #make sure there are no zeros (fancy indexing)
     order.err[order.err <= 0] = 1e10
@@ -127,7 +126,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   pars = [humidity, o2, angle]
   
   #Make outfilename from the input fits file
-  outfilename = "Corrected_" + filename[3:].split("-")[0] + ".dat"
+  outfilename = "Corrected_" + filename.split("-")[0] + ".dat"
   print "outputting to ", outfilename
   outfile = open(outfilename, "w")
   debug = False
@@ -165,8 +164,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     outfile2.write("\n\n\n\n")
     outfile2.close()
     
-    print fitpars
-    print "Done fitting chip ", i, "\n\n\n"
+    print "Done fitting chip ", i+1, "\n\n\n"
     model = FitFunction(order, fitpars, const_pars)
     model_original = model.copy()
   
@@ -342,7 +340,6 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   return_array = ((order.y  - order.cont*model.y)**2*weights + bound(humidity_bounds,pars[0]) + 
                                           bound(o2_bounds,pars[1]) + 
   					  bound(angle_bounds, pars[2]))
-  print "X^2 = ", numpy.sum(return_array)/float(weights.size)
   outfile = open("chisq_summary.dat", 'a')
   outfile.write(str(pars[0])+"\t"+str(pars[1])+"\t"+str(resolution)+"\t"+str(numpy.sum(return_array)/float(weights.size))+"\n")
   outfile.close()
@@ -371,8 +368,6 @@ def FitPrimary(bstar_dict, model, order, vsini=150*Units.cm/Units.km, alpha=0.5,
   order.y /= model.y
   const_pars = [bstar_dict, order, alpha, intervalsize]
   pars, success = leastsq(primary_errfunc, pars, args=const_pars, epsfcn=1)
-  print "Best fit vsini: ", pars[0]
-  print "Best fit radial velocity: ", pars[1]*Units.c*Units.km/Units.cm, "km/s"
 
   broadened, logg = FindBestGravity(const_pars[0], const_pars[1], pars[0], const_pars[2], const_pars[3], pars[1])
   fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
@@ -398,7 +393,6 @@ def FindBestGravity(bstar_dict, order, vsini, alpha, intervalsize, z):
     fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
 
     chisq = add((order.y - fcn(order.x))**2/order.err**2)
-    print "chisq = ", chisq
     if chisq < best_chisq:
       best_chisq = chisq
       best_star = broadened.copy()
@@ -415,8 +409,6 @@ def primary_errfunc(pars, const_pars):
   order = const_pars[1]
   vsini = pars[0]
   RV = pars[1]
-  print "vsini = ", vsini*Units.km/Units.cm, "km/s"
-  print "RV = ", RV*Units.c*Units.km/Units.cm, "km/s"
   if vsini < vsini_bounds[0]:
     vsini = 100*Units.cm/Units.km
   if vsini > vsini_bounds[-1]:
@@ -424,8 +416,6 @@ def primary_errfunc(pars, const_pars):
   broadened, logg = FindBestGravity(const_pars[0], order, vsini, const_pars[2], const_pars[3], RV)
   fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
 
-  print "log(g) = ", logg
-  print "X^2 = ", numpy.sum((order.y - fcn(order.x))**2/order.err**2), '\n'
   return (order.y - fcn(order.x))**2/order.err**2 + bound(vsini_bounds,pars[0]) + bound(primary_rv_bounds,pars[1])
   
   
