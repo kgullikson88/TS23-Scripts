@@ -390,6 +390,9 @@ def FindBestGravity(bstar_dict, order, vsini, alpha, intervalsize, z):
     bstar.y = bstar_dict[logg].y[left:right]
     bstar.cont = bstar_dict[logg].cont[left:right]
     broadened = broaden(bstar, vsini=vsini, alpha=alpha, intervalsize=intervalsize)
+    #print "\n", logg
+    #print bstar.x.size, bstar.y.size, bstar.cont.size
+    #print broadened.x.size, broadened.y.size, broadened.cont.size
     fcn = UnivariateSpline(broadened.x, broadened.y/broadened.cont, s=0)
 
     chisq = add((order.y - fcn(order.x))**2/order.err**2)

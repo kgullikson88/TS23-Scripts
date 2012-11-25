@@ -272,8 +272,8 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
   
   numorders = hdulistfrom[0].data.shape[0]
   if numorders != hdulistto[0].data.shape[0]:
-    print "Error in CopyWaveCal! Files have different number of orders!"
-    return -1
+    print "Warning in CopyWaveCal! Files have different number of orders!"
+    numorders = hdulistto[0].data.shape[0]
   
   if type(order) == int:
     order = [order,]
@@ -293,7 +293,6 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
       #Now we have to get more complicated... sigh
       #Only tested with chebyshev, should work with legendre. Maybe others?
       segments = ordersto[i].split()
-      print segments
       
       #Coefficients start in segment 16
       for j in range(17,len(segments)):
@@ -366,7 +365,7 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
   hdulistto.close()
   hdulistfrom.close()
   
-  return 0
+  return outfilename
   
   
   
