@@ -18,7 +18,7 @@ from scipy.optimize import leastsq, brute, fmin
 from scipy.linalg import svd, diagsvd
 from scipy import mat
 from collections import defaultdict
-import MakeModel
+import MakeModel_v2 as MakeModel
 import DataStructures
 import FitsUtils
 import Units

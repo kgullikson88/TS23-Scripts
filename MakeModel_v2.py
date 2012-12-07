@@ -10,7 +10,7 @@ import MakeTape5
 from collections import defaultdict
 
 homedir = os.environ['HOME']
-TelluricModelingDir = "%s/School/Research/aerlbl_v12.2/rundir/" %homedir
+TelluricModelingDir = "%s/School/Research/aerlbl_v12.2/rundir2/" %homedir
 ModelDir = "%sOutputModels/" %TelluricModelingDir
 
 
@@ -199,7 +199,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     print "All done! Output Transmission spectrum is located in the file below:"
     print model_name
     
-    numpy.savetxt(model_name, numpy.transpose((wavelength, transmission)), fmt="%.8g")
+    #numpy.savetxt(model_name, numpy.transpose((wavelength, transmission)), fmt="%.8g")
 
     if wavegrid != None:
       #Interpolate model to a constant wavelength grid
