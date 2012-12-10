@@ -18,7 +18,7 @@ from scipy.optimize import leastsq, brute, fmin
 from scipy.linalg import svd, diagsvd
 from scipy import mat
 from collections import defaultdict
-import MakeModel
+import MakeModel_v2 as MakeModel
 import DataStructures
 import FitsUtils
 import Units
@@ -183,7 +183,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     #Fit Continuum of the chip, using the model
     #chips[i] = FitContinuum2(chips[i+2],model,segments)
     model2 = model.copy()
-    model2.y *= primary_star
+    model2.y *= primary_star.y
     order = FitContinuum3(order, model2,2)
     
     #if i == 0:
