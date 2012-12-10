@@ -1,5 +1,6 @@
 import scipy
 from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from scipy.optimize import leastsq
 from collections import defaultdict
 import pyfits
@@ -172,7 +173,7 @@ def AdjustWaveScale(data, model, a=0., b=1., c=0.):
 
 
 
-if __name__ == "__main__":
+def main1():
   import FitsUtils
   infilename = "output-9.fits"
   orders = FitsUtils.MakeXYpoints(infilename)
@@ -208,5 +209,55 @@ if __name__ == "__main__":
         print "Boxcar width = ", bcwidth
       elif "n" in inp:
         break
+
+
+def GetApproximateSpectrum(order, bcwidth=50, numstd=2.0):
+  boxcar = numpy.ones(bcwidth)/float(bcwidth)
+  gausswidth = bcwidth/2.0
+  #xspacing = (order.y[-1] - order.y[0])/float(order.y.size - 1.0)
+  #x = numpy.linspace(-bcwidth/2.0, bcwidth/2.0, bcwidth)
+  #gaussian = numpy.exp(x**2 / (2*gausswidth**2))
+  #gaussian = gaussian / gaussian.sum()
+  done = False
+  order2 = order.copy()
+  sizes = []    #To check if it gets stuck
+  while not done:
+    after = order2.y[-boxcar.size/2+1:]
+    before = order2.y[:boxcar.size/2]
+    extended = numpy.append(numpy.append(before, order2.y), after)
+    smoothed = numpy.convolve(extended, boxcar, mode='valid')
+    #smoothed = numpy.convolve(extended, gaussian, mode='valid')
+    residuals = order2.y/smoothed - 1.0
+    std = numpy.std(residuals)
+    if std < 1e-8:
+      std = 1e-8
+    badindices = numpy.where(numpy.logical_and(residuals < -numstd*std, residuals > numstd*std))[0]
+    if badindices.size < 5 or (len(sizes) > 10 and numpy.all(size == badindices.size for size in sizes[-10:])):
+      done = True
+      break
+    sizes.append(badindices.size)
+    goodindices = numpy.where(numpy.logical_and(residuals >= -numstd*std, residuals <= numstd*std))[0]
+    fcn = spline(order2.x[goodindices], order2.y[goodindices], k=1)
+    order2.y = fcn(order2.x)
+  star = order.copy()
+  star.y = smoothed.copy()
+  return star
+
+def main2():
+  import FitsUtils
+  infilename = "Star_17_Vul_NDIT10-2.fits"
+  orders = FitsUtils.MakeXYpoints(infilename)
+  bstar = GetApproximateSpectrum(orders)
+  for i in range(17,len(orders)):
+    order = orders[i]
+    star = bstar[i]
+    pylab.plot(order.x, order.y)
+    pylab.plot(star.x, star.y)
+    pylab.show()
+    
+  
+
+if __name__ == "__main__":
+  main2()
 
   

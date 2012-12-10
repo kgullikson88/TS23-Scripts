@@ -23,6 +23,7 @@ import DataStructures
 import FitsUtils
 import Units
 import RotBroad
+import FitBstar
 
 
 homedir = os.environ['HOME']
@@ -57,7 +58,7 @@ print "Reading in primary star models"
 for key in Bstarfiles:
   filename = Bstarfiles[key]
   print "Reading model ", filename
-  bstars[key] = RotBroad.ReadFile(filename)
+  #bstars[key] = RotBroad.ReadFile(filename)
 
 class ContinuumSegments:
   def __init__(self,size):
@@ -173,10 +174,18 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     Continuum = UnivariateSpline(order.x, order.cont, s=0)
     model = MakeModel.ReduceResolution(model, resolution, Continuum)
     model = MakeModel.RebinData(model, order.x)
-    
+
+    order2 = order.copy()
+    order2.y /= model.y
+    primary_star = FitBstar.GetApproximateSpectrum(order2)
+    PRIMARY_STAR = UnivariateSpline(primary_star.x, primary_star.y, s=0)
+
     #Fit Continuum of the chip, using the model
     #chips[i] = FitContinuum2(chips[i+2],model,segments)
-    order = FitContinuum3(order, model,2)
+    model2 = model.copy()
+    model2.y *= primary_star
+    order = FitContinuum3(order, model2,2)
+    
     #if i == 0:
     #  chips[i] = FitContinuum(chips[i], model, condition=0.99)
     #else:
@@ -184,12 +193,18 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
-    modelfcn, mean = FitWavelength2(order, model, linelist, const_pars[12], debug=False)
-    model_original.x = modelfcn(model_original.x - mean)    
+    modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
+    model_original.x = modelfcn(model_original.x - mean)
+    model2 = model_original.copy()
+    model2.y *= PRIMARY_STAR(model2.x)
 
-    #Fit resolution:
-    model, resolution = FitResolution(order, model_original, resolution)
-    Model = UnivariateSpline(model.x, model.y,s=0)
+    #Fit resolution
+    model2, resolution = FitResolution(order.copy(), model2, resolution, plotflg)
+    #pylab.plot(order.x, order.y)
+    #pylab.plot(model2.x, model2.y)
+    #pylab.show()
+
+    Model = UnivariateSpline(model2.x, model2.y,s=0)
     
     #Estimate errors:
     model2 = Model(order.x)
@@ -296,6 +311,10 @@ def FitFunction(order, pars, const_pars):
   
 def ErrorFunction(pars, order, const_pars, linelist, contlist):
   model = FitFunction(order.copy(), pars, const_pars)
+  if numpy.any(numpy.isnan(model.y)):
+    print "Error! NaN found immediately after generating the model!"
+    numpy.savetxt("NaNError1.dat", numpy.transpose((model.x, model.y)))
+    sys.exit()
    
   model_original = model.copy()
   plotflg = False
@@ -309,13 +328,28 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
     resolution = 60000
   model = MakeModel.ReduceResolution(model.copy(), resolution, Continuum)
   model = MakeModel.RebinData(model.copy(), order.x.copy())
+  
+  if numpy.any(numpy.isnan(model.y)):
+    print "Error! NaN found after reducing model resolution and rebinning!"
+    numpy.savetxt("NaNError2.dat", numpy.transpose((model.x, model.y)))
+    sys.exit()
 
-  PRIMARY_STAR = FitPrimary(bstars, model, order.copy(), vsini=150*Units.cm/Units.km, z=10.0)
+  order2 = order.copy()
+  order2.y /= model.y
+  primary_star = FitBstar.GetApproximateSpectrum(order2)
+  PRIMARY_STAR = UnivariateSpline(primary_star.x, primary_star.y, s=0)
+  #PRIMARY_STAR = FitPrimary(bstars, model, order.copy(), vsini=150*Units.cm/Units.km, z=10.0)
 
   #Fit Continuum of the chip, using the model
   #chip = FitContinuum2(chip,model,contlist)
   model2 = model.copy()
-  model2.y *= PRIMARY_STAR(model2.x)
+  #model2.y *= PRIMARY_STAR(model2.x)
+  model2.y *= primary_star.y
+  
+  if numpy.any(numpy.isnan(model2.y)):
+    print "Error! NaN found after adding primary star model!"
+    numpy.savetxt("NaNError3.dat", numpy.transpose((model.x, model.y)))
+    sys.exit()
   #order.cont = numpy.ones(order.x.size)
   order = FitContinuum3(order, model2, 2)
   #fit_order = const_pars[8]
@@ -325,19 +359,27 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #model = FitWavelength(chip,model,linelist)
   
   #order = CCImprove(order, model)
-  modelfcn, mean = FitWavelength2(order.copy(), model.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
+  modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
   model2 = model_original.copy()
   model2.y *= PRIMARY_STAR(model2.x)
+  
+  if numpy.any(numpy.isnan(model2.y)):
+    print "Error! NaN found after fitting wavelength solution!"
+    numpy.savetxt("NaNError1.dat", numpy.transpose((model2.x, model2.y)))
+    sys.exit()
 
   #Fit resolution
-  model, resolution = FitResolution(order.copy(), model2, resolution, plotflg)
+  model2, resolution = FitResolution(order.copy(), model2, resolution, plotflg)
+  #pylab.plot(order.x, order.y)
+  #pylab.plot(model2.x, model2.y)
+  #pylab.show()
   const_pars[6] = resolution
   
   weights = 1.0/order.err
   weights = weights/weights.sum()
-  return_array = ((order.y  - order.cont*model.y)**2*weights + bound(humidity_bounds,pars[0]) + 
+  return_array = ((order.y  - order.cont*model2.y)**2*weights + bound(humidity_bounds,pars[0]) + 
                                           bound(o2_bounds,pars[1]) + 
   					  bound(angle_bounds, pars[2]))
   outfile = open("chisq_summary.dat", 'a')
@@ -469,6 +511,7 @@ def ResolutionFitError(resolution, data, model, cont_fcn=None):
       outfile.write("%.10g\t" %data.x[i] + "%.10g\t" %data.y[i] + "%.10g\t" %data.cont[i] + "%.10g\t" %newmodel.x[i] + "%.10g\n" %newmodel.y[i])
     outfile.write("\n\n\n\n")
     outfile.close()
+    sys.exit()
   return returnvec
  
 def ResolutionFitErrorBrute(resolution, data, model, cont_fcn=None):
