@@ -8,7 +8,7 @@ from scipy.signal import fftconvolve
 import DataStructures
 import Units
 import RotBroad
-import MakeModel
+import MakeModel_v2 as MakeModel
 import FindContinuum
 
 class Resid:
@@ -261,7 +261,7 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     model.y = MODEL(model.x)
 
     #c: Find continuum by fitting model to a quadratic.
-    model.cont = FindContinuum.Continuum(model.x, model.y)
+    model.cont = FindContinuum.Continuum(model.x, model.y, fitorder=4)
 
     #d: Convolve to a resolution of 60000
     model = MakeModel.ReduceResolution(model.copy(), resolution, extend=False)
@@ -287,6 +287,8 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     right = model.x.size - numpy.searchsorted(model.x, data.x[-1])
     delta = left - right
     print "Cross-correlating..."
+    numpy.savetxt("corr_inputdata.dat", numpy.transpose((10**data.x, data.y/data.cont)))
+    numpy.savetxt("corr_inputmodel.dat", numpy.transpose((10**model.x, model.y/model.cont)))
    
     #ycorr = numpy.correlate(data.y/data.cont-1.0, model.y/model.cont-1.0, mode="full")
     ycorr = fftconvolve((data.y/data.cont-1.0)[::-1], model.y/model.cont-1.0, mode="full")[::-1]

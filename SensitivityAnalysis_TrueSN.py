@@ -95,7 +95,7 @@ good_sections = {1: [[-1,-1],],
 		 50: [[-1, 1e9],],
 		 51: [[-1, 1e9],],
                  52: [[-1,-1],],
-		 43: [[-1,-1],] }
+		 53: [[-1,-1],] }
 
 
 
@@ -320,6 +320,8 @@ if __name__ == "__main__":
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=20000)
+	numpy.savetxt("corr_%s_%s.dat" %(p_spt, s_spt), numpy.transpose((vel, corr)))
+	sys.exit()
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
