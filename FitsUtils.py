@@ -105,7 +105,8 @@ def MakeXYpoints(header, data=None):
       xypt.x = (wlen0 + Chebyshev(pvals, numpy.array(coefficients)))/(1.0+z)*wave_factor
       xypt.y = data[index]
       xypt.cont = numpy.ones(xypt.x.size)
-      xypt.err = numpy.sqrt(xypt.y)
+      xypt.err = numpy.ones(xypt.size())*1e9
+      xypt.err[xypt.y > 0] = numpy.sqrt(xypt.y[xypt.y > 0])
     else:
       print "Sorry! This function type is not currently implemented!"
 
@@ -279,14 +280,21 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
     order = [order,]
   elif order == None:
     order = range(1,numorders+1)
+    
+  #Make sure we don't try to do too many orders
+  order = sorted(order)
+  while len(order) > 0 and order[-1] > numorders:
+    order.pop()
   
   #Now, get all the orders from both files
   ordersfrom = GetOrderWaveCalPars(headerfrom)
   ordersto = GetOrderWaveCalPars(headerto)
+
   
   #Do the copy
   for i in order:
     print "Copying order ", i
+    print numorders
     ordersto[i] = ordersfrom[i]
     
     if scale != 1.0:

@@ -155,6 +155,7 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
   ensure_dir(outdir)
   #1: Read in the datafile, if necessary
   if type(filename) == str:
+    print "Reading filename %s" %filename
     orders = FitsUtils.MakeXYpoints(filename)
   elif type(filename) == list:
     orders = list(filename)

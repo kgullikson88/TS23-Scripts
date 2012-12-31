@@ -168,7 +168,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
 
     #Add noise to the data
     #noise = numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
-    data2[i].y += noise
+    #data2[i].y += noise
 
 
     #Add model to the data
@@ -308,10 +308,6 @@ if __name__ == "__main__":
       right = numpy.searchsorted(orders_original[SN_order].x, segment[1])
       snr += numpy.std(orders_original[SN_order].y[left:right] / orders_original[SN_order].cont[left:right])**2
     snr = 1.0/numpy.sqrt(snr)
-    print datafile, snr
-    #pylab.plot(orders_original[SN_order].x, orders_original[SN_order].y/orders_original[SN_order].cont)
-    #pylab.show()
-    continue
     for p_spt in parent_spts[p_left:p_right]:
       found = 0.0
       sig = []
@@ -322,9 +318,8 @@ if __name__ == "__main__":
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
-
         #Cross-correlate with original model
-        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
+        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=20000)
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
