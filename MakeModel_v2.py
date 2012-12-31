@@ -62,7 +62,7 @@ This is the main code to generate a telluric absorption spectrum.
 The pressure, temperature, etc... can be adjusted all the way 
 on the bottom of this file.
 """
-def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co, wavegrid=None, resolution=None, nmolecules=12):
+def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co, o2, wavegrid=None, resolution=None, nmolecules=12, save=False):
     print "\n\n\n\n****************************************************"
     print "CH4: %.15f" %ch4
     print "H20: %.15f " %humidity
@@ -70,7 +70,10 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     print "T: %.15f" %temperature
     print "Angle: %.15f" %angle
     print "CO: %.15f" %co
- 
+    print "CO2: %.15f" %co2
+    print "O3: %.15f" %o3
+    print "O2: %.15f" %o2
+
     #Output filename
     model_name = ModelDir + "transmission"+"-%.2f" %pressure + "-%.2f" %temperature + "-%.1f" %humidity + "-%.1f" %angle + "-%.2f" %(co2) + "-%.2f" %(o3*100) + "-%.2f" %ch4 + "-%.2f" %(co*10)
   
@@ -89,14 +92,6 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     filename = TelluricModelingDir + "MIPAS_atmosphere_profile"
     infile = open(filename)
     lines = infile.readlines()
-    outputlines = []
-    pressureindex = 0
-    temperatureindex = 0
-    H2Oindex = 0
-    CO2index = 0
-    COindex = 0
-    CH4index = 0
-    O3index = 0
     for i in range(len(lines)):
         line = lines[i]
 	if line.startswith("*") and "END" not in line:
@@ -151,8 +146,9 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
     h2o_scalefactor = h2o/scale_values[2][0]
     co2_scalefactor = co2/scale_values[2][1]
     o3_scalefactor = o3/scale_values[2][2]
-    ch4_scalefactor = ch4/scale_values[2][5]
     co_scalefactor = co/scale_values[2][4]
+    ch4_scalefactor = ch4/scale_values[2][5]
+    o2_scalefactor = o2/scale_values[2][6]
     for layer in layers:
       Atmosphere[layer][0] *= pressure_scalefactor
       Atmosphere[layer][1] *= temperature_scalefactor
@@ -161,7 +157,7 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
       Atmosphere[layer][2][2] *= o3_scalefactor
       Atmosphere[layer][2][4] *= co_scalefactor
       Atmosphere[layer][2][5] *= ch4_scalefactor
-
+      Atmosphere[layer][2][6] *= o2_scalefactor
 
     #Now, Read in the ParameterFile and edit the necessary parameters
     parameters = MakeTape5.ReadParFile(parameterfile=TelluricModelingDir + "ParameterFile")
@@ -196,10 +192,10 @@ def Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4
       cmd = "rm " + TelluricModelingDir + "FullSpectrum.freq"
       command = subprocess.check_call(cmd, shell=True)
     
-    print "All done! Output Transmission spectrum is located in the file below:"
-    print model_name
-    
-    #numpy.savetxt(model_name, numpy.transpose((wavelength, transmission)), fmt="%.8g")
+    if save:
+      print "All done! Output Transmission spectrum is located in the file below:"
+      print model_name    
+      numpy.savetxt(model_name, numpy.transpose((wavelength, transmission)), fmt="%.8g")
 
     if wavegrid != None:
       #Interpolate model to a constant wavelength grid
@@ -308,21 +304,22 @@ def ReduceResolutionAndRebinData(data,resolution,xgrid):
 
 
 if __name__ == "__main__":
-  pressure = 732.00
-  temperature = 283.00
-  humidity = 30.0
-  angle = 30.0
+  pressure = 795.79
+  temperature = 290.93
+  humidity = 90.5155
+  angle = 7.37
   lowfreq = 4000
   highfreq = 5000
   co2 = 368.5
-  o3 = 4e-2
-  ch4 = 1.71
-  co = 0.14
+  o3 = 0.04
+  ch4 = 10.0
+  co = 0.00
+  o2 = 0.0
 
-  lowwave = 2200.0
-  highwave = 2500.0
+  lowwave = 400.0
+  highwave = 700.0
   lowfreq = 1e7/highwave
   highfreq = 1e7/lowwave
-  Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co)
+  Main(pressure, temperature, humidity, lowfreq, highfreq, angle, co2, o3, ch4, co, o2, save=True)
           
 

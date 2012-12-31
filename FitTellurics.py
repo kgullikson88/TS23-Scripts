@@ -83,7 +83,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
   #Humidity:
   if humidity == None:
-    humidity = 40.0
+    humidity = 70.0
   
   #Always use fits header for the temperature and pressure
   temperature = (64 - 32)*5./9. + 273.15
@@ -123,8 +123,8 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   vsini = 140*Units.cm/Units.km
   
   continuum_fit_order = [5,3,3,3]
-  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, humidity, o2, vsini]
-  pars = [humidity, o2, angle]
+  const_pars = [temperature, pressure, co2, o3, wavenum_start, wavenum_end, resolution, angle, ch4, co, humidity, o2]
+  pars = [humidity, o2]
   
   #Make outfilename from the input fits file
   outfilename = "Corrected_" + filename.split("-")[0] + ".dat"
@@ -133,7 +133,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(15,len(orders)):
+  for i in range(15, len(orders)):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -193,13 +193,13 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
-    modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
+    modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, primary_fcn = PRIMARY_STAR)
     model_original.x = modelfcn(model_original.x - mean)
     model2 = model_original.copy()
     model2.y *= PRIMARY_STAR(model2.x)
 
     #Fit resolution
-    model2, resolution = FitResolution(order.copy(), model2, resolution, plotflg)
+    model2, resolution = FitResolution(order.copy(), model2, resolution)
     #pylab.plot(order.x, order.y)
     #pylab.plot(model2.x, model2.y)
     #pylab.show()
@@ -226,9 +226,8 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
       outfile.write("#O2: " + str(fitpars[1]) + " +/- " + str(covariance[1][1]) + "\n")
       outfile.write("#CH4: " + str(const_pars[8]) + "\n")
       outfile.write("#CO: " + str(const_pars[9]) + "\n")
-      outfile.write("#Angle: " + str(fitpars[2]) + " +/- " + str(covariance[2][2]) + "\n")
+      outfile.write("#Angle: " + str(const_pars[7]) + "\n")
       outfile.write("#Resolution: " + str(resolution) + "\n")
-      outfile.write("#Vsini: " + str(const_pars[12]) + "\n")
       outfile.write("#Convergence message: " + fitout[3] + "\n")
       outfile.write("#Convergence code: " + str(fitout[4]) + "\n")
       for j in range(order.x.size):
@@ -267,10 +266,11 @@ def FitFunction(order, pars, const_pars):
   resolution = const_pars[6]
   ch4 = const_pars[7]
   co = const_pars[8]
+  
   humidity = pars[0]
   o2 = pars[1]
-  angle = pars[2]
-  vsini = const_pars[12]
+  #angle = pars[2]
+  
   plotflg = False
 
   wave_start = order.x[0] - 10.
@@ -359,7 +359,7 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   #model = FitWavelength(chip,model,linelist)
   
   #order = CCImprove(order, model)
-  modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, const_pars[12], primary_fcn = PRIMARY_STAR)
+  modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, primary_fcn = PRIMARY_STAR)
   model.x = modelfcn(model.x - mean)
   model_original.x = modelfcn(model_original.x - mean)
   model2 = model_original.copy()
@@ -380,8 +380,7 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   weights = 1.0/order.err
   weights = weights/weights.sum()
   return_array = ((order.y  - order.cont*model2.y)**2*weights + bound(humidity_bounds,pars[0]) + 
-                                          bound(o2_bounds,pars[1]) + 
-  					  bound(angle_bounds, pars[2]))
+                                          bound(o2_bounds,pars[1]))
   outfile = open("chisq_summary.dat", 'a')
   outfile.write(str(pars[0])+"\t"+str(pars[1])+"\t"+str(resolution)+"\t"+str(numpy.sum(return_array)/float(weights.size))+"\n")
   outfile.close()
@@ -476,8 +475,8 @@ def FitResolution(data, model, resolution=75000, plotflg = False):
     pylab.plot(model.x, model.y)
     pylab.show()
   ModelFcn = UnivariateSpline(model.x, model.y, s=0)
-  newmodel = DataStructures.xypoint(model.x.size*2)
-  newmodel.x = numpy.linspace(model.x[0], model.x[-1], model.x.size*2)
+  newmodel = DataStructures.xypoint(model.x.size)
+  newmodel.x = numpy.linspace(model.x[0], model.x[-1], model.x.size)
   newmodel.y = ModelFcn(newmodel.x)
 
   Continuum = UnivariateSpline(data.x, data.cont, s=0)
@@ -757,7 +756,7 @@ def WavelengthErrorFunction(shift, data, model):
   returnvec = (data.y - newmodel)**2*weight
   return returnvec
 
-def FitWavelength2(order, telluric, linelist, parent_vsini, primary_fcn=None, tol=0.05, oversampling = 4, debug=False, max_change=2.0):
+def FitWavelength2(order, telluric, linelist, primary_fcn=None, tol=0.05, oversampling = 4, debug=False, max_change=2.0):
   print "Fitting wavelength"
   old = []
   new = []

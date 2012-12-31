@@ -273,7 +273,7 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
   numorders = hdulistfrom[0].data.shape[0]
   if numorders != hdulistto[0].data.shape[0]:
     print "Warning in CopyWaveCal! Files have different number of orders!"
-    numorders = hdulistto[0].data.shape[0]
+    numorders = min(numorders, hdulistto[0].data.shape[0])
   
   if type(order) == int:
     order = [order,]

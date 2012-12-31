@@ -117,7 +117,6 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=F
     extended = numpy.append(numpy.append(before, interval.y), after)
     
     interval.y = scipy.signal.fftconvolve(extended, profile/profile.sum(), mode="valid")
-    print "y, cont sizes = %i, %i" %(interval.y.size, interval.cont.size)
     intervals.append(interval)
 
     if profile.size > profilesize:
@@ -125,8 +124,7 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=F
     firstindex = lastindex - 2*profile.size
 
   if len(intervals) > 1:
-    combined = CombineIntervals(intervals, overlap=profilesize)
-    print "Combined y, cont sizes = %i, %i" %(combined.y.size, combined.cont.size)
+    combined = CombineIntervals(intervals, overlap=profilesize) 
     return combined
   else:
     return intervals[0]
