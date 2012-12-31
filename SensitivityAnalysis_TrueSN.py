@@ -320,8 +320,8 @@ if __name__ == "__main__":
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=20000)
-	numpy.savetxt("corr_%s_%s.dat" %(p_spt, s_spt), numpy.transpose((vel, corr)))
-	sys.exit()
+	numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
+	
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
