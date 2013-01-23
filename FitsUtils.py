@@ -3,6 +3,8 @@ import numpy
 from numpy.polynomial import chebyshev
 import DataStructures
 import Units
+import FindContinuum
+import readmultispec as multispec
 import subprocess
 
 
@@ -39,6 +41,9 @@ def GetChebyshevCoeffs(data, pvals, order=5):
   
   return chebyshev.chebfit(nvals, data.x, order)
   
+"""
+
+The following was my attempt. It does not work quite right. Now I use Rick White's implementation (in .PythonModules/GeneralScripts as readmultispec.py)
 
 #Takes a fits file, with nonlinear wavelength calibration given in the header,
 #  and generates a DataStructures.xypoint object for each spectral order
@@ -115,6 +120,33 @@ def MakeXYpoints(header, data=None):
 
   return DATA
   
+"""
+
+def MakeXYpoints(datafile):
+  #Call Rick White's script
+  retdict = multispec.readmultispec(datafile)
+  
+  #Check if wavelength units are in angstroms (common, but I like nm)
+  hdulist = pyfits.open(datafile)
+  header = hdulist[0].header
+  hdulist.close()
+  wave_factor = 1.0   #factor to multiply wavelengths by to get them in nanometers
+  for key in sorted(header.keys()):
+    if "WAT1" in key:
+      if "label=Wavelength"  in header[key] and "units" in header[key]:
+        units = header[key].split("units=")[-1]
+        if units == "angstroms" or units == "Angstroms":
+          wave_factor = Units.nm/Units.angstrom
+          print "Wavelength units are Angstroms. Scaling wavelength by ", wave_factor
+  
+  numorders = retdict['flux'].shape[0]
+  orders = []
+  for i in range(numorders):
+    wave = retdict['wavelen'][i]*wave_factor
+    flux = retdict['flux'][i]
+    cont = FindContinuum.Continuum(wave, flux, lowreject=2, highreject=4)
+    orders.append(DataStructures.xypoint(x=wave, y=flux, cont=cont))
+  return orders
   
   
 #Function to output a fits file with the same format

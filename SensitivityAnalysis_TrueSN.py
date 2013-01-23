@@ -160,7 +160,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
 
     #Scale the model by the above scale factor and normalize
-    scaled_model = (model2.y/model2.cont)*fluxratio
+    scaled_model = (model2.y/model2.cont-1.0)*fluxratio
 
     #pylab.plot(data2[i].x, data2[i].y, 'k-')
     #pylab.plot(model2.x, scaled_model+0.99, 'r-')
@@ -319,8 +319,8 @@ if __name__ == "__main__":
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
         #Cross-correlate with original model
-        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=20000)
-	numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
+        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
+	#numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
 	
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)

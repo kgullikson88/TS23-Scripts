@@ -133,7 +133,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
   debug = False
   if (debug):
     ErrorFunctionBrute = lambda pars, chip, const_pars, linelist, contlist: numpy.sum(ErrorFunction(pars, chip, const_pars, linelist, contlist)**2)
-  for i in range(15, len(orders)):
+  for i in range(18, len(orders)):
     #ErrorFunction(pars, chips[i], const_pars, linelist, segments)
     order = orders[i]
     
@@ -194,9 +194,22 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
     #Fit model wavelength to the chip
     #model = FitWavelength(chips[i], model,linelist)
     modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, primary_fcn = PRIMARY_STAR)
-    model_original.x = modelfcn(model_original.x - mean)
+    test = modelfcn(model.x - mean)
+    xdiff = [test[j] - test[j-1] for j in range(1, len(test)-1)]
+    if min(xdiff) > 0:
+      model.x = test.copy()
+    else:
+      print "Warning! Wavelength calibration did not succeed!"
+    test = modelfcn(model_original.x - mean)
+    xdiff = [test[j] - test[j-1] for j in range(1, len(test)-1)]
+    if min(xdiff) > 0:
+      model_original.x = test.copy()
+      print "Warning! Wavelength calibration did not succeed!"
     model2 = model_original.copy()
-    model2.y *= PRIMARY_STAR(model2.x)
+    prim = PRIMARY_STAR(model2.x)
+    prim[prim < 0.0] = 0.0
+    prim[prim > 10.0] = 10.0
+    model2.y *= prim
 
     #Fit resolution
     model2, resolution = FitResolution(order.copy(), model2, resolution)
@@ -234,6 +247,7 @@ def Main(filename, humidity=None, resolution=None, angle=None, ch4=None, co=None
         outfile.write("%.15f" %order.x[j] + "\t1.0\t%.15f" %(order.y[j]/model2[j]) + "\t%.15f" %order.y[j] + "\t%.15f" %model2[j] + "\t1.0\t%.15f" %order.err[j] + "\t%.15f" %order.cont[j] + "\n")
       outfile.write("\n\n\n")
 
+      print i, len(orders)
       orders[i].y /= model2
       FitsUtils.OutputFitsFile(filename, orders)
     
@@ -339,6 +353,10 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   primary_star = FitBstar.GetApproximateSpectrum(order2)
   PRIMARY_STAR = UnivariateSpline(primary_star.x, primary_star.y, s=0)
   #PRIMARY_STAR = FitPrimary(bstars, model, order.copy(), vsini=150*Units.cm/Units.km, z=10.0)
+  
+  #pylab.plot(order2.x, order2.y)
+  #pylab.plot(primary_star.x, primary_star.y)
+  #pylab.show()
 
   #Fit Continuum of the chip, using the model
   #chip = FitContinuum2(chip,model,contlist)
@@ -360,10 +378,22 @@ def ErrorFunction(pars, order, const_pars, linelist, contlist):
   
   #order = CCImprove(order, model)
   modelfcn, mean = FitWavelength2(order.copy(), model2.copy(), linelist, primary_fcn = PRIMARY_STAR)
-  model.x = modelfcn(model.x - mean)
-  model_original.x = modelfcn(model_original.x - mean)
+  test = modelfcn(model.x - mean)
+  xdiff = [test[i] - test[i-1] for i in range(1, len(test)-1)]
+  if min(xdiff) > 0:
+    model.x = test.copy()
+  else:
+    print "Warning! Wavelength calibration did not succeed!"
+  test = modelfcn(model_original.x - mean)
+  xdiff = [test[i] - test[i-1] for i in range(1, len(test)-1)]
+  if min(xdiff) > 0:
+    model_original.x = test.copy()
+    print "Warning! Wavelength calibration did not succeed!"
   model2 = model_original.copy()
-  model2.y *= PRIMARY_STAR(model2.x)
+  prim = PRIMARY_STAR(model2.x)
+  prim[prim < 0.0] = 0.0
+  prim[prim > 10.0] = 10.0
+  model2.y *= prim
   
   if numpy.any(numpy.isnan(model2.y)):
     print "Error! NaN found after fitting wavelength solution!"
@@ -471,8 +501,9 @@ def FitResolution(data, model, resolution=75000, plotflg = False):
   #Interpolate to a constant wavelength grid
   print "Fitting resolution"
   if plotflg:
-    #pylab.plot(data.x, data.y)
-    pylab.plot(model.x, model.y)
+    x = [model.x[i] - model.x[i-1] for i in range(1, len(model.x)-1) ]
+    pylab.plot(x)
+    #pylab.plot(model.x, model.y)
     pylab.show()
   ModelFcn = UnivariateSpline(model.x, model.y, s=0)
   newmodel = DataStructures.xypoint(model.x.size)
