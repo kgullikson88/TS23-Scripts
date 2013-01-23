@@ -107,7 +107,8 @@ if __name__ == "__main__":
                         "pressure": pressure,
                         "resolution": resolution})
     fitter.SetBounds({"h2o": [1.0, 99.0],
-                      "o2": [5e4, 1e6]})
+                      "o2": [5e4, 1e6],
+                      "resolution": [10000,100000]})
     models = []
     """
     #Temporary for testing purposes
@@ -122,12 +123,12 @@ if __name__ == "__main__":
 	OutputFitsFile(columns, "test_output", "test_output")
     sys.exit()
     """
-    for i, order in enumerate(orders[1:2]):
+    for i, order in enumerate(orders[1:]):
       fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
                           "waveend": order.x[-1] + 20.0})
       order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=4)
       fitter.ImportData(order)
-      model = fitter.Fit(resolution_fit_mode="gauss", continuum_fit_mode="smooth")
+      model = fitter.Fit(resolution_fit_mode="SVD", fit_primary=True)
       models.append(model)
       data = fitter.data
       columns = {"wavelength": data.x,
@@ -135,8 +136,10 @@ if __name__ == "__main__":
                  "continuum": data.cont,
                  "error": data.err,
 		 "model": model.y}
-      OutputFitsFile(columns, fname, "test_output")
-    
+      if i == 0:
+        OutputFitsFile(columns, fname, "test_output")
+      else:
+        OutputFitsFile(columns, "test_output", "test_output"
     
     
     
