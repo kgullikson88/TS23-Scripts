@@ -122,7 +122,13 @@ def MakeXYpoints(header, data=None):
   
 """
 
-def MakeXYpoints(datafile):
+
+
+"""
+  Function to read in a multispec file and return a set of orders (a list of xypoints)
+  The 'errors' keyword can be set to an integer to give the band index of the errors
+"""
+def MakeXYpoints(datafile, errors=False):
   #Call Rick White's script
   retdict = multispec.readmultispec(datafile)
   
@@ -138,14 +144,23 @@ def MakeXYpoints(datafile):
         if units == "angstroms" or units == "Angstroms":
           wave_factor = Units.nm/Units.angstrom
           print "Wavelength units are Angstroms. Scaling wavelength by ", wave_factor
-  
-  numorders = retdict['flux'].shape[0]
+
+  if errors == False:
+    numorders = retdict['flux'].shape[0]
+  else:
+    numorders = retdict['flux'].shape[1]
   orders = []
   for i in range(numorders):
     wave = retdict['wavelen'][i]*wave_factor
-    flux = retdict['flux'][i]
+    if errors == False:
+      flux = retdict['flux'][i]
+      err = numpy.ones(flux.size)*1e9
+      err[flux > 0] = numpy.sqrt(flux[flux > 0])
+    else:
+      flux = retdict['flux'][0][i]
+      err = retdict['flux'][errors][i]
     cont = FindContinuum.Continuum(wave, flux, lowreject=2, highreject=4)
-    orders.append(DataStructures.xypoint(x=wave, y=flux, cont=cont))
+    orders.append(DataStructures.xypoint(x=wave, y=flux, err=err , cont=cont))
   return orders
   
   

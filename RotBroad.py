@@ -57,7 +57,7 @@ def ReadFile(filename):
   return model
 
 
-def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=False):  
+def Broaden(model, vsini, intervalsize=50.0, alpha=0.33, linear=False, findcont=False):  
   """
     model:           input filename of the spectrum. The continuum data is assumed to be in filename[:-1]+".17"
                      model can also be a DataStructures.xypoint containing the already-read model (must include continuum!)
@@ -108,15 +108,27 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.5, linear=False, findcont=F
     xspacing = interval.x[1] - interval.x[0]
     wave = numpy.arange(wave0 - zeta, wave0 + zeta, xspacing)
     x = numpy.linspace(-1.0, 1.0, wave.size)
-    flux = pi/2.0*(1.0 - 1.0/(1. + 2*beta/3.)*(2/pi*numpy.sqrt(1.-x**2) + beta/2*(1.-x**2)))
-    profile = -(flux - flux.max())
+    profile = (2.0/pi * numpy.sqrt(1-x**2) + beta/2.0 * (1-x**2)) / (1+2*beta/3)
+    #print '\n\n', beta
+    #print wave0
+    #print zeta
+    #print xspacing
+    #print x
+    #print profile.sum()
+    #print profile
+    #pylab.plot(wave, profile/profile.sum())
+    #pylab.show()
 
     #Extend interval to reduce edge effects (basically turn convolve into circular convolution)
     before = interval.y[-profile.size/2+1:]
     after = interval.y[:profile.size/2]
     extended = numpy.append(numpy.append(before, interval.y), after)
-    
+    #print interval.x.size, interval.y.size
+    #pylab.plot(interval.x, interval.y)
     interval.y = scipy.signal.fftconvolve(extended, profile/profile.sum(), mode="valid")
+    #print interval.x.size, interval.y.size
+    #pylab.plot(interval.x, interval.y)
+    #pylab.show()
     intervals.append(interval)
 
     if profile.size > profilesize:
