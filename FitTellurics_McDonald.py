@@ -13,7 +13,7 @@ import FindContinuum
 homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
 linelist = homedir + "/School/Research/Useful_Datafiles/Linelist_visible.dat"
-telluric_orders = [3,4,5,6,8,9,10,11,14]
+telluric_orders = [2,3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 
 
 """
@@ -62,16 +62,17 @@ if __name__ == "__main__":
   blaze_functions = []
   blaze_errors = []
   for order in blaze_orders:
-    blaze_functions.append( interp(order.x, order.y, k=1) )
-    blaze_errors.append( interp(order.x, order.err, k=1) )
+    blaze_functions.append( interp(order.x, order.y) )
+    blaze_errors.append( interp(order.x, order.err) )
 
 
   #START LOOPING OVER INPUT FILES
   for fname in sys.argv[1:]:
-    num = fname[2:-5]
+    num = fname[2:].split(".fits")[0]
     outfilename = "Corrected_%s.fits" %num
 
     orders = FitsUtils.MakeXYpoints(fname, errors=2)
+    
     hdulist = pyfits.open(fname)
     header = hdulist[0].header
     hdulist.close()
@@ -123,7 +124,7 @@ if __name__ == "__main__":
                         "temperature": temperature,
                         "pressure": pressure,
                         "resolution": resolution})
-    fitter.SetBounds({"h2o": [1.0, 99.0],
+    fitter.SetBounds({"h2o": [1.0, 96.0],
                       "o2": [5e4, 1e6],
                       "resolution": [10000,100000]})
     models = []
@@ -131,6 +132,7 @@ if __name__ == "__main__":
     #START LOOPING OVER ORDERS
     start = 2
     for i, order in enumerate(orders[start:]):
+      print "\n***************************\nFitting order %i: " %(i+start)
       fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
                           "waveend": order.x[-1] + 20.0})
       order.y /= blaze_functions[i+start](order.x)
@@ -141,13 +143,17 @@ if __name__ == "__main__":
       
       order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=10)
 
+      #plt.plot(order.x, order.y)
+      #plt.plot(order.x, order.cont)
+      #plt.show()
       if i+start not in telluric_orders:
         print "Skipping order %i" %(i+start)
         data = order.copy()
         model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
+        primary = model.copy()
       else:        
         fitter.ImportData(order)
-        model = fitter.Fit(resolution_fit_mode="SVD", fit_primary=True, adjust_wave="model")
+        primary, model = fitter.Fit(resolution_fit_mode="gauss", fit_primary=True, adjust_wave="model")
         models.append(model)
         data = fitter.data
         
@@ -155,7 +161,14 @@ if __name__ == "__main__":
 	         "flux": data.y,
                  "continuum": data.cont,
                  "error": data.err,
-		 "model": model.y}
+		 "model": model.y,
+                 "primary": primary.y}
+
+      #plt.plot(data.x, data.y/data.cont)
+      #plt.plot(model.x, model.y)
+      #plt.title("Order %i: After fit" %(i+start))
+      #plt.show()
+      
       if i == 0:
         OutputFitsFile(columns, fname, outfilename)
       else:

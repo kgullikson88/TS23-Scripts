@@ -8,21 +8,38 @@ import FindContinuum
 import MakeModel
 import sys
 import time
+import os
 
 
 class LineFitter:
   def __init__(self, infilename, telluricfile = "/Users/kgulliks/School/Research/aerlbl_v12.2/rundir2/OutputModels/transmission-792.30-290.93-45.0-7.4-368.50-4.00-10.00-1.50"):
+
+    print "Reading blaze function"
+    #Find and read in blaze function (MUST BE IN CURRENT DIRECTORY!)
+    files = os.listdir("./")
+    blazefile = [fname for fname in files if fname.startswith("BLAZE")][0]
+    blaze_orders = FitsUtils.MakeXYpoints(blazefile, errors=2)
+    blaze_functions = []
+    blaze_errors = []
+    for order in blaze_orders:
+      blaze_functions.append( UnivariateSpline(order.x, order.y, s=0) )
+    
     print "Reading data"
-    self.orders = FitsUtils.MakeXYpoints(infilename)
+    self.orders = FitsUtils.MakeXYpoints(infilename, errors=2)
+    for i, order in enumerate(self.orders):
+      self.orders[i].y /= blaze_functions[i](order.x)
+      self.orders[i].err /= blaze_functions[i](order.x)
+    
     print "Reading telluric model from database"
     x,y = numpy.loadtxt(telluricfile, unpack=True)
     self.model = DataStructures.xypoint(x=x[::-1], y=y[::-1])
     self.fitmode = False
     self.clicks = []
     self.template = infilename
+    self.blaze_functions = blaze_functions
 
   def Plot(self):
-    start = 3
+    start = 2
     for i, order in enumerate(self.orders[start:]):
       self.fig = plt.figure(1, figsize=(11,10))
       plt.title("Order # %i" %(i+start+1))
@@ -31,7 +48,7 @@ class LineFitter:
       self.fitaxis = plt.subplot(plotgrid[1])
       cid = self.fig.canvas.mpl_connect('key_press_event', self.keypress)
       order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=2)
-      self.current_order = order
+      self.current_order = order.copy()
       left = numpy.searchsorted(self.model.x, order.x[0]-10.0)
       right = numpy.searchsorted(self.model.x, order.x[-1]+10.0)
       current_model = DataStructures.xypoint(x=self.model.x[left:right], y=self.model.y[left:right])
@@ -44,8 +61,11 @@ class LineFitter:
       self.PlotArrays(((order.x, order.y), (self.current_model.x, (self.current_model.y)*self.current_order.cont)), self.mainaxis, legend=False)
       plt.show()
 
+      print "Done with order %i" %(i+start)
       self.orders[i+start] = self.current_order.copy()
-      FitsUtils.OutputFitsFile(self.template, self.orders)
+      self.orders[i+start].y *= self.blaze_functions[i+start](self.orders[i+start].x)
+      self.orders[i+start].err *= self.blaze_functions[i+start](self.orders[i+start].x)
+      FitsUtils.OutputFitsFile(self.template, self.orders, errors=2)
 
 
   def keypress(self, event):
