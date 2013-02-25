@@ -215,5 +215,8 @@ class LineFitter:
 
 
 if __name__ == "__main__":
-  fitter = LineFitter(sys.argv[1])
+  if "linux" in sys.platform:
+    fitter = LineFitter(sys.argv[1], telluricfile="/home/kgullikson/School/Research/aerlbl_v12.2/rundir3/OutputModels/transmission-796.23-270.40-27.1-40.8-368.50-3.90-1.80-1.40")
+  else:
+    fitter = LineFitter(sys.argv[1])
   fitter.Plot()
