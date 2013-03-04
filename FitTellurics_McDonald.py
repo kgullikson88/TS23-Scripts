@@ -185,10 +185,10 @@ if __name__ == "__main__":
       fitter.ImportData(order) #Re-initialize to original data before fitting
       model_amplitude = 1.0 - min(model.y)
       #if i+start not in telluric_orders:
-      if model_amplitude < 0.01:
+      if model_amplitude < 0.01 or i+start > 29:
         print "Skipping order %i" %(i+start)
         data = order.copy()
-        model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
+        #model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
         primary = model.copy()
       elif model_amplitude >= 0.01 and model_amplitude < 0.1:        
         print "Fitting line profiles with gaussian profile"
