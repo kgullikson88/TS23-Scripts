@@ -49,11 +49,6 @@ def EditFitsFile(column_dict, filename, extension, header_info=[]):
   #Open file and update the appropriate extension
   hdulist = pyfits.open(filename, mode='update', save_backup=True)
   if extension < len(hdulist):
-    previous = hdulist[extension].data
-    new = tablehdu.data
-    plt.plot(previous.field("wavelength"), previous.field("flux") / previous.field("continuum"))
-    plt.plot(new.field("wavelength"), new.field("flux") / new.field("continuum"))
-    plt.show()
     hdulist[extension] = tablehdu
   else:
     hdulist.append(tablehdu)
