@@ -79,7 +79,7 @@ class LineFitter:
         return
       else:
         print "Activating fit mode"
-        self.smoothing_factor = 1e-5
+        self.smoothing_factor = 5e-6
         self.fitmode = True
         self.clickid = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
         return

@@ -29,6 +29,7 @@ telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
      header_info takes a list of lists. Each sub-list should have size 2 where the first element is the name of the new keyword, and the second element is the corresponding value. A 3rd element may be added as a comment
 """
 def EditFitsFile(column_dict, filename, extension, header_info=[]):
+  print "Editing extension number %i" %extension
   columns = []
   for key in column_dict.keys():
     columns.append(pyfits.Column(name=key, format="D", array=column_dict[key]))
@@ -48,6 +49,11 @@ def EditFitsFile(column_dict, filename, extension, header_info=[]):
   #Open file and update the appropriate extension
   hdulist = pyfits.open(filename, mode='update', save_backup=True)
   if extension < len(hdulist):
+    previous = hdulist[extension].data
+    new = tablehdu.data
+    plt.plot(previous.field("wavelength"), previous.field("flux") / previous.field("continuum"))
+    plt.plot(new.field("wavelength"), new.field("flux") / new.field("continuum"))
+    plt.show()
     hdulist[extension] = tablehdu
   else:
     hdulist.append(tablehdu)
@@ -131,6 +137,7 @@ if __name__ == "__main__":
   #Loop over the orders to correct (should be the 2nd through last argument to the call):
   for i in sys.argv[2:]:
     i = int(i)
+    print "Re-fitting order %i" %i
     fitter.FitVariable({"h2o": humidity, 
                         "o2": 2.12e5})
   
@@ -151,21 +158,17 @@ if __name__ == "__main__":
     model = fitter.GenerateModel(fitpars, LineList)
     fitter.ImportData(order) #Re-initialize to original data before fitting
     model_amplitude = 1.0 - min(model.y)
-    #if i+start not in telluric_orders:
     if model_amplitude < 0.01 or i > 29:
       print "Skipping order %i" %(i)
-      data = order.copy()
       #model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
-      primary = model.copy()
     elif model_amplitude >= 0.01 and model_amplitude < 0.1:        
       print "Fitting line profiles with gaussian profile"
       model = fitter.Fit(resolution_fit_mode="gauss", fit_primary=False, adjust_wave="model")
-      data = fitter.data
     else: 
       print "Large model amplitude. Using SVD for line profiles"
       model = fitter.Fit(resolution_fit_mode="SVD", fit_primary=False, adjust_wave="model")
-      data = fitter.data
-        
+    data = fitter.data
+    
     #Set up data structures for OutputFitsFile
     columns = {"wavelength": data.x,
                "flux": data.y,
@@ -202,5 +205,5 @@ if __name__ == "__main__":
         print "Not saving the following info: %s" %(fitter.parnames[j])
       
       
-    EditFitsFile(columns, fname, i+1, header_info = header_info)
+    EditFitsFile(columns, fname, i-1, header_info = header_info)
   
