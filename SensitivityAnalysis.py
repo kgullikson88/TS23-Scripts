@@ -13,6 +13,7 @@ import Correlate
 import MakeModel
 import RotBroad
 import FindContinuum
+import time
 
 """
    This function performs a sensitivity analysis on reduced spectra
@@ -336,8 +337,10 @@ if __name__ == "__main__":
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
 
+	
 	#Output
 	outfilename  = "Sensitivity/spectrum_%s_%s_snr%.1f_vel%.1f.dat" %(p_spt, s_spt, snr, velocity)
+	"""
 	outfile = open(outfilename, "w")
 	outfile.write("#Spectrum for s/n = %g and v = %g km/s\n" %(snr, velocity))
 	outfile.close()
@@ -346,11 +349,12 @@ if __name__ == "__main__":
 	  numpy.savetxt(outfile, numpy.transpose((order.x, order.y, order.cont, order.err)) )
 	  outfile.write("\n\n\n\n")
 	  outfile.close()
+	"""
 
         #Cross-correlate with original model
-        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=True, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
-	#vel, corr = output[0], output[1]
-	vel, corr = numpy.loadtxt(output, unpack=True)
+        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
+	vel, corr = output[0], output[1]
+	#vel, corr = numpy.loadtxt(output, unpack=True)
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
@@ -362,6 +366,8 @@ if __name__ == "__main__":
         if maxvel-tolerance <= velocity and maxvel+tolerance >= velocity:
           sig.append(significance)
           found += 1.
+
+	time.sleep(5)
 
       print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
       outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
