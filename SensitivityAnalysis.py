@@ -97,6 +97,13 @@ good_sections = {1: [[-1,-1],],
                  52: [[-1,-1],],
 		 43: [[-1,-1],] }
 
+#Define regions contaminated by telluric residuals or the picket fence. We will not use those regions in the cross-correlation
+badregions = [[0,389],
+              [454,483],
+              [626,632],
+              [685,696],
+              [715,732]]
+
 
 
 
@@ -145,6 +152,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
   #Begin main loop over the orders
   for i in range(len(data2)):
     order = data2[i]
+    order.cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=5)
     prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
     sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
     fluxratio = sec_flux/prim_flux
@@ -175,6 +183,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
 
     #Add model to the data
     data2[i].y = (scaled_model)*order.cont + order.y
+    data2[i].cont = FindContinuum.Continuum(data2[i].x, data2[i].y, lowreject=2, highreject=5)
 
     #pylab.plot(data2[i].x, data2[i].y - 0.02, 'b-')
 
@@ -219,7 +228,8 @@ if __name__ == "__main__":
     modelfiles[temperature].append(modeldir+fname)
 
   #Read in data
-  orders_original = tuple(FitsUtils.MakeXYpoints(datafile))
+  orders_original = tuple(FitsUtils.MakeXYpoints(datafile, extensions=True, x="wavelength", y="flux", errors="error"))
+  orders_original = orders_original[::-1]
 
   #Check for command line arguments specifying spectral type endpoints or the logfile name
   logfilename = outfiledir + "summary.dat"
@@ -271,6 +281,24 @@ if __name__ == "__main__":
   logfile = open(logfilename, "w")
   logfile.write("Parent SpT\tS/N Ratio\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
 
+  #Figure out the good regions as everything other than the bad regions (instead of the hardcoded version on top!)
+  good_regions = {}
+  for i, order in enumerate(orders_original):
+    left = -1
+    right = -1
+    region_list = []
+    for region in badregions:
+      if order.x[0] < region[0] and order.x[-1] > region[0]:
+	region_list.append([-1, region[0]])
+      if order.x[0] < region[1] and order.x[-1] > region[1]:
+	region_list.append([region[1], 9e9])
+      if order.x[0] > region[0] and order.x[-1] < region[1]:
+	region_list = [[-1,-1],]
+    if len(region_list) == 0:
+      region_list.append([order.x[0], order.x[-1]])
+      
+    good_regions[i+1] = region_list
+
   ############################################
   #Start looping!
   ############################################
@@ -308,8 +336,21 @@ if __name__ == "__main__":
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
 	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
 
+	#Output
+	outfilename  = "Sensitivity/spectrum_%s_%s_snr%.1f_vel%.1f.dat" %(p_spt, s_spt, snr, velocity)
+	outfile = open(outfilename, "w")
+	outfile.write("#Spectrum for s/n = %g and v = %g km/s\n" %(snr, velocity))
+	outfile.close()
+	for order in orders:
+	  outfile = open(outfilename, "a")
+	  numpy.savetxt(outfile, numpy.transpose((order.x, order.y, order.cont, order.err)) )
+	  outfile.write("\n\n\n\n")
+	  outfile.close()
+
         #Cross-correlate with original model
-        vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
+        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=True, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
+	#vel, corr = output[0], output[1]
+	vel, corr = numpy.loadtxt(output, unpack=True)
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()

@@ -31,9 +31,7 @@ telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 def OutputFitsFile(column_dict, template, outfilename, mode="append", header_info=[]):
   #Get header from template. Use this in the new file
   if mode == "new":
-    hdulist = pyfits.open(template)
-    header = hdulist[0].header
-    hdulist.close()
+    header = pyfits.getheader(template)
 
   columns = []
   for key in column_dict.keys():

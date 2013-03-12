@@ -10,6 +10,7 @@ import Units
 import RotBroad
 import MakeModel_v2 as MakeModel
 import FindContinuum
+import FitsUtils
 
 class Resid:
   def __init__(self, size):
@@ -156,7 +157,7 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
   #1: Read in the datafile, if necessary
   if type(filename) == str:
     print "Reading filename %s" %filename
-    orders = FitsUtils.MakeXYpoints(filename)
+    orders = FitsUtils.MakeXYpoints(filename, extensions=True, x="wavelength", y="flux", errors="error")
   elif type(filename) == list:
     orders = list(filename)
   else:
@@ -236,6 +237,9 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
   #3: Begin loop over model spectra
   for i in range(len(models)):
     modelfile = models[i]
+
+    temp = int(modelfile.split("lte")[-1][:2])*100
+    star = str(temp)
 
     #a: Read in file
     if isinstance(modelfile, str):
