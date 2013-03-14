@@ -340,7 +340,7 @@ if __name__ == "__main__":
 	
 	#Output
 	outfilename  = "Sensitivity/spectrum_%s_%s_snr%.1f_vel%.1f.dat" %(p_spt, s_spt, snr, velocity)
-	"""
+	
 	outfile = open(outfilename, "w")
 	outfile.write("#Spectrum for s/n = %g and v = %g km/s\n" %(snr, velocity))
 	outfile.close()
@@ -349,12 +349,12 @@ if __name__ == "__main__":
 	  numpy.savetxt(outfile, numpy.transpose((order.x, order.y, order.cont, order.err)) )
 	  outfile.write("\n\n\n\n")
 	  outfile.close()
-	"""
+	
 
         #Cross-correlate with original model
-        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
-	vel, corr = output[0], output[1]
-	#vel, corr = numpy.loadtxt(output, unpack=True)
+        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=True, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
+	#vel, corr = output[0], output[1]
+	vel, corr = numpy.loadtxt(output, unpack=True)
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
