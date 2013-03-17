@@ -102,16 +102,3 @@ if __name__ == "__main__":
     Correlate.PyCorr(data, combine=False, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_list, stars=star_list)
 
 
-#This will do the correlation within python/numpy
-#The combine keyword decides whether to combine the chips into a master cross-correlation 
-#The normalize keyword decides whether to output as correlation power, or as significance
-#The sigmaclip keyword decides whether to perform sigma-clipping on each chip before cross-correlating
-#The nsigma keyword tells the program how many sigma to clip. This is ignored if sigmaclip = False
-#The clip_order keyword tells what order polynomial to fit the flux to during sigma clipping. Ignored if sigmaclip = False
-#The models keyword is a list of models to cross-correlate against (either filenames of two-column ascii files, or
-#    each entry should be a list with the first element the x points, and the second element the y points
-#The segments keyword controls which orders of the data to use, and which parts of them. Can be used to ignore telluric
-#    contamination. Can be a string (default) which will use all of the orders, a list of integers which will
-#    use all of the orders given in the list, or a dictionary of lists which gives the segments of each order to use.
-#save_output determines whether the cross-correlation is saved to a file, or just returned
-#def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, clip_order=3, stars=star_list, temps=temp_list, models=model_list, corr_mode='valid', process_model=True, vsini=15*Units.cm/Units.km, resolution=100000, segments="all", save_output=True, outdir=outfiledir, outfilename=None)

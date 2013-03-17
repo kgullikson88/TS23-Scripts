@@ -269,7 +269,7 @@ class LineFitter:
        header_info takes a list of lists. Each sub-list should have size 2 where the first element is the name of the new keyword, and the second element is the corresponding value. A 3rd element may be added as a comment
   """
   def EditFitsFile(self, column_dict, filename, extension, header_info=[]):
-    print "Editing extension number %i" %extension
+    print "Editing extension number %i of file %s" %(extension, filename)
     columns = []
     for key in column_dict.keys():
       columns.append(pyfits.Column(name=key, format="D", array=column_dict[key]))

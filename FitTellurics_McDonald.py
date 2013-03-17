@@ -32,6 +32,7 @@ def OutputFitsFile(column_dict, template, outfilename, mode="append", header_inf
   #Get header from template. Use this in the new file
   if mode == "new":
     header = pyfits.getheader(template)
+    
 
   columns = []
   for key in column_dict.keys():
@@ -53,8 +54,13 @@ def OutputFitsFile(column_dict, template, outfilename, mode="append", header_inf
     hdulist = pyfits.open(template)
     hdulist.append(tablehdu)
   elif mode == "new":
-    hdu = pyfits.PrimaryHDU(header=header)
-    hdulist = pyfits.HDUList([hdu, tablehdu])
+    hdulist = pyfits.open(template)
+    for i in range(len(hdulist)-1):
+      hdulist.pop()
+    #hdu = pyfits.PrimaryHDU(header=header)
+    #hdulist = pyfits.HDUList([hdu, tablehdu])
+    hdulist.append(tablehdu)
+    print hdulist[0].header, "\n\n"
   hdulist.writeto(outfilename, clobber=True, output_verify='ignore')
   hdulist.close()
 

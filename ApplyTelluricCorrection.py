@@ -64,6 +64,8 @@ if __name__ == "__main__":
     #Number is for for e.g. KG11186.fits
     original = "KG%s.fits" %number
     corrected = "Corrected_%s-0.fits" %number
+    original = "HIP_16147.fits"
+    corrected = "HIP_16147-0.fits"
     print original
     print corrected
     outfilename = "%s_telluric_corrected.fits" %(original.split(".fits")[0])
@@ -80,6 +82,6 @@ if __name__ == "__main__":
                  "continuum": data.cont,
                  "error": data.err}
       if i == 0:
-        FitTellurics_McDonald.OutputFitsFile(columns, original, outfilename)
+        FitTellurics_McDonald.OutputFitsFile(columns, original, outfilename, mode="new")
       else:
         FitTellurics_McDonald.OutputFitsFile(columns, outfilename, outfilename)

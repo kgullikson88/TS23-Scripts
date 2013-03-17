@@ -100,7 +100,6 @@ def Broaden(model, vsini, intervalsize=50.0, alpha=0.33, linear=False, findcont=
     if findcont:
       interval.cont = FindContinuum.Continuum(interval.x, interval.y)
     
-    
     #Make broadening profile
     beta = alpha/(1-alpha)
     wave0 = interval.x[interval.x.size/2]

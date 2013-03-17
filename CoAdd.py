@@ -29,12 +29,14 @@ def ReadCorrectedFile(fname):
 
 def CoAdd(files):
   orders, headers = ReadCorrectedFile(files[0])
+  orders = FitsUtils.MakeXYpoints(files[0], errors=2)
   for i, order in enumerate(orders):
     orders[i].err = order.err**2
 
   fnum = 1
   for fname in files[1:]:
     orders2, headers2 = ReadCorrectedFile(fname)
+    orders2 = FitsUtils.MakeXYpoints(fname, errors=2)
     for i, order in enumerate(orders2):
       fcn = interp(order.x, order.y)
       errfcn = interp(order.x, order.err**2)
@@ -48,6 +50,19 @@ def CoAdd(files):
 
 if __name__ == "__main__":
   fileList = sys.argv[1:]
+  fileList = []
+  for arg in sys.argv[1:]:
+    if "name" in arg:
+      starname = arg.split("=")[-1]
+      allfiles = [fname for fname in os.listdir("./") if fname.endswith(".fits")]
+      for fname in allfiles:
+        header = pyfits.getheader(fname)
+        object_name = header["OBJECT"]
+        if object_name == starname:
+          print "Adding file %s to list" %fname
+          fileList.append(fname)
+    else:
+      fileList.append(arg)
   orders = CoAdd(fileList)
   print "There are %i orders" %len(orders)
 
@@ -60,7 +75,7 @@ if __name__ == "__main__":
     blaze_functions.append( interp(order.x, order.y) )
 
   for i, order in enumerate(orders):
-    #orders[i].y /= blaze_functions[i](order.x)
+    orders[i].y /= blaze_functions[i](order.x)
     orders[i].cont = FindContinuum.Continuum(orders[i].x, orders[i].y, lowreject=2, highreject=5)
     plt.plot(orders[i].x, orders[i].y)
   plt.show()

@@ -367,7 +367,6 @@ if __name__ == "__main__":
           sig.append(significance)
           found += 1.
 
-	time.sleep(5)
 
       print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
       outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
