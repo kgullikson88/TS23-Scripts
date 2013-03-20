@@ -116,6 +116,7 @@ if __name__ == "__main__":
   angle = float(header["zd"])
   resolution = 60000.0
   humidity = RH[bestindex]
+  humidity = 40.0
   T_fahrenheit = T[bestindex]
   pressure = P[bestindex]*Units.hPa/Units.inch_Hg
   temperature = (T_fahrenheit - 32.0)*5.0/9.0 + 273.15
@@ -127,7 +128,7 @@ if __name__ == "__main__":
                       "resolution": resolution})
   fitter.SetBounds({"h2o": [1.0, 96.0],
                     "o2": [5e4, 1e6],
-                    "resolution": [10000,100000]})
+                    "resolution": [40000,80000]})
                     
   #Loop over the orders to correct (should be the 2nd through last argument to the call):
   for i in sys.argv[2:]:

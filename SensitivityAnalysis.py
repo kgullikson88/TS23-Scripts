@@ -153,6 +153,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
   #Begin main loop over the orders
   for i in range(len(data2)):
     order = data2[i]
+    data2[i].cont = FindContinuum.Continuum(data2[i].x, data2[i].y, lowreject=2, highreject=5)
     order.cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=5)
     prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
     sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
@@ -171,10 +172,10 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
 
     #Scale the model by the above scale factor and normalize
-    scaled_model = (model2.y/model2.cont)*fluxratio
+    scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
 
-    #pylab.plot(data2[i].x, data2[i].y, 'k-')
-    #pylab.plot(model2.x, scaled_model+0.99, 'r-')
+    pylab.plot(data2[i].x, data2[i].y/data2[i].cont, 'k-')
+    pylab.plot(model2.x, scaled_model, 'r-')
     
 
     #Add noise to the data
@@ -192,7 +193,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
   #pylab.ylabel("Normalized Flux")
   #pylab.ylim((0.97, 1.01))
   #pylab.xlim((510, 570))
-  #pylab.show()
+  pylab.show()
   #sys.exit()
   return data2
 
@@ -220,7 +221,7 @@ if __name__ == "__main__":
               "M0", "M1", "M2", "M3", "M4", "M5"]
   velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
   SNRlist = [100,200,400,600,800,1000]
-  #SNRlist = [400,600]
+  SNRlist = [1000,]
   modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)

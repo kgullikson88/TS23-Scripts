@@ -64,8 +64,9 @@ if __name__ == "__main__":
     #Number is for for e.g. KG11186.fits
     original = "KG%s.fits" %number
     corrected = "Corrected_%s-0.fits" %number
-    original = "HIP_16147.fits"
-    corrected = "HIP_16147-0.fits"
+    #original = "HIP_16147.fits"
+    #corrected = "HIP_16147-0.fits"
+    corrected = "Corrected_11319-0.fits"
     print original
     print corrected
     outfilename = "%s_telluric_corrected.fits" %(original.split(".fits")[0])

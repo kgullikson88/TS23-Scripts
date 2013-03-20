@@ -79,7 +79,7 @@ if __name__ == "__main__":
   blaze_functions = []
   blaze_errors = []
   for order in blaze_orders:
-    blaze_functions.append( interp(order.x, order.y) )
+    blaze_functions.append( interp(order.x, numpy.ones(order.size())) ) #order.y) )
     blaze_errors.append( interp(order.x, order.err) )
 
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     num = fname[2:].split(".fits")[0]
     outfilename = "Corrected_%s.fits" %num
 
-    orders = FitsUtils.MakeXYpoints(fname, errors=2)
+    orders = FitsUtils.MakeXYpoints(fname, errors="error", extensions=True, x="wavelength", y="flux")
     
     hdulist = pyfits.open(fname)
     header = hdulist[0].header
@@ -143,7 +143,7 @@ if __name__ == "__main__":
                         "resolution": resolution})
     fitter.SetBounds({"h2o": [1.0, 96.0],
                       "o2": [5e4, 1e6],
-                      "resolution": [10000,100000]})
+                      "resolution": [30000,90000]})
     models = []
 
     #START LOOPING OVER ORDERS

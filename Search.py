@@ -7,6 +7,7 @@ import sys
 import DataStructures
 import FindContinuum
 import matplotlib.pyplot as plt
+import Units
 
 homedir = os.environ["HOME"]
 modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
@@ -16,7 +17,8 @@ badregions = [[0,389],
               [454,483],
               [626,632],
               [685,696],
-              [715,732]]
+              [715,732],
+              [782,9e9]]
 
 #Set up model list
 model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -61,25 +63,45 @@ model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
                modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
 star_list = []
+temp_list = []
 for fname in model_list:
   temp = int(fname.split("lte")[-1][:2])*100
   star_list.append(str(temp))
+  temp_list.append(temp)
 
 if __name__ == "__main__":
   #Parse command line arguments:
   fileList = []
   extensions=True
+  tellurics=False
   for arg in sys.argv[1:]:
     if "-e" in arg:
       extensions=False
+    if "-t" in arg:
+      tellurics=True  #telluric lines modeled but not removed
     else:
       fileList.append(arg)
 
   for fname in fileList:
     if extensions:
       orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
+      if tellurics:
+        model_orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="model")
+        for i, order in enumerate(orders):
+          orders[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=2)
+          plt.plot(order.x, order.y/orders[i].cont, 'b-')
+          orders[i].y /= model_orders[i].y
+          plt.plot(order.x, orders[i].y/orders[i].cont-0.5, 'r-')
+          plt.plot(order.x, model_orders[i].y + 0.5, 'g-')
+        plt.show()
     else:
       orders = FitsUtils.MakeXYpoints(fname, errors=2)
+    for i, order in enumerate(orders):
+      order.x = order.x[100:-100]
+      order.y = order.y[100:-100]
+      order.cont = order.cont[100:-100]
+      order.err = order.err[100:-100]
+      orders[i] = order.copy()
 
     xspacing = 1e9
     for i, order in enumerate(orders):
@@ -95,10 +117,11 @@ if __name__ == "__main__":
       left = numpy.searchsorted(data.x, region[0])
       right = numpy.searchsorted(data.x, region[1])
       data.y[left:right] = data.cont[left:right]
-    plt.plot(data.x, data.y/data.cont)
-    plt.show()
+    #plt.plot(data.x, data.y/data.cont)
+    #plt.show()
 
     #Do the cross-correlation
-    Correlate.PyCorr(data, combine=False, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_list, stars=star_list)
+    for vsini in [10, 20, 30, 40]:
+      Correlate.PyCorr(data, combine=False, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_list, stars=star_list, temps=temp_list, vsini=vsini*Units.cm/Units.km, pause=10)
 
 
