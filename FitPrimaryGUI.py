@@ -72,6 +72,7 @@ class LineFitter:
 
   def Plot(self):
     start = 2
+    print "There are %i orders." %len(self.orders)
     for i, order in enumerate(self.orders[start:]):
       self.fig = plt.figure(1, figsize=(11,10))
       plt.title("Order # %i" %(i+start+1))
@@ -235,7 +236,7 @@ class LineFitter:
       else:
         axis.plot(arr[0], arr[1])
     if legend:
-      axis.legend(loc=4)
+      axis.legend(loc='best')
     plt.draw()
 
 

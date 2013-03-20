@@ -77,7 +77,7 @@ if __name__ == "__main__":
   for i, order in enumerate(orders):
     #orders[i].y /= blaze_functions[i](order.x)
     orders[i].cont = FindContinuum.Continuum(orders[i].x, orders[i].y, lowreject=2, highreject=5)
-    plt.plot(orders[i].x, orders[i].y)
+    plt.plot(orders[i].x, orders[i].y/orders[i].cont)
   plt.show()
 
   #Get the name of the star 
