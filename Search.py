@@ -18,7 +18,7 @@ badregions = [[0,389],
               [626,632],
               [685,696],
               [715,732],
-              [782,9e9]]
+              [759,9e9]]
 
 #Set up model list
 model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
