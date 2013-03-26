@@ -162,6 +162,8 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     #Reduce resolution
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
 
+    #fluxratio = 0.5
+
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
     model2.y = scaled_model
@@ -213,11 +215,12 @@ if __name__ == "__main__":
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
   for fname in files:
-    temperature = float(fname.split("lte")[-1][:2])*100
+    temperature = float(fname.split("lte")[-1].split("-")[0])*100
     modelfiles[temperature].append(modeldir+fname)
 
   #Read in data
   orders_original = tuple(FitsUtils.MakeXYpoints(datafile, extensions=True, x="wavelength", y="flux", errors="error"))
+  #orders_original = tuple(FitsUtils.MakeXYpoints(datafile, errors=2))
   orders_original = orders_original[::-1]
 
   #Check for command line arguments specifying spectral type endpoints or the logfile name
@@ -234,7 +237,11 @@ if __name__ == "__main__":
       if "primary" in arg:
         p_spt = arg.split("=")[-1]
       elif "secondary" in arg:
-        s_temp = float(arg.split("=")[-1])
+        try:
+          s_temp = float(arg.split("=")[-1])
+        except ValueError:
+          s_spt = arg.split("=")[-1]
+          s_temp = MS.Interpolate(MS.Temperature, s_spt)
       elif "vsini" in arg:
         vsini = float(arg.split("=")[-1])
       elif "vel" in arg:
@@ -253,9 +260,9 @@ if __name__ == "__main__":
   for key in modelfiles.keys():
     if numpy.abs(s_temp - key) < numpy.abs(s_temp - best_key):
       best_key = key
-      logg_values = [float(fname.split("lte")[-1][3:7]) for fname in modelfiles[key]]
+      logg_values = [float(fname.split("lte")[-1].split("-")[1]) for fname in modelfiles[key]]
       
-  best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
+  best_logg = float(modelfiles[best_key][0].split("lte")[-1].split("-")[1])
   logg_index = numpy.argmin(numpy.array(logg_values - logg))
   modelfile = modelfiles[best_key][logg_index]
 
@@ -271,6 +278,7 @@ if __name__ == "__main__":
 
   orders = Add(list(orders_original), model, p_spt, s_spt, vel=vel*Units.cm/Units.km, SNR=1e6, sensitivity=sensitivity_fcn)
 
+  """
   for i, order in enumerate(orders[2:-1]):
     original = orders_original[i]
     original.cont = FindContinuum.Continuum(original.x, original.y, lowreject=2, highreject=2)
@@ -279,4 +287,4 @@ if __name__ == "__main__":
     pylab.plot(original.x, original.y/original.cont, 'k-')
     pylab.plot(order.x, order.y/order.cont - original.y/original.cont + 1.0 + shift, 'r-')
   pylab.show()
-
+  """

@@ -54,6 +54,15 @@ def GetModel(data, model, vel=0.0, vsini=15*Units.cm/Units.km):
     #Reduce resolution
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
 
+    #Scale using Beer's Law
+    line_indices = numpy.where(model2.y / model2.cont < 0.96)[0]
+    if len(line_indices) > 0:
+      scale = numpy.mean(numpy.log(order.y[line_indices]/order.cont[line_indices]) / numpy.log(model2.y[line_indices] / model2.cont[line_indices]) )
+      #model2.y = model2.y**scale
+      #model2.cont = model2.cont**scale
+    
+    print "Order %i: Scale = %g" %(i, scale)
+
     output_orders.append(model2.copy())
     
   return output_orders
@@ -88,13 +97,13 @@ if __name__ == "__main__":
   orders_original = orders_original[::-1]
 
   #Check for command line arguments
-  p_temp = 5800
+  p_spt = "A0"
   vsini = 15.0
   vel = 0.0
   if len(sys.argv) > 2:
     for arg in sys.argv[2:]:
       if "primary" in arg:
-        p_temp = float(arg.split("=")[-1])
+        p_spt = arg.split("=")[-1]
       elif "vsini" in arg:
         vsini = float(arg.split("=")[-1])
       elif "vel" in arg:
@@ -103,7 +112,7 @@ if __name__ == "__main__":
 
   #Get the best logg for a main sequence star with the given temperature
   MS = SpectralTypeRelations.MainSequence()
-  p_spt = MS.GetSpectralType(MS.Temperature, p_temp)
+  p_temp = MS.Interpolate(MS.Temperature, p_spt)
   p_mass = MS.Interpolate(MS.Mass, p_spt)
   radius = MS.Interpolate(MS.Radius, p_spt)
   logg = numpy.log10(Units.G*p_mass*Units.Msun/(radius*Units.Rsun)**2)
@@ -129,9 +138,13 @@ if __name__ == "__main__":
   outfilename = "%s-0.fits" %(datafile.split(".fits")[0])
   print "Outputting to %s" %outfilename
 
-  for i, model in enumerate(orders[2:-1]):
-    original = orders_original[i+2]
+  orders_original = orders_original[::-1]
+  orders = orders[::-1]
+
+  for i, original in enumerate(orders_original[2:-1]):
+    #original = orders_original[i+2]
     original.cont = FindContinuum.Continuum(original.x, original.y, lowreject=2, highreject=2)
+    model = orders[i+2]
     pylab.figure(1)
     pylab.plot(original.x, original.y/original.cont, 'k-')
     pylab.plot(model.x, model.y/model.cont, 'r-')

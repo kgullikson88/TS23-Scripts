@@ -202,7 +202,7 @@ class LineFitter:
       return
 
     
-  def SmoothData(self, numiters=10, lowreject=2, highreject=10):
+  def SmoothData(self, numiters=10, lowreject=2, highreject=2):
     done = False
     data = self.smoothing_data.copy()
     iterations = 0
