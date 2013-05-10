@@ -21,7 +21,7 @@ badregions = [[0,389],
               [759,9e9]]
 
 #Set up model list
-model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+"""modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte35-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -29,7 +29,23 @@ model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
                modeldir + "lte37-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte38-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte39-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte30-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte32-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte37-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.00+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte30-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte32-3.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-3.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-3.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte37-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted","""
+model_list = [ modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte42-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte44-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte46-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -64,10 +80,16 @@ model_list = [modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.so
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
 star_list = []
 temp_list = []
+gravity_list = []
+metal_list = []
 for fname in model_list:
   temp = int(fname.split("lte")[-1][:2])*100
+  gravity = float(fname.split("lte")[-1][3:7])
+  metallicity = float(fname.split("lte")[-1][7:11])
   star_list.append(str(temp))
   temp_list.append(temp)
+  gravity_list.append(gravity)
+  metal_list.append(metallicity)
 
 if __name__ == "__main__":
   #Parse command line arguments:
@@ -122,6 +144,6 @@ if __name__ == "__main__":
 
     #Do the cross-correlation
     for vsini in [10, 20, 30, 40]:
-      Correlate.PyCorr(data, combine=False, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_list, stars=star_list, temps=temp_list, vsini=vsini*Units.cm/Units.km, pause=10)
+      Correlate.PyCorr(data, combine=False, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_list, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*Units.cm/Units.km, pause=10)
 
 

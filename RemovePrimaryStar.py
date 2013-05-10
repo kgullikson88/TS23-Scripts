@@ -125,6 +125,7 @@ if __name__ == "__main__":
  
   logg_index = numpy.argmin(numpy.array(logg_values - logg))
   modelfile = modelfiles[best_key][logg_index]
+  modelfile = "/Users/kgulliks/School/Research/Models/Sorted/Stellar/Vband/lte137.5-3.5+0.5_ATLAS_SPECTRA.7.sorted"
 
   #Read in model
   print "Model file: %s" %modelfile
