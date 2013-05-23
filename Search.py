@@ -21,7 +21,7 @@ badregions = [[0,389],
               [759,9e9]]
 
 #Set up model list
-"""modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte35-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -44,8 +44,8 @@ badregions = [[0,389],
                modeldir + "lte36-3.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte37-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte38-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte39-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted","""
-model_list = [ modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.00-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte42-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte44-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte46-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",

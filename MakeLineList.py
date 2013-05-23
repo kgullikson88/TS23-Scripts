@@ -47,7 +47,8 @@ def main1():
 
 
 def main2():
-  filename = os.environ["HOME"] + "/School/Research/lblrtm/run_examples/MyModel/OutputFiles/LongIntegrationTest/transmission-743.15-283.38-50.0-35.0-368.50-4.00-1.71-1.40"
+  filename = os.environ["HOME"] + "/School/Research/Useful_Datafiles/Telluric_Visible.dat"
+  print "Reading telluric model"
   x,trans = numpy.loadtxt(filename, unpack=True)
   x = x[::-1]*Units.nm/Units.micron
 
@@ -63,7 +64,9 @@ def main2():
 
   #linepoints = numpy.where(numpy.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, trans[bclength:-bclength] > 0.9*numpy.max(trans[bclength:-bclength])))[0] + bclength
   linepoints = numpy.where(residuals[bclength:-bclength] - residuals[bclength:-bclength].mean() < -std)[0] + bclength
+  linepoints = numpy.where(trans < 0.97)[0]
 
+  print "Finding lines"
   points = []
   lines = []
   for line in linepoints:
@@ -98,8 +101,11 @@ def main2():
       plt.plot((lines[i], lines[i]), (yval-0.05, yval-0.1), 'r-')
   """
   plt.plot(x, trans, 'k-')
+  for line in lines:
+    idx = numpy.searchsorted(x, line)
+    plt.plot([x[idx], x[idx]], [trans[idx]-0.05, trans[idx]-0.1], 'r-')
   plt.show()
-  numpy.savetxt("Linelist2.dat", lines, fmt="%.8f")
+  numpy.savetxt("Linelist3.dat", lines, fmt="%.8f")
 
 if __name__ == "__main__":
   main2()

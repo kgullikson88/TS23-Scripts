@@ -54,17 +54,39 @@ def GetModel(data, model, vel=0.0, vsini=15*Units.cm/Units.km):
     #Reduce resolution
     model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
 
+    #Fit velocity with a straight shift via cross-correlation
+    ycorr = numpy.correlate(order.y/order.cont-1.0, model2.y/model2.cont-1.0, mode="full")
+    xcorr = numpy.arange(ycorr.size)
+    lags = xcorr - (order.x.size-1)
+    distancePerLag = (order.x[-1] - order.x[0])/float(order.x.size)
+    offsets = -lags*distancePerLag
+    offsets = offsets[::-1]
+    ycorr = ycorr[::-1]
+    fit = numpy.poly1d(numpy.polyfit(offsets, ycorr, 3))
+    ycorr = ycorr - fit(offsets)
+    maxindex = ycorr.argmax()
+    model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)+offsets[maxindex]))
+    model2.cont = FindContinuum.Continuum(model2.x, model2.y, lowreject=1, fitorder=3)
+    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+
     #Scale using Beer's Law
     line_indices = numpy.where(model2.y / model2.cont < 0.96)[0]
+    #w line_indices = numpy.where(order.y / order.cont < 0.90)[0]
     if len(line_indices) > 0:
-      scale = numpy.mean(numpy.log(order.y[line_indices]/order.cont[line_indices]) / numpy.log(model2.y[line_indices] / model2.cont[line_indices]) )
-      #model2.y = model2.y**scale
-      #model2.cont = model2.cont**scale
+      #scale_fcn = numpy.poly1d(numpy.polyfit(model2.x[line_indices], numpy.log(order.y[line_indices]/order.cont[line_indices]) / numpy.log(model2.y[line_indices] / model2.cont[line_indices]), 2))
+      scale = numpy.median(numpy.log(order.y[line_indices]/order.cont[line_indices]) / numpy.log(model2.y[line_indices] / model2.cont[line_indices]) )
+      #pylab.plot(model2.x[line_indices], numpy.log(order.y[line_indices]/order.cont[line_indices]) / numpy.log(model2.y[line_indices] / model2.cont[line_indices]))
+      #pylab.plot(model2.x[line_indices], scale_fcn(model2.x[line_indices]))
+      model2.y = model2.y**scale
+      model2.cont = model2.cont**scale
+      #model2.y = model2.y**scale_fcn(model2.x)
+      #model2.cont = model2.cont**scale_fcn(model2.x)
     
     print "Order %i: Scale = %g" %(i, scale)
 
     output_orders.append(model2.copy())
-    
+
+  pylab.show()
   return output_orders
 
 
@@ -89,7 +111,10 @@ if __name__ == "__main__":
     try:
       temperature = float(fname.split("lte")[-1].split("-")[0])*100
     except ValueError:
-      print "Skipping file %s" %fname
+      try:
+        temperature = float(fname.split("lte")[-1].split("+")[0])*100
+      except ValueError:
+        print "Skipping file %s" %fname
     modelfiles[temperature].append(modeldir+fname)
 
   #Read in data
@@ -100,6 +125,7 @@ if __name__ == "__main__":
   p_spt = "A0"
   vsini = 15.0
   vel = 0.0
+  metal = 0.0
   if len(sys.argv) > 2:
     for arg in sys.argv[2:]:
       if "primary" in arg:
@@ -108,33 +134,59 @@ if __name__ == "__main__":
         vsini = float(arg.split("=")[-1])
       elif "vel" in arg:
         vel = float(arg.split("=")[-1])
-  
-
-  #Get the best logg for a main sequence star with the given temperature
+      elif "metal" in arg:
+        metal = float(arg.split("=")[-1])
+        
+  #Get the best logg and temperature for a main sequence star with the given spectral type
   MS = SpectralTypeRelations.MainSequence()
   p_temp = MS.Interpolate(MS.Temperature, p_spt)
   p_mass = MS.Interpolate(MS.Mass, p_spt)
   radius = MS.Interpolate(MS.Radius, p_spt)
   logg = numpy.log10(Units.G*p_mass*Units.Msun/(radius*Units.Rsun)**2)
-  best_key = modelfiles.keys()[0]
-  
-  for key in modelfiles.keys():
-    if numpy.abs(p_temp - key) < numpy.abs(p_temp - best_key):
-      best_key = key
-      logg_values = [float(fname.split("lte")[-1].split("-")[1]) for fname in modelfiles[key]]
- 
-  logg_index = numpy.argmin(numpy.array(logg_values - logg))
-  modelfile = modelfiles[best_key][logg_index]
-  modelfile = "/Users/kgulliks/School/Research/Models/Sorted/Stellar/Vband/lte137.5-3.5+0.5_ATLAS_SPECTRA.7.sorted"
 
-  #Read in model
-  print "Model file: %s" %modelfile
-  x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
-  x = x*Units.nm/Units.angstrom
-  y = 10**y
-  model = DataStructures.xypoint(x=x, y=y)
+  #Find the best fit temperature
+  temperature = modelfiles.keys()[numpy.argmin((modelfiles.keys() - p_temp)**2)]
+  print p_temp, temperature
 
-  orders = GetModel(list(orders_original), model, vel=vel*Units.cm/Units.km, vsini=vsini*Units.cm/Units.km)
+  #Find the best logg
+  best_logg = 9e9
+  indices = []
+  for fname in modelfiles[temperature]:
+    logg_val = float(fname.split("lte")[-1].split("-")[1][:3])
+    if numpy.abs(logg_val - logg) < numpy.abs(best_logg - logg):
+      best_logg = logg_val
+  for i, fname in enumerate(modelfiles[temperature]):
+    logg_val = float(fname.split("lte")[-1].split("-")[1][:3])
+    if logg_val == best_logg:
+      indices.append(i)
+  filenames = []
+  for i in indices:
+    filenames.append(modelfiles[temperature][i])
+
+  chisquareds = []
+  models = []
+  for modelfile in filenames:
+    #Read in model
+    print "Model file: %s" %modelfile
+    x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
+    x = x*Units.nm/Units.angstrom
+    y = 10**y
+    model = DataStructures.xypoint(x=x, y=y)
+
+    orders = GetModel(list(orders_original), model, vel=vel*Units.cm/Units.km, vsini=vsini*Units.cm/Units.km)
+    chisq = 0.0
+    i = 0
+    for model, data in zip(orders, orders_original):
+      if i != 15 and i != 16 and i != 44:
+        data.cont = FindContinuum.Continuum(data.x, data.y, lowreject=2, highreject=2)
+        chisq += numpy.sum((data.y - model.y*data.cont/model.cont)**2 / data.err**2) / float(data.size())
+        i += 1
+    chisquareds.append(chisq)
+    models.append(orders)
+
+  best_index = numpy.argmin(chisquareds)
+  orders = models[best_index]
+  print chisquareds
   
   outfilename = "%s-0.fits" %(datafile.split(".fits")[0])
   print "Outputting to %s" %outfilename
@@ -163,5 +215,6 @@ if __name__ == "__main__":
       Outputter.OutputFitsFile(columns, datafile, outfilename, mode="new")
     else:
       Outputter.OutputFitsFile(columns, outfilename, outfilename)
+    
   pylab.show()
 

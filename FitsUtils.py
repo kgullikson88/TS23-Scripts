@@ -103,9 +103,7 @@ def MakeXYpoints(datafile, errors=False, extensions=False, x=None, y=None, cont=
     retdict = multispec.readmultispec(datafile)
   
     #Check if wavelength units are in angstroms (common, but I like nm)
-    hdulist = pyfits.open(datafile)
-    header = hdulist[0].header
-    hdulist.close()
+    header = pyfits.getheader(datafile)
     wave_factor = 1.0   #factor to multiply wavelengths by to get them in nanometers
     for key in sorted(header.keys()):
       if "WAT1" in key:
@@ -119,6 +117,7 @@ def MakeXYpoints(datafile, errors=False, extensions=False, x=None, y=None, cont=
       numorders = retdict['flux'].shape[0]
     else:
       numorders = retdict['flux'].shape[1]
+    print "There are %i orders" %numorders
     orders = []
     for i in range(numorders):
       wave = retdict['wavelen'][i]*wave_factor
@@ -402,7 +401,54 @@ def CopyWaveCal(copyfrom, copyto, order=None, scale=1.0):
   
   return outfilename
   
+
+
+
+"""
+  Function to output a fits file
+  column_dict is a dictionary where the key is the name of the column
+     and the value is a numpy array with the data. Example of a column
+     would be the wavelength or flux at each pixel
+  template is the filename of the template fits file. The header will
+     be taken from this file and used as the main header
+  mode determines how the outputted file is made. Append will just add
+     a fits extension to the existing file (and then save it as outfilename)
+     "new" mode will create a new fits file. 
+     header_info takes a list of lists. Each sub-list should have size 2 where the first element is the name of the new keyword, and the second element is the corresponding value. A 3rd element may be added as a comment
+"""
+def OutputFitsFileExtensions(column_dict, template, outfilename, mode="append", header_info=[]):
+  #Get header from template. Use this in the new file
+  if mode == "new":
+    header = pyfits.getheader(template)
+    
+
+  columns = []
+  for key in column_dict.keys():
+    columns.append(pyfits.Column(name=key, format="D", array=column_dict[key]))
+  cols = pyfits.ColDefs(columns)
+  tablehdu = pyfits.new_table(cols)
   
+  #Add keywords to extension header
+  num_keywords = len(header_info)
+  header = tablehdu.header
+  for i in range(num_keywords):
+    info = header_info[i]
+    if len(info) > 2:
+      header.update(info[0], info[1], info[2])
+    elif len(info) == 2:
+      header.update(info[0], info[1])
+
+  if mode == "append":
+    hdulist = pyfits.open(template)
+    hdulist.append(tablehdu)
+  elif mode == "new":
+    hdulist = pyfits.open(template)
+    for i in range(len(hdulist)-1):
+      hdulist.pop()
+    hdulist.append(tablehdu)
+  hdulist.writeto(outfilename, clobber=True, output_verify='ignore')
+  hdulist.close()
+
   
   
 if __name__ == "__main__":
