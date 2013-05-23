@@ -4,7 +4,7 @@ import sys
 import os
 from collections import defaultdict
 
-Corr_dir = "Cross_Correlations/"
+Corr_dir = "./Cross_correlations/"
 
 
 if __name__ == "__main__":

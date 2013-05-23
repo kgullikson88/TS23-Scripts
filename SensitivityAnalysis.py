@@ -174,8 +174,8 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
 
-    pylab.plot(data2[i].x, data2[i].y/data2[i].cont, 'k-')
-    pylab.plot(model2.x, scaled_model, 'r-')
+    #pylab.plot(data2[i].x, data2[i].y/data2[i].cont, 'k-')
+    #pylab.plot(model2.x, scaled_model, 'r-')
     
 
     #Add noise to the data
@@ -193,7 +193,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
   #pylab.ylabel("Normalized Flux")
   #pylab.ylim((0.97, 1.01))
   #pylab.xlim((510, 570))
-  pylab.show()
+  #pylab.show()
   #sys.exit()
   return data2
 
