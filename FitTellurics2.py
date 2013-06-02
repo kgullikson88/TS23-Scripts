@@ -75,7 +75,7 @@ if __name__ == "__main__":
     
     
     angle = float(header["ZD"])
-    resolution = 30000.0
+    resolution = 60000.0
     humidity = RH[bestindex]
     T_fahrenheit = T[bestindex]
     pressure = P[bestindex]*Units.hPa/Units.inch_Hg

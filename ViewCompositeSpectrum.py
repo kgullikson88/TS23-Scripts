@@ -215,8 +215,17 @@ if __name__ == "__main__":
   files = os.listdir(modeldir)
   modelfiles = defaultdict(list)
   for fname in files:
-    temperature = float(fname.split("lte")[-1].split("-")[0])*100
-    modelfiles[temperature].append(modeldir+fname)
+    if "PHOENIX2004" in fname:
+      temperature = int(fname.split("lte")[-1][:2])*100
+      metallicity = float(fname.split("lte")[-1][6:10])
+    elif "PHOENIX-ACES" in fname:
+      temperature = int(fname.split("lte")[-1][:2])*100
+      metallicity = float(fname.split("lte")[-1][7:11])
+    else:
+      continue
+    
+    if numpy.abs(metallicity) < 0.1:
+      modelfiles[temperature].append(modeldir+fname)
 
   #Read in data
   orders_original = tuple(FitsUtils.MakeXYpoints(datafile, extensions=True, x="wavelength", y="flux", errors="error"))
