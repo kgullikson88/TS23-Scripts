@@ -87,7 +87,6 @@ if __name__ == "__main__":
     #humidity = 90.0
     T_fahrenheit = T[bestindex]
     pressure = P[bestindex]*Units.hPa/Units.inch_Hg
-    pressure = ( float(header["BAROMSTR"]) + float(header["BAROMEND"]) ) /2.0
     temperature = (T_fahrenheit - 32.0)*5.0/9.0 + 273.15
     
     #Adjust fitter values
