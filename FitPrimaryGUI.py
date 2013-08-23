@@ -1,6 +1,8 @@
 import FitsUtils
 import numpy
 from scipy.interpolate import UnivariateSpline
+import matplotlib
+matplotlib.rcParams['axes.color_cycle'] = ['b', 'r', 'g']
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import DataStructures
@@ -9,109 +11,109 @@ import MakeModel
 import sys
 import time
 import os
-import FitTellurics_McDonald
 import subprocess
 import pyfits
+import FittingUtilities
 
 
 class LineFitter:
-  def __init__(self, infilename, telluricfile = "/Users/kgulliks/School/Research/aerlbl_v12.2/rundir2/OutputModels/transmission-792.30-290.93-45.0-7.4-368.50-4.00-10.00-1.50", extensions=False, blazecorrect=True, telluric=True):
+  def __init__(self, infilename, telluricfile = "/Users/kgulliks/School/Research/aerlbl_v12.2/rundir2/OutputModels/transmission-792.30-290.93-45.0-7.4-368.50-4.00-10.00-1.50", telluric=False, default_windowsize=200):
 
     
     print "Reading data"
-    if extensions:
-      self.orders = FitsUtils.MakeXYpoints(infilename, errors="error", extensions=True, x="wavelength", y="flux")
-    else:
-      self.orders = FitsUtils.MakeXYpoints(infilename, errors=2)
+    self.orders = FitsUtils.MakeXYpoints(infilename, errors="error", extensions=True, x="wavelength", y="flux")      
 
-    if blazecorrect:
-      print "Reading blaze function"
-      #Find and read in blaze function (MUST BE IN CURRENT DIRECTORY!)
-      files = os.listdir("./")
-      blazefile = [fname for fname in files if fname.startswith("BLAZE")][0]
-      blaze_orders = FitsUtils.MakeXYpoints(blazefile, errors=2)
-      blaze_functions = []
-      blaze_errors = []
-      for order in blaze_orders:
-        blaze_functions.append( UnivariateSpline(order.x, order.y, s=0) )
-      for i, order in enumerate(self.orders):
-        self.orders[i].y /= blaze_functions[i](order.x)
-        self.orders[i].err /= blaze_functions[i](order.x)
-    else:
-      blaze_functions = []
-      for order in self.orders:
-        blaze_functions.append(lambda x: 1.0)
-      
-
+    for i, order in enumerate(self.orders):
+      self.orders[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=3, highreject=3, fitorder=2)
+    
     if telluric:
       print "Reading telluric model from database"
       x,y = numpy.loadtxt(telluricfile, unpack=True)
       self.model = DataStructures.xypoint(x=x[::-1], y=y[::-1])
     else:
-      x = numpy.arange(self.orders[-1].x[0] - 20.0, self.orders[0].x[-1] + 20.0, 0.001)
+      x = numpy.arange(self.orders[0].x[0] - 20.0, self.orders[-1].x[-1] + 20.0, 0.001)
       y = numpy.ones(x.size)
-      print x
-      print y
       self.model = DataStructures.xypoint(x=x, y=y)
 
     #Make outfilename
     if "-" in infilename:
       num = int(infilename.split("-")[-1].split(".fits")[0])
-      outfilename = "%s-%i.fits" %(infilename.split("-")[-1], num+1)
+      outfilename = "%s-%i.fits" %(infilename.split("-")[0], num+1)
     else:
       outfilename = "%s-0.fits" %(infilename.split(".fits")[0])
     cmdstring = "cp %s %s" %(infilename, outfilename)
     command = subprocess.check_call(cmdstring, shell=True)
     
     self.fitmode = False
+    self.mode = "convolution"
     self.clicks = []
     self.template = infilename
-    self.blaze_functions = blaze_functions
     self.infilename = infilename
     self.outfilename = outfilename
+    self.default_windowsize = default_windowsize
 
   def Plot(self):
-    start = 2
+    start = 0
     print "There are %i orders." %len(self.orders)
     for i, order in enumerate(self.orders[start:]):
+      #Set up figure
       self.fig = plt.figure(1, figsize=(11,10))
       plt.title("Order # %i" %(i+start+1))
       plotgrid = gridspec.GridSpec(2,1)
       self.mainaxis = plt.subplot(plotgrid[0])
       self.fitaxis = plt.subplot(plotgrid[1])
       cid = self.fig.canvas.mpl_connect('key_press_event', self.keypress)
-      order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=2)
+
+      #Look for any bad spikes near the beginning or end of the order
+      median = numpy.mean(order.y)
+      std = numpy.std(order.y)
+      length = 30
+      badindices = numpy.where(numpy.abs(order.y[:length]-median)/std > 5)[0]
+      order.y[badindices] = order.cont[badindices]
+      badindices = numpy.where(numpy.abs(order.y[-length:]-median)/std > 5)[0]
+      order.y[-length+badindices] = order.cont[-length+badindices]
       self.current_order = order.copy()
+      
       left = numpy.searchsorted(self.model.x, order.x[0]-10.0)
       right = numpy.searchsorted(self.model.x, order.x[-1]+10.0)
       current_model = DataStructures.xypoint(x=self.model.x[left:right], y=self.model.y[left:right])
       current_model = MakeModel.ReduceResolution(current_model, 60000)
       self.current_model = MakeModel.RebinData(current_model, order.x)
+
+      
       offset = self.CCImprove(self.current_order, self.current_model)
       self.current_model.x -= offset
-      self.current_model.y *= 0.8
+      #self.current_model.y *= 0.8
 
       self.PlotArrays(((order.x, order.y), (self.current_model.x, (self.current_model.y)*self.current_order.cont)), self.mainaxis, legend=False)
       plt.show()
 
       print "Done with order %i" %(i+start)
       self.orders[i+start] = self.current_order.copy()
-      self.orders[i+start].y *= self.blaze_functions[i+start](self.orders[i+start].x)
-      self.orders[i+start].err *= self.blaze_functions[i+start](self.orders[i+start].x)
 
       data = self.orders[i+start]
       columns = {"wavelength": data.x,
                  "flux": data.y,
                  "continuum": data.cont,
                  "error": data.err}
-      self.EditFitsFile(columns, self.outfilename, i+start)
+      self.EditFitsFile(columns, self.outfilename, i+start+1)
       
       #FitsUtils.OutputFitsFile(self.template, self.orders, errors=2)
 
 
   def keypress(self, event):
+    if event.key == "S":
+      #Smooth by convolving with a kernel
+      print "Smoothing with henning window"
+      self.mode = "convolution"
+      self.window_size = self.default_windowsize
+      self.smoothing_data = self.current_order.copy()
+      smoothed = self.ConvolveSmooth()
+      self.fitaxis.cla()
+      self.PlotArrays(((self.smoothing_data.x, self.smoothing_data.y/self.smoothing_data.cont, "Data"), (smoothed.x, smoothed.y, "Smoothed")), self.fitaxis)
     if event.key == "f":
       #Enter fit mode
+      self.mode = "spline"
       if self.fitmode:
         print "Deactivating fit mode"
         self.fitmode = False
@@ -120,24 +122,38 @@ class LineFitter:
         return
       else:
         print "Activating fit mode"
-        self.smoothing_factor = 5e-6
+        self.smoothing_factor = 1e-5
         self.fitmode = True
         self.clickid = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
         return
       
-    if self.fitmode and event.key == "-":
-      print "Decreasing smoothing factor: s = %g --> %g" %(self.smoothing_factor, self.smoothing_factor*1.1)
+    if ((self.fitmode and self.mode=="spline") or self.mode=="convolution") and event.key == "-":
+      
       #before = self.SmoothData()
-      self.smoothing_factor *= 1.1
-      smoothed = self.SmoothData()
+      print self.mode
+      if self.mode == "spline":
+        print "Decreasing smoothing factor: s = %g --> %g" %(self.smoothing_factor, self.smoothing_factor*1.1)
+        self.smoothing_factor *= 1.1
+        smoothed = self.SmoothData()
+      elif self.mode == "convolution":
+        print "Increasing window size: size = %i --> %i" %(self.window_size, self.window_size+5)
+        self.window_size += 5
+        smoothed = self.ConvolveSmooth()
       #print before.y - smoothed.y
       self.fitaxis.cla()
       self.PlotArrays(((self.smoothing_data.x, self.smoothing_data.y/self.smoothing_data.cont, "Data"), (smoothed.x, smoothed.y, "Smoothed")), self.fitaxis)
       
-    if self.fitmode and event.key == "+":
-      print "Increasing smoothing factor: s = %g --> %g" %(self.smoothing_factor, self.smoothing_factor*0.9)
-      self.smoothing_factor *= 0.9
-      smoothed = self.SmoothData()
+    if ((self.fitmode and self.mode=="spline") or self.mode=="convolution") and event.key == "+":
+      
+      print self.mode
+      if self.mode == "spline":
+        print "Increasing smoothing factor: s = %g --> %g" %(self.smoothing_factor, self.smoothing_factor*0.9)
+        self.smoothing_factor *= 0.9
+        smoothed = self.SmoothData()
+      elif self.mode == "convolution":
+        print "Decreasing window size: size = %i --> %i" %(self.window_size, self.window_size-5)
+        self.window_size -= 5
+        smoothed = self.ConvolveSmooth()
       self.fitaxis.cla()
       self.PlotArrays(((self.smoothing_data.x, self.smoothing_data.y/self.smoothing_data.cont, "Data"), (smoothed.x, smoothed.y, "Smoothed")), self.fitaxis)
 
@@ -153,9 +169,13 @@ class LineFitter:
           print "Woops! You entered something starting with s, but did not have the format s=0.001 (or some other number after the equals sign)"
           return
       
-    if self.fitmode and event.key == "q":
+    if ((self.fitmode and self.mode=="spline") or self.mode=="convolution") and event.key == "q":
       #Divide data by smoothed version
-      smoothed = self.SmoothData()
+      if self.mode == "spline":
+        smoothed = self.SmoothData()
+      elif self.mode == "convolution":
+        smoothed = self.ConvolveSmooth()
+        smoothed.y *= self.current_order.cont/self.current_order.cont.mean()
       self.smoothing_data.y /= smoothed.y
       left = numpy.searchsorted(self.current_order.x, self.smoothing_data.x[0])
       right = numpy.searchsorted(self.current_order.x, self.smoothing_data.x[-1])
@@ -227,6 +247,61 @@ class LineFitter:
         data.cont = numpy.delete(data.cont, badindices)
       
     return DataStructures.xypoint(x=self.smoothing_data.x, y=smoother(self.smoothing_data.x))
+    
+    
+  
+  def ConvolveSmooth_Hanning(self, numiters=10, lowreject=2, highreject=3):
+    done = False
+    data = self.smoothing_data.copy()
+    #data.y /= data.cont
+    iterations = 0
+    window = numpy.hanning(self.window_size)
+    
+    while not done and iterations < numiters:
+      iterations += 1
+      done = True
+      s = numpy.r_[data.y[self.window_size/2:0:-1], data.y, data.y[-1:-self.window_size/2:-1]]
+      y = numpy.convolve(window/window.sum(), s, mode='valid')
+      
+      reduced = data.y/y
+      sigma = numpy.std(reduced)
+      mean = numpy.mean(reduced)
+      badindices = numpy.where(numpy.logical_or((reduced - mean)/sigma < -lowreject, (reduced - mean)/sigma > highreject))[0]
+      if badindices.size > 0:
+        done = False
+        data.y[badindices] = y[badindices]
+    
+    return DataStructures.xypoint(x=self.smoothing_data.x, y=y/self.smoothing_data.cont)
+
+  
+    
+  
+  def ConvolveSmooth(self, numiters=10, lowreject=2, highreject=3):
+    done = False
+    data = self.smoothing_data.copy()
+    #data.y /= data.cont
+    iterations = 0
+    if self.window_size % 2 == 0:
+      self.window_size += 1
+    
+    while not done and iterations < numiters:
+      iterations += 1
+      done = True
+      y = FittingUtilities.savitzky_golay(data.y, self.window_size, 5)
+      #s = numpy.r_[data.y[self.window_size/2:0:-1], data.y, data.y[-1:-self.window_size/2:-1]]
+      #y = numpy.convolve(window/window.sum(), s, mode='valid')
+      
+      reduced = data.y/y
+      sigma = numpy.std(reduced)
+      mean = numpy.mean(reduced)
+      badindices = numpy.where(numpy.logical_or((reduced - mean)/sigma < -lowreject, (reduced - mean)/sigma > highreject))[0]
+      if badindices.size > 0:
+        done = False
+        data.y[badindices] = y[badindices]
+    
+    return DataStructures.xypoint(x=self.smoothing_data.x, y=y/self.smoothing_data.cont)
+        
+  
 
   def PlotArrays(self, arrays, axis, legend=True):
     axis.cla()
@@ -262,12 +337,9 @@ class LineFitter:
     column_dict is a dictionary where the key is the name of the column
        and the value is a numpy array with the data. Example of a column
        would be the wavelength or flux at each pixel
-    template is the filename of the template fits file. The header will
-       be taken from this file and used as the main header
-    mode determines how the outputted file is made. Append will just add
-       a fits extension to the existing file (and then save it as outfilename)
-       "new" mode will create a new fits file. 
-       header_info takes a list of lists. Each sub-list should have size 2 where the first element is the name of the new keyword, and the second element is the corresponding value. A 3rd element may be added as a comment
+    filename is the name of the file to edit
+    extension is the extension number
+    header_info takes a list of lists. Each sub-list should have size 2 where the first element is the name of the new keyword, and the second element is the corresponding value. A 3rd element may be added as a comment
   """
   def EditFitsFile(self, column_dict, filename, extension, header_info=[]):
     print "Editing extension number %i of file %s" %(extension, filename)
@@ -293,8 +365,9 @@ class LineFitter:
       hdulist[extension] = tablehdu
     else:
       hdulist.append(tablehdu)
-    hdulist.flush()
+    hdulist.flush(output_verify='fix')
     hdulist.close()
+    #hdulist.close(output_verify='ignore')
   
     return
 
@@ -303,23 +376,20 @@ class LineFitter:
 if __name__ == "__main__":
   #Parse command line arguments
   files = []
-  extensions=False
-  blazecorrect=True
-  telluric=True
+  telluric = False
+  windowsize = 200
   for arg in sys.argv[1:]:
-    if "-e" in arg:
-      extensions=True
-    elif "-b" in arg:
-      blazecorrect=False
-    elif "-t" in arg:
-      telluric=False
+    if "-t" in arg:
+      telluric=True
+    elif '-size' in arg:
+      windowsize = int(arg.split("=")[-1])
     else:
       files.append(arg)
 
   #Loop over files
   for fname in files:
     if "linux" in sys.platform:
-      fitter = LineFitter(fname, telluricfile="/home/kgullikson/School/Research/aerlbl_v12.2/rundir3/OutputModels/transmission-796.23-270.40-27.1-40.8-368.50-3.90-1.80-1.40", extensions=extensions, blazecorrect=blazecorrect, telluric=telluric)
+      fitter = LineFitter(fname, telluricfile="/home/kgullikson/School/Research/aerlbl_v12.2/rundir3/OutputModels/transmission-796.23-270.40-27.1-40.8-368.50-3.90-1.80-1.40", telluric=telluric, default_windowsize = windowsize)
     else:
-      fitter = LineFitter(fname, extensions=extensions, blazecorrect=blazecorrect, telluric=telluric)
+      fitter = LineFitter(fname, telluric=telluric, default_windowsize = windowsize)
     fitter.Plot()

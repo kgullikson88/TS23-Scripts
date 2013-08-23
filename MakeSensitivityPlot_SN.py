@@ -65,12 +65,6 @@ if __name__ == "__main__":
   else:
     infiles = [infilename,]
 
-  #Set up colors
-  #colors = []
-  #for i in range(10):
-  #  colors.append(palette(i*10))
-  #colorcycler = cycle(colors)
-
   #Set up dictionaries/lists
   s_spt = defaultdict(lambda: defaultdict(list))       #Secondary spectral type
   p_mass = defaultdict(lambda: defaultdict(list))      #Primary mass
@@ -78,7 +72,7 @@ if __name__ == "__main__":
   q = defaultdict(lambda: defaultdict(list))           #Mass ratio
   det_rate = defaultdict(lambda: defaultdict(list))    #Detection rate
   sig = defaultdict(lambda: defaultdict(list))         #Average detection significance
-  magdiff = defaultdict(lambda: defaultdict(list))
+  magdiff = defaultdict(lambda: defaultdict(list))     #Magnitude difference
   namedict = {"SecondarySpectralType": s_spt,
               "SecondaryMass": s_mass,
 	      "MassRatio": q,

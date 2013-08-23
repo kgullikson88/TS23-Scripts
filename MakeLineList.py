@@ -2,9 +2,10 @@ import numpy
 import matplotlib.pyplot as plt
 import FitsUtils
 import pyfits
-import Units
+from astropy import units
 import os
-
+import scipy.signal
+import DataStructures
 
 bclength = 1000  #Boxcar smoothing length
 
@@ -50,7 +51,8 @@ def main2():
   filename = os.environ["HOME"] + "/School/Research/Useful_Datafiles/Telluric_Visible.dat"
   print "Reading telluric model"
   x,trans = numpy.loadtxt(filename, unpack=True)
-  x = x[::-1]*Units.nm/Units.micron
+  x = x[::-1]
+  trans = trans[::-1]
 
   boxcar = numpy.ones(bclength)/float(bclength)
   smoothed = numpy.convolve(trans, boxcar, mode='same')
@@ -64,7 +66,7 @@ def main2():
 
   #linepoints = numpy.where(numpy.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, trans[bclength:-bclength] > 0.9*numpy.max(trans[bclength:-bclength])))[0] + bclength
   linepoints = numpy.where(residuals[bclength:-bclength] - residuals[bclength:-bclength].mean() < -std)[0] + bclength
-  linepoints = numpy.where(trans < 0.97)[0]
+  linepoints = numpy.where(trans < 0.98)[0]
 
   print "Finding lines"
   points = []
@@ -107,5 +109,38 @@ def main2():
   plt.show()
   numpy.savetxt("Linelist3.dat", lines, fmt="%.8f")
 
+
+"""
+  Function to find the spectral lines, given a model spectrum
+  spectrum:        An xypoint instance with the model
+  tol:             The line strength needed to count the line (0 is a strong line, 1 is weak)
+  linespacing:     The minimum spacing between two consecutive lines
+"""
+def FindLines(spectrum, tol=0.99, linespacing = 0.01, debug=False):
+  distance = 0.01
+  xspacing = float(max(spectrum.x) - min(spectrum.x))/float(spectrum.size())
+  N = int( linespacing / xspacing + 0.5)
+  lines = list(scipy.signal.argrelmin(spectrum.y, order=N)[0])
+  if debug:
+    plt.plot(spectrum.x, spectrum.y)
+  for i in range(len(lines)-1, -1, -1):
+    idx = lines[i]
+    xval = spectrum.x[idx]
+    yval = spectrum.y[idx]
+    if yval < tol:
+      plt.plot([xval, xval], [yval-0.01, yval-0.03], 'r-')
+    else:
+      lines.pop(i)
+  plt.show()
+  return numpy.array(lines)
+#numpy.savetxt("Linelist4.dat", lines, fmt="%.8f")
+
+
+
 if __name__ == "__main__":
-  main2()
+  filename = os.environ["HOME"] + "/School/Research/Useful_Datafiles/Telluric_Visible.dat"
+  filename = "tell.dat"
+  print "Reading telluric model"
+  x,trans = numpy.loadtxt(filename, unpack=True)
+  model = DataStructures.xypoint(x=x[::-1], y=trans[::-1])
+  FindLines(model, debug=True)

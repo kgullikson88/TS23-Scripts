@@ -36,6 +36,7 @@ if __name__ == "__main__":
   numorders = numorders[0]
   outfilename = "%s.fits" %(name.replace(" ", "_"))
   print "outputting to %s" %outfilename
+  column_list = []
   for i in range(numorders):
     total = all_data[0][i].copy()
     total.err = total.err**2
@@ -52,14 +53,10 @@ if __name__ == "__main__":
                "flux": total.y,
                "continuum": total.cont,
                "error": total.err}
-
-    if i == 0:
-      FitsUtils.OutputFitsFileExtensions(columns, fileList[0], outfilename, mode="new")
-    else:
-      FitsUtils.OutputFitsFileExtensions(columns, outfilename, outfilename, mode="append")
-    
+    column_list.append(columns)
     pylab.plot(total.x, total.y)
     pylab.plot(total.x, total.cont)
 
   pylab.show()
+  FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
     
