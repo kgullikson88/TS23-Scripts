@@ -45,9 +45,10 @@ def Correct(original, corrected, offset=None):
       model = DataStructures.xypoint(x=data.x, y=numpy.ones(data.x.size))
       print "Warning!!! Telluric Model not found for order %i" %i
 
-    #plt.plot(data.x, data.y/data.cont)
-    #plt.plot(model.x, model.y)
-    #plt.show()
+    plt.plot(data.x, data.y/data.cont, 'k-')
+    plt.plot(model.x, model.y, 'r-')
+    plt.plot(data.x, data.y/(data.cont*model.y) + 0.1, 'b-')
+    plt.show()
     if model.size() < data.size():
       left = numpy.searchsorted(data.x, model.x[0])
       right = numpy.searchsorted(data.x, model.x[-1])
@@ -58,7 +59,7 @@ def Correct(original, corrected, offset=None):
       sys.exit("Error! Model size (%i) is larger than data size (%i)" %(model.size(), data.size()))
 
     badindices = numpy.where(numpy.logical_or(data.y <= 0, model.y < 0.05))[0]
-    model.y[badindices] = data.y[badindices]
+    model.y[badindices] = data.y[badindices]/data.cont[badindices]
     
     data.y /= model.y
     original_orders[i] = data.copy()
@@ -80,6 +81,7 @@ def main1():
 
     column_list = []
     for i, data in enumerate(corrected_orders):
+      plt.figure(1)
       plt.plot(data.x, data.y/data.cont)
       #Set up data structures for OutputFitsFile
       columns = {"wavelength": data.x,

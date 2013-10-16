@@ -14,10 +14,12 @@ import os
 import subprocess
 from astropy.io import fits as pyfits
 import FittingUtilities
+import DataStructures
+from astropy import units
 
 
 class LineFitter:
-  def __init__(self, infilename, telluricfile = "/Users/kgulliks/School/Research/aerlbl_v12.2/rundir2/OutputModels/transmission-792.30-290.93-45.0-7.4-368.50-4.00-10.00-1.50", telluric=False, default_windowsize=200):
+  def __init__(self, infilename, telluricfile = "/Users/kgulliks/School/Research/aerlbl_v12.2/rundir2/OutputModels/transmission-792.30-290.93-45.0-7.4-368.50-4.00-10.00-1.50", telluric=False, default_windowsize=100):
 
     
     print "Reading data"
@@ -72,7 +74,14 @@ class LineFitter:
       order.y[badindices] = order.cont[badindices]
       badindices = numpy.where(numpy.abs(order.y[-length:]-median)/std > 5)[0]
       order.y[-length+badindices] = order.cont[-length+badindices]
+
+      
+      #Remove low frequency components
       self.current_order = order.copy()
+      if numpy.min(order.y/order.cont) > 0.15:
+        x,y = FittingUtilities.IterativeLowPass(order.copy(), 250*units.km.to(units.cm), linearize=True, lowreject=2.0, highreject=10)
+        smoothed = UnivariateSpline(x,y, s=0)
+        self.current_order.y *= self.current_order.cont / smoothed(self.current_order.x)
       
       left = numpy.searchsorted(self.model.x, order.x[0]-10.0)
       right = numpy.searchsorted(self.model.x, order.x[-1]+10.0)
@@ -80,12 +89,8 @@ class LineFitter:
       current_model = MakeModel.ReduceResolution(current_model, 60000)
       self.current_model = MakeModel.RebinData(current_model, order.x)
 
-      
-      offset = self.CCImprove(self.current_order, self.current_model)
-      self.current_model.x -= offset
-      #self.current_model.y *= 0.8
 
-      self.PlotArrays(((order.x, order.y), (self.current_model.x, (self.current_model.y)*self.current_order.cont)), self.mainaxis, legend=False)
+      self.PlotArrays(((self.current_order.x, self.current_order.y), (self.current_model.x, (self.current_model.y)*self.current_order.cont)), self.mainaxis, legend=False)
       plt.show()
 
       print "Done with order %i" %(i+start)
@@ -98,8 +103,7 @@ class LineFitter:
                  "error": data.err}
       self.EditFitsFile(columns, self.outfilename, i+start+1)
       
-      #FitsUtils.OutputFitsFile(self.template, self.orders, errors=2)
-
+      
 
   def keypress(self, event):
     if event.key == "S":
@@ -279,6 +283,7 @@ class LineFitter:
   def ConvolveSmooth(self, numiters=10, lowreject=2, highreject=3):
     done = False
     data = self.smoothing_data.copy()
+    data = FittingUtilities.Denoise3(data)
     #data.y /= data.cont
     iterations = 0
     if self.window_size % 2 == 0:
@@ -361,6 +366,8 @@ class LineFitter:
   
     #Open file and update the appropriate extension
     hdulist = pyfits.open(filename, mode='update', save_backup=True)
+    print hdulist[0]
+    print hdulist[1]
     if extension < len(hdulist):
       hdulist[extension] = tablehdu
     else:
@@ -377,7 +384,7 @@ if __name__ == "__main__":
   #Parse command line arguments
   files = []
   telluric = False
-  windowsize = 200
+  windowsize = 100
   for arg in sys.argv[1:]:
     if "-t" in arg:
       telluric=True
