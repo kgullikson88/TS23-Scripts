@@ -4,7 +4,7 @@ import pylab
 from FitTellurics import FitFunction, FitContinuum3, CCImprove
 import MakeModel
 import FitsUtils
-import pyfits
+from astropy.io import fits as pyfits
 import Units
 import sys
 import os

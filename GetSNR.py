@@ -3,7 +3,7 @@ import FindContinuum
 import sys
 import os
 import pylab
-import pyfits
+from astropy.io import fits as pyfits
 import numpy
 
 goodregions = [[670.13, 670.73],

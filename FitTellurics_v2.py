@@ -7,7 +7,7 @@
 
 
 import pylab
-import pyfits
+from astropy.io import fits as pyfits
 import numpy
 import sys
 import os

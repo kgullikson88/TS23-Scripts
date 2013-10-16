@@ -1,5 +1,5 @@
 import numpy
-import pyfits
+from astropy.io import fits as pyfits
 import FitsUtils
 import sys
 import os
