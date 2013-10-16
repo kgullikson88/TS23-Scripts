@@ -96,7 +96,7 @@ if __name__ == "__main__":
                         "temperature": temperature,
                         "pressure": pressure,
                         "resolution": resolution})
-    fitter.SetBounds({"h2o": [1.0, 99.0],
+    fitter.SetBounds({"h2o": [1.0, 99.9],
                       "o2": [5e4, 1e6],
                       "resolution": [resolution/2.0, resolution*2.0]})
     models = []
