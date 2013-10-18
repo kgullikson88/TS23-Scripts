@@ -1,99 +1,93 @@
-import numpy
-from astropy.io import fits as pyfits
 import FitsUtils
-import sys
-import os
-from scipy.interpolate import InterpolatedUnivariateSpline as interp
-import FitTellurics_McDonald
-import matplotlib.pyplot as plt
-import FindContinuum
 import DataStructures
+import FindContinuum
+import sys
+from scipy.interpolate import InterpolatedUnivariateSpline as interp
+import numpy
+import pylab
+from astropy.io import fits as pyfits
+from collections import defaultdict
+import os
 
 
-def ReadCorrectedFile(fname):
-  orders = []
-  headers = []
-  hdulist = pyfits.open(fname)
-  numorders = len(hdulist)
-  for i in range(1, numorders):
-    order = hdulist[i].data
-    xypt = DataStructures.xypoint(x=order.field("wavelength"),
-                                  y=order.field("flux"),
-                                  cont=order.field("continuum"),
-                                  err = order.field("error"))
+def Add(fileList, outfilename=None):
+  all_data = []
+  numorders = []
+  for fname in fileList:
+    observation = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    all_data.append(observation)
+    numorders.append(len(observation))
 
-    orders.append(xypt)
-    headers.append(hdulist[i].header)
-  return orders, headers
+  if any(n != numorders[0] for n in numorders):
+    print "Error! Some of the files had different numbers of orders!"
+    for i in range(len(fileList)):
+      print fileList[i], numorders[i]
+    sys.exit()
+
+  #If we get this far, all is well. Add each order indidually
+  numorders = numorders[0]
+  if outfilename == "None":
+    outfilename = "Total.fits"
+  column_list = []
+  for i in range(numorders):
+    total = all_data[0][i].copy()
+    total.y[total.y < 0.0] = 0.0
+    total.err = total.err**2
+    for observation in all_data[1:]:
+      observation[i].y[observation[i].y < 0.0] = 0.0
+      flux = interp(observation[i].x, observation[i].y)
+      error = interp(observation[i].x, observation[i].err**2, k=1)
+      total.y += flux(total.x)
+      total.err += error(total.x)
+    total.err = numpy.sqrt(total.err)
+    total.cont = FindContinuum.Continuum(total.x, total.y, fitorder=3, lowreject=1.5, highreject=5)
+
+     #Set up data structures for OutputFitsFile
+    columns = {"wavelength": total.x,
+               "flux": total.y,
+               "continuum": total.cont,
+               "error": total.err}
+    column_list.append(columns)
+
+    pylab.plot(total.x, total.y/total.cont)
+    #pylab.plot(total.x, total.cont)
+
+  print "Outputting to %s" %outfilename
+  pylab.show()
+  FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
+  
+  #Add the files used to the primary header of the new file
+  hdulist = pyfits.open(outfilename, mode='update')
+  header = hdulist[0].header
+  for i in range(len(fileList)):
+    header.set("FILE%i" %(i+1), fileList[i], "File %i used in Co-Adding" %(i+1))
+  hdulist[0].header = header
+  hdulist.flush()
+  hdulist.close()
 
 
-def CoAdd(files):
-  orders, headers = ReadCorrectedFile(files[0])
-  orders = FitsUtils.MakeXYpoints(files[0], errors=2)
-  for i, order in enumerate(orders):
-    orders[i].err = order.err**2
 
-  fnum = 1
-  for fname in files[1:]:
-    orders2, headers2 = ReadCorrectedFile(fname)
-    orders2 = FitsUtils.MakeXYpoints(fname, errors=2)
-    for i, order in enumerate(orders2):
-      fcn = interp(order.x, order.y)
-      errfcn = interp(order.x, order.err**2)
-      orders[i].y += fcn(orders[i].x)
-      orders[i].err += errfcn(orders[i].x)
-    fnum += 1
-
-  for i, order in enumerate(orders):
-    orders[i].err = numpy.sqrt(order.err)
-  return orders
 
 if __name__ == "__main__":
-  fileList = sys.argv[1:]
   fileList = []
   for arg in sys.argv[1:]:
-    if "name" in arg:
-      starname = arg.split("=")[-1]
-      allfiles = [fname for fname in os.listdir("./") if fname.endswith(".fits") and fname.startswith("KG")]
-      for fname in allfiles:
-        header = pyfits.getheader(fname)
-        object_name = header["OBJECT"]
-        if object_name == starname:
-          print "Adding file %s to list" %fname
-          fileList.append(fname)
-    else:
-      fileList.append(arg)
-  orders = CoAdd(fileList)
-  print "There are %i orders" %len(orders)
+    fileList.append(arg)
 
-  #Find and read in blaze function (MUST BE IN CURRENT DIRECTORY!)
-  files = os.listdir("./")
-  blazefile = [fname for fname in files if fname.startswith("BLAZE")][0]
-  blaze_orders = FitsUtils.MakeXYpoints(blazefile, errors=2)
-  blaze_functions = []
-  for order in blaze_orders:
-    blaze_functions.append( interp(order.x, order.y) )
-
-  for i, order in enumerate(orders):
-    orders[i].y /= blaze_functions[i](order.x)
-    orders[i].cont = FindContinuum.Continuum(orders[i].x, orders[i].y, lowreject=2, highreject=5)
-    plt.plot(orders[i].x, orders[i].y/orders[i].cont)
-  plt.show()
-
-  #Get the name of the star 
-  header = pyfits.getheader(fileList[0])
-  object_name = header["OBJECT"]
-  outfilename = "%s.fits" %(object_name.replace(" ", "_") )
-  print "Outputting co-added data to %s" %outfilename
-
-  for i, data in enumerate(orders):
-    print "Outputting order %i of %i" %(i, len(orders))
-    #Set up data structures for OutputFitsFile
-    columns = {"wavelength": data.x,
-               "flux": data.y,
-               "continuum": data.cont,
-               "error": data.err}
-    if i == 0:
-      FitTellurics_McDonald.OutputFitsFile(columns, fileList[0], outfilename, mode='new')
-    else:
-      FitTellurics_McDonald.OutputFitsFile(columns, outfilename, outfilename)
+  if len(fileList) > 1:
+    Add(fileList)
+  else:
+    allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-" in f]
+    fileDict = defaultdict(list)
+    for fname in allfiles:
+      header = pyfits.getheader(fname)
+      if header["IMAGETYP"].strip() != 'object':
+        print "%s has image type of %s. Skipping" %(fname, header["IMAGETYP"])
+        continue
+      starname = header['OBJECT'].replace(" ", "_")
+      if "Solar" in starname:
+        print "Not outputting Solar Port spectrum in %s" %fname
+        continue
+      fileDict[starname].append(fname)
+    for star in fileDict.keys():
+      Add(fileDict[star], outfilename="%s.fits" %star)
+    

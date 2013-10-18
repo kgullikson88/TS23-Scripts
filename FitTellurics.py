@@ -120,9 +120,6 @@ if __name__ == "__main__":
       fitter.ImportData(order)
 
       #Determine how to fit the data from the initial model guess
-      #fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
-      #model = fitter.GenerateModel(fitpars, LineList)
-      #fitter.ImportData(order) #Re-initialize to original data before fitting
       left = numpy.searchsorted(test_model.x, order.x[0])
       right = numpy.searchsorted(test_model.x, order.x[-1])
       

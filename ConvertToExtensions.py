@@ -4,15 +4,16 @@ from astropy.io import fits as pyfits
 import sys
 import os
 import numpy
-import pylab
+import matplotlib.pyplot as plt
+import HelperFunctions
 
 
 if __name__ == "__main__":
   fileList = []
-  blazecorrect = False
+  blazecorrect = True
   for arg in sys.argv[1:]:
-    if "blaze" in arg:
-      blazecorrect = True
+    if "noblaze" in arg:
+      blazecorrect = False
     else:
       fileList.append(arg)
   for fname in fileList:
@@ -41,9 +42,11 @@ if __name__ == "__main__":
         print "Error! blaze file %s does not exist!" %blazefile
         print "Not converting file %s" %fname
         continue
+    column_list = []
     for i, order in enumerate(orders):
+      
       #Don't use the stuff near the picket fence
-      if i >= 14 and i <=17:
+      if (i >= 16 and i <=18) or i >=58:
         continue
       
 
@@ -52,16 +55,12 @@ if __name__ == "__main__":
         order.y /= blaze[i].y
         order.err /= blaze[i].y
 
-      order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=4)
+      order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=5)
       columns = columns = {"wavelength": order.x,
                            "flux": order.y,
                            "continuum": order.cont,
                            "error": order.err}
-
-      
-      if i == 0:
-        FitsUtils.OutputFitsFileExtensions(columns, fname, outfilename, mode="new")
-      else:
-        FitsUtils.OutputFitsFileExtensions(columns, outfilename, outfilename, mode="append")
+      column_list.append(columns)
+    HelperFunctions.OutputFitsFileExtensions(column_list, fname, outfilename, mode="new")
       
       

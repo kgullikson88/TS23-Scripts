@@ -65,15 +65,8 @@ class LineFitter:
       self.mainaxis = plt.subplot(plotgrid[0])
       self.fitaxis = plt.subplot(plotgrid[1])
       cid = self.fig.canvas.mpl_connect('key_press_event', self.keypress)
-
-      #Look for any bad spikes near the beginning or end of the order
-      median = numpy.mean(order.y)
-      std = numpy.std(order.y)
-      length = 30
-      badindices = numpy.where(numpy.abs(order.y[:length]-median)/std > 5)[0]
-      order.y[badindices] = order.cont[badindices]
-      badindices = numpy.where(numpy.abs(order.y[-length:]-median)/std > 5)[0]
-      order.y[-length+badindices] = order.cont[-length+badindices]
+      
+      #Remove low frequency components
 
       
       #Remove low frequency components
@@ -365,7 +358,7 @@ class LineFitter:
         header.update(info[0], info[1])
   
     #Open file and update the appropriate extension
-    hdulist = pyfits.open(filename, mode='update', save_backup=True)
+    hdulist = pyfits.open(filename, mode='update', save_backup=False)
     print hdulist[0]
     print hdulist[1]
     if extension < len(hdulist):

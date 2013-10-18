@@ -1,4 +1,5 @@
-from astropy.io import fits as pyfits
+#from astropy.io import fits as pyfits
+import pyfits
 import numpy
 from numpy.polynomial import chebyshev
 import DataStructures
