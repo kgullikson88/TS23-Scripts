@@ -45,10 +45,10 @@ def Correct(original, corrected, offset=None):
       model = DataStructures.xypoint(x=data.x, y=numpy.ones(data.x.size))
       print "Warning!!! Telluric Model not found for order %i" %i
 
-    plt.plot(data.x, data.y/data.cont, 'k-')
-    plt.plot(model.x, model.y, 'r-')
-    plt.plot(data.x, data.y/(data.cont*model.y) + 0.1, 'b-')
-    plt.show()
+    #plt.plot(data.x, data.y/data.cont, 'k-')
+    #plt.plot(model.x, model.y, 'r-')
+    #plt.plot(data.x, data.y/(data.cont*model.y) + 0.1, 'b-')
+    #plt.show()
     if model.size() < data.size():
       left = numpy.searchsorted(data.x, model.x[0])
       right = numpy.searchsorted(data.x, model.x[-1])
@@ -95,14 +95,14 @@ def main1():
 
   else:
     allfiles = os.listdir("./")
-    corrected_files = [f for f in allfiles if "Corrected_" in f and f.endswith(".fits")]
+    corrected_files = [f for f in allfiles if "Corrected_" in f and f.endswith("-0.fits")]
     #original_files = [f for f in allfiles if any(f in cf for cf in corrected_files)]
-    hip_files = [f for f in allfiles if "HIP_" in f and f.endswith("-0.fits")]
+    hip_files = [f for f in allfiles if (f.startswith("HIP_") or f.startswith("HR_")) and not f.endswith("-0.fits")]
 
     for hip in hip_files:
-      if any([hip.replace("-0", "-1") in f for f in corrected_files]):
+      if any(["%s-0.fits" %(hip.split(".fits")[0]) in f for f in corrected_files]):
         original = hip
-        corrected = "Corrected_%s" %(hip.replace("-0", "-1"))
+        corrected = "Corrected_%s-0.fits" %(hip.split(".fits")[0])
         print corrected, original
       
         outfilename = "%s_telluric_corrected.fits" %(original.split(".fits")[0])

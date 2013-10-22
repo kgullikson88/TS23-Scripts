@@ -7,6 +7,19 @@ import numpy
 import matplotlib.pyplot as plt
 import HelperFunctions
 
+left_trim = 0
+right_trim = 50
+bad_regions = {12: [438, 9e9],
+               13: [442.5, 9e9],
+               14: [447.5, 9e9],
+               15: [455, 9e9],
+               16: [1,9e9],
+               17: [1,9e9],
+               18: [1,9e9],
+               58: [1,9e9],
+               59: [1,9e9]
+               }
+
 
 if __name__ == "__main__":
   fileList = []
@@ -45,8 +58,28 @@ if __name__ == "__main__":
     column_list = []
     for i, order in enumerate(orders):
       
-      #Don't use the stuff near the picket fence
-      if (i >= 16 and i <=18) or i >=58:
+      left, right = left_trim, order.size()-right_trim
+      if i in bad_regions.keys():
+        region = bad_regions[i]
+        left = numpy.searchsorted(order.x, region[0])
+        right = numpy.searchsorted(order.x, region[1])
+        if left == 0 or right == order.size():
+          order.x = numpy.delete(order.x, numpy.arange(left, right))
+          order.y = numpy.delete(order.y, numpy.arange(left, right))
+          order.cont = numpy.delete(order.cont, numpy.arange(left, right))
+          order.err = numpy.delete(order.err, numpy.arange(left, right))
+          if blazecorrect:
+            blaze[i].y = numpy.delete(blaze[i].y, numpy.arange(left, right))
+        else:
+          print "Warning! Bad region covers the middle of order %i" %i
+          print "Interpolating rather than removing"
+          order.y[left:right] = order.cont[left:right]
+          order.err[left:right] = 9e9
+      else:
+        order = order[left:right]
+        if blazecorrect:
+          blaze[i].y = blaze[i].y[left:right]
+      if order.size() < 10:
         continue
       
 
@@ -54,6 +87,10 @@ if __name__ == "__main__":
       if blazecorrect:
         order.y /= blaze[i].y
         order.err /= blaze[i].y
+      
+      #plt.plot(order.x, order.y)
+      #plt.title("Order %i" %i)
+      #plt.show()
 
       order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=5)
       columns = columns = {"wavelength": order.x,
