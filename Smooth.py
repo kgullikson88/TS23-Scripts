@@ -10,7 +10,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import MakeModel
 import HelperFunctions
 
-plot = True
+plot = False
 
 def SmoothData(order, windowsize=91, smoothorder=5, lowreject=3, highreject=3, numiters=10):
   denoised = FittingUtilities.Denoise3(order.copy())

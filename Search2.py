@@ -249,9 +249,19 @@ if __name__ == "__main__":
     plt.show()
     sys.exit()
     """
+    
+    output_dir = "Cross_correlations/"
+    outfilebase = fname.split(".fits")[0]
+    if "/" in fname:
+      dirs = fname.split("/")
+      output_dir = ""
+      outfilebase = dirs[-1].split(".fits")[0]
+      for directory in dirs[:-1]:
+        output_dir = output_dir + directory + "/"
+      output_dir = output_dir + "Cross_correlations/"
         
     #Do the cross-correlation
     for vsini in [10, 20, 30, 40]:
-      Correlate.PyCorr2(orders, resolution=60000, outdir="Cross_correlations/%s" %(fname.split(".fits")[0]), models=model_data, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*units.km.to(units.cm), debug=True, outfilebase=fname)
+      Correlate.PyCorr2(orders, resolution=60000, outdir="Cross_correlations/", models=model_data, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*units.km.to(units.cm), debug=True, outfilebase=fname)
 
 
