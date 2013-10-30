@@ -1,378 +1,311 @@
-#!/opt/local/bin/python
+#import Correlate
+import FitsUtils
 import numpy
+from scipy.interpolate import InterpolatedUnivariateSpline as interp
+import scipy.signal
 import os
 import sys
-import pylab
-from scipy.interpolate import UnivariateSpline
-import SpectralTypeRelations
-from collections import defaultdict
-from PlotBlackbodies import Planck
-import Units
 import DataStructures
-import Correlate
+#import FindContinuum
+import matplotlib.pyplot as plt
+from astropy.io import fits as pyfits
+from astropy import units, constants
+import StarData
+import SpectralTypeRelations
+from PlotBlackbodies import Planck
+import RotBroad_Fast as RotBroad
+import FittingUtilities
 import MakeModel
-import RotBroad
-import FindContinuum
-import time
-
-"""
-   This function performs a sensitivity analysis on reduced spectra
-   You MUST give the name of the input .fits file as the FIRST command line argument
-   After that, you can give optional command line arguments that specify ranges of spectral types
-      for both the primary and secondary stars.
-   You can also give an argument for what the logfile should be named with the -logfile argument
-   The chip sensitivity can be specified with a filename given after the 'sensitivity' argument
-
-   Example: To do a sensitivity analysis on file 'foo.fits', for primary spectral types from B4-A5, and
-            secondary spectral types from G0-K5, and to save logfile as foo.bar, you type the following:
-            python SensitivityAnalysis.py foo.fits -primary=B4-A5 -secondary=G0-K5 -logfile=foo.bar
-
-   
-"""
+import Smooth
+import HelperFunctions
+import Correlate
 
 
-
-homedir = os.environ['HOME'] + "/"
-outfiledir = os.getcwd() + "/Sensitivity/"
-
+#Ensure a directory exists. Create it if not
 def ensure_dir(f):
     d = os.path.dirname(f)
     if not os.path.exists(d):
         os.makedirs(d)
         
-ensure_dir(outfiledir)
 
+homedir = os.environ["HOME"]
+modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
 
-#Define the sections of each order to use (those without telluric contamination)
-good_sections = {1: [[-1,-1],],
-                 2: [[-1,-1],],
-		 3: [[-1,-1],],
-		 4: [[-1,-1],],
-		 5: [[-1,-1],],
-		 6: [[-1,-1],],
-		 7: [[-1,-1],],
-		 8: [[-1,-1],],
-		 9: [[-1,-1],],
-		 10: [[-1,-1],],
-		 11: [[-1,-1],],
-		 12: [[-1,-1],],
-		 13: [[-1,-1],],
-		 14: [[-1,-1],],
-		 15: [[-1,-1],],
-		 16: [[-1,-1],],
-		 17: [[-1,-1],],
-		 18: [[-1,-1],],
-		 19: [[-1,686.7],],
-		 20: [[-1, 1e9],],
-		 21: [[661.4, 667.3],],
-		 22: [[-1,-1],],
-		 23: [[-1, 1e9]],
-		 24: [[-1, 627.6],],
-		 25: [[-1, 1e9],],
-		 26: [[-1, 1e9],],
-		 27: [[-1,-1],],
-		 28: [[-1, -1],],
-		 29: [[-1, 1e9],],
-		 30: [[-1, 567.6],],
-		 31: [[-1, 1e9],],
-		 32: [[-1, 1e9],],
-		 33: [[-1, 1e9],],
-		 34: [[-1, 1e9],],
-		 35: [[-1, 1e9],],
-		 36: [[-1, 1e9],],
-		 37: [[-1, 1e9],],
-		 38: [[-1, 501.1],],
-		 39: [[-1, 491.6], [492.8, 1e9]],
-		 40: [[-1, 1e9],],
-		 41: [[-1, 1e9],],
-		 42: [[-1, -1],],
-		 43: [[-1, -1],],
-		 44: [[-1, -1],],
-		 45: [[-1, 1e9],],
-		 46: [[-1, 1e9],],
-		 47: [[-1, 1e9],],
-		 48: [[-1, 1e9],],
-		 49: [[-1, 1e9],],
-		 50: [[-1, 1e9],],
-		 51: [[-1, 1e9],],
-                 52: [[-1,-1],],
-		 43: [[-1,-1],] }
+#Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
+badregions = [[567.5, 575.5],
+              [588.5, 598.5],
+              [627, 632],
+              [647,655],
+              [686, 706],
+              [716, 734],
+              [759, 9e9]]
 
-#Define regions contaminated by telluric residuals or the picket fence. We will not use those regions in the cross-correlation
-badregions = [[0,389],
-              [454,483],
-              [626,632],
-              [685,696],
-              [715,732]]
-
-
-
-
-def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19, sensitivity=lambda x: 1.0, vsini=15.0*Units.cm/Units.km):
-  """
-    This function will add a model to the data. The flux ratio is determined
-    from the primary spectral type (prim_spt), the secondary spectral type
-    (sec_spt), and the age of the system.
-    The age keyword argument can be either a string, in which case the main sequence
-           spectral-type - radius relations are used, or a number in which case the
-	   radii of the two stars are determined from evolutionary tracks (NOT YET IMPLEMENTED)
-    The 'vel' keyword gives a radial velocity at which the model should be added (MUST be given in cm/s)
-    The SNR keyword gives the desired signal to noise of the spectrum, in order SN_order. Note
-           that it is only possible to create a spectrum with signal to noise LOWER than that
-	   in the data. SN_order should be given in fortran-style numbering (starting at 1, not 0)
-  """
-  if type(age) == str:
-    #Main sequence stars!
-    MS = SpectralTypeRelations.MainSequence()
-    prim_radius = MS.Interpolate(MS.Radius, prim_spt)
-    prim_temp = MS.Interpolate(MS.Temperature, prim_spt)
-    sec_radius = MS.Interpolate(MS.Radius, sec_spt)
-    sec_temp = MS.Interpolate(MS.Temperature, sec_spt)
-  else:
-    sys.exit("Sorry! Can only handle Main Sequence stars right now!")
+#Set up model list
+model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte37-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte42-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte44-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte46-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte48-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte50-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte51-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte52-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte53-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte54-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte55-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte56-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte57-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte58-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte59-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte60-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
+""",
+               modeldir + "lte61-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte62-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte63-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte64-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte65-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte66-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte67-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte68-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte69-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte69-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte70-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte70-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte72-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte74-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte74-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
+   
+               
+star_list = []
+temp_list = []
+gravity_list = []
+metal_list = []
+model_data = []
+for fname in model_list:
+  if "PHOENIX2004" in fname:
+    temp = int(fname.split("lte")[-1][:2])*100
+    gravity = float(fname.split("lte")[-1][3:6])
+    metallicity = float(fname.split("lte")[-1][6:10])
+  elif "PHOENIX-ACES" in fname:
+    temp = int(fname.split("lte")[-1][:2])*100
+    gravity = float(fname.split("lte")[-1][3:7])
+    metallicity = float(fname.split("lte")[-1][7:11])
+  print "Reading in file %s" %fname
+  x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
+  model_data.append( DataStructures.xypoint(x=x*units.angstrom.to(units.nm)/1.00026, y=10**y) )
+  star_list.append(str(temp))
+  temp_list.append(temp)
+  gravity_list.append(gravity)
+  metal_list.append(metallicity)
 
   
-  #Interpolate Model, and note the endpoints
-  first = model.x[0]*(1.+vel/Units.c)
-  last = model.x[-1]*(1.+vel/Units.c)
-  a = []
-  for i in range(1, model.x.size):
-    a.append(model.x[i] - model.x[i-1])
-  print min(a)
-  model_fcn = UnivariateSpline(model.x, model.y, s=0)
-
-  data2 = []
-  for order in data:
-    data2.append(order.copy())
-
-  #Figure out how to add noise to the spectrum to get the desired S/N
-  flux = Planck(data2[SN_order-1].x*Units.cm/Units.nm, prim_temp).mean()
-  SN_factor = SNR/numpy.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
-
-  ##############################################################
-  #Begin main loop over the orders
-  for i in range(len(data2)):
-    order = data2[i]
-    data2[i].cont = FindContinuum.Continuum(data2[i].x, data2[i].y, lowreject=2, highreject=5)
-    order.cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=5)
-    prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
-    sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
-    fluxratio = sec_flux/prim_flux
-    print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
-
-    model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
-    
-    #Get model continuum in this section
-    model2.cont = FindContinuum.Continuum(model2.x, model2.y)
-
-    #Rotationally broaden
-    #model2 = RotBroad.Broaden(model2, vsini)
-    
-    #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
-
-    #Scale the model by the above scale factor and normalize
-    scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
-
-    #pylab.plot(data2[i].x, data2[i].y/data2[i].cont, 'k-')
-    #pylab.plot(model2.x, scaled_model, 'r-')
-    
-
-    #Add noise to the data
-    noise = numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
-    data2[i].y += noise
-
-
-    #Add model to the data
-    data2[i].y = (scaled_model)*order.cont + order.y
-    data2[i].cont = FindContinuum.Continuum(data2[i].x, data2[i].y, lowreject=2, highreject=5)
-
-    #pylab.plot(data2[i].x, data2[i].y - 0.02, 'b-')
-
-  #pylab.xlabel("Wavelength (nm)")
-  #pylab.ylabel("Normalized Flux")
-  #pylab.ylim((0.97, 1.01))
-  #pylab.xlim((510, 570))
-  #pylab.show()
-  #sys.exit()
-  return data2
-
 
 if __name__ == "__main__":
-  import FitsUtils
-  import os
-  import sys
-  home = os.environ["HOME"]
-  try:
-    datafile = sys.argv[1]
-    print "Using ", datafile, "as template"
-  except IndexError:
-    print "Error! Must give .fits file!"
-    sys.exit()
-  tolerance = 5    #allow highest cross-correlation peak to be anywhere within 5 km/s of the correct velocity
-  MS = SpectralTypeRelations.MainSequence()  #Class for interpolating stellar info from the spectral type
+  #Parse command line arguments:
+  fileList = []
+  extensions=True
+  tellurics=False
+  trimsize = 1
+  windowsize = 101
+  vsini = 20.0*units.km.to(units.cm)
+  MS = SpectralTypeRelations.MainSequence()
+  vel_list = range(-400, 400, 50)
+  outdir = "Sensitivity/"
+  for arg in sys.argv[1:]:
+    if "-e" in arg:
+      extensions=False
+    if "-t" in arg:
+      tellurics=True  #telluric lines modeled but not removed
+    else:
+      fileList.append(arg)
 
-  #Make some lists that we will loop through in the analysis
-  parent_spts = ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9",
-                 "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
-  sec_spts = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
-              "G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9",
-              "K0", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
-              "M0", "M1", "M2", "M3", "M4", "M5"]
-  velocitylist = [-400,-440,-360,-300,-250,-210,-140,-90-30,0,50,110,140,200,260,310,350,390]
-  SNRlist = [100,200,400,600,800,1000]
-  SNRlist = [1000,]
-  modeldir = homedir + "School/Research/Models/Sorted/Stellar/Vband/"
-  files = os.listdir(modeldir)
-  modelfiles = defaultdict(list)
-  for fname in files:
-    temperature = float(fname.split("lte")[-1][:2])*100
-    modelfiles[temperature].append(modeldir+fname)
-
-  #Read in data
-  orders_original = tuple(FitsUtils.MakeXYpoints(datafile, extensions=True, x="wavelength", y="flux", errors="error"))
-  orders_original = orders_original[::-1]
-
-  #Check for command line arguments specifying spectral type endpoints or the logfile name
-  logfilename = outfiledir + "summary.dat"
-  sensitivity_fcn = lambda x: 1.0
-  p_left = 0
-  p_right = len(parent_spts)
-  s_left = 0
-  s_right = len(sec_spts)
-  if len(sys.argv) > 2:
-    for arg in sys.argv[2:]:
-      if "primary" in arg:
-	first = arg.split("=")[-1].split("-")[0]
-	last = arg.split("=")[-1].split("-")[1]
-	for i in range(len(parent_spts)):
-	  spt = parent_spts[i]
-	  if spt == first:
-	    p_left = i
-	  if spt == last:
-	    p_right = i+1
-	#if p_right < len(p_spt)-1:
-	#  p_right += 1
-      elif "secondary" in arg:
-        first = arg.split("=")[-1].split("-")[0]
-	last = arg.split("=")[-1].split("-")[1]
-	for i in range(len(sec_spts)):
-	  spt = sec_spts[i]
-	  if spt == first:
-	    s_left = i
-	  if spt == last:
-	    s_right = i+1
-      elif "log" in arg:
-	logfilename = outfiledir + arg.split("=")[-1]
-      elif "sensitivity" in arg:
-	x,y = numpy.loadtxt(arg.split("=")[-1], unpack=True)
-	x = x[::-1]
-	y = y[::-1]
-	sensitivity_fcn = UnivariateSpline(x,y,s=0)
-
-  if p_left > p_right:
-    temp = p_left
-    p_left = p_right-1
-    p_right = temp+1
-  if s_left > s_right:
-    temp = s_left
-    s_left = s_right-1
-    s_right = temp+1
-
-  print "Outputting summary to ", logfilename
-  logfile = open(logfilename, "w")
-  logfile.write("Parent SpT\tS/N Ratio\tSecondary SpT\tParent Mass\tSecondary Mass\tMass Ratio\tPercent Detected\tAverage Significance\n")
-
-  #Figure out the good regions as everything other than the bad regions (instead of the hardcoded version on top!)
-  good_regions = {}
-  for i, order in enumerate(orders_original):
-    left = -1
-    right = -1
-    region_list = []
-    for region in badregions:
-      if order.x[0] < region[0] and order.x[-1] > region[0]:
-	region_list.append([-1, region[0]])
-      if order.x[0] < region[1] and order.x[-1] > region[1]:
-	region_list.append([region[1], 9e9])
-      if order.x[0] > region[0] and order.x[-1] < region[1]:
-	region_list = [[-1,-1],]
-    if len(region_list) == 0:
-      region_list.append([order.x[0], order.x[-1]])
-      
-    good_regions[i+1] = region_list
-
-  ############################################
-  #Start looping!
-  ############################################
-  for s_spt in sec_spts[s_left:s_right]:
-   #Figure out what the best model is from the secondary spectral type
-   s_mass = MS.Interpolate(MS.Mass, s_spt)
-   radius = MS.Interpolate(MS.Radius, s_spt)
-   temperature = MS.Interpolate(MS.Temperature, s_spt)
-   logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
-   best_key = modelfiles.keys()[0]
-   for key in modelfiles.keys():
-     if numpy.abs(temperature - key) < numpy.abs(temperature - best_key):
-       best_key = key
-   best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
-   modelfile = modelfiles[best_key][0]
-
-   #Read in model
-   x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
-   x = x*Units.nm/Units.angstrom
-   y = 10**y
-   model = DataStructures.xypoint(x=x, y=y)
-
-   #Rotationally broaden
-   model = RotBroad.Broaden(model, 15*Units.cm/Units.km, findcont=True)
-   
-   for snr in SNRlist:
-    for p_spt in parent_spts[p_left:p_right]:
-      found = 0.0
-      sig = []
-      for velocity in velocitylist:
-        p_mass = MS.Interpolate(MS.Mass, p_spt)
-
-        orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, SNR=snr, sensitivity=sensitivity_fcn)
-        outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
-        #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
-	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
-
-	
-	#Output
-	outfilename  = "Sensitivity/spectrum_%s_%s_snr%.1f_vel%.1f.dat" %(p_spt, s_spt, snr, velocity)
-	
-	outfile = open(outfilename, "w")
-	outfile.write("#Spectrum for s/n = %g and v = %g km/s\n" %(snr, velocity))
-	outfile.close()
-	for order in orders:
-	  outfile = open(outfilename, "a")
-	  numpy.savetxt(outfile, numpy.transpose((order.x, order.y, order.cont, order.err)) )
-	  outfile.write("\n\n\n\n")
-	  outfile.close()
-	
-
-        #Cross-correlate with original model
-        output = Correlate.PyCorr(orders, models=[[x,y],], segments=good_regions, save_output=True, vsini=15*Units.cm/Units.km, resolution=60000, outfilename="%s.corr" %outfilename)[0]
-	#vel, corr = output[0], output[1]
-	vel, corr = numpy.loadtxt(output, unpack=True)
-
-        #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
-        maxindex = corr.argmax()
-        std = corr.std()
-        mean = corr.mean()
-        corr = (corr - mean)/std
-        maxvel = vel[maxindex]
-        significance = corr[maxindex]
-        if maxvel-tolerance <= velocity and maxvel+tolerance >= velocity:
-          sig.append(significance)
-          found += 1.
-
-
-      print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
-      outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
-      print outfilestring
-      logfile.write(outfilestring)
+  ensure_dir(outdir)
+  outfile = open(outdir + "logfile.dat", "w")
+  outfile.write("Sensitivity Analysis:\n*****************************\n\n")
+  outfile.write("Filename\t\t\tPrimary Temperature\tSecondary Temperature\tMass (Msun)\tMass Ratio\tVelocity\tPeak Correct?\tSignificance\n")
   
+  for fname in fileList:
+    if extensions:
+      orders_original = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
+      if tellurics:
+        model_orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="model")
+        for i, order in enumerate(orders_original):
+          orders_original[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=2)
+          orders_original[i].y /= model_orders[i].y
+          
+    else:
+      orders_original = FitsUtils.MakeXYpoints(fname, errors=2)
 
-  logfile.close()
+    #Loop over orders, removing bad parts
+    numorders = len(orders_original)
+    for i, order in enumerate(orders_original[::-1]):
+      #Linearize
+      DATA = interp(order.x, order.y)
+      CONT = interp(order.x, order.cont)
+      ERROR = interp(order.x, order.err)
+      left, right = trimsize, order.size()-1 - trimsize
+      order.x = numpy.linspace(order.x[left], order.x[right], order.size())
+      order.y = DATA(order.x)
+      order.cont = CONT(order.x)
+      order.err = ERROR(order.x)
+
+      
+      #Remove bad regions from the data
+      for region in badregions:
+        left = numpy.searchsorted(order.x, region[0])
+        right = numpy.searchsorted(order.x, region[1])
+        if left == 0 or right == order.size():
+          order.x = numpy.delete(order.x, numpy.arange(left, right))
+          order.y = numpy.delete(order.y, numpy.arange(left, right))
+          order.cont = numpy.delete(order.cont, numpy.arange(left, right))
+          order.err = numpy.delete(order.err, numpy.arange(left, right))
+        else:
+          print "Warning! Bad region covers the middle of order %i" %i
+          print "Interpolating rather than removing"
+          order.y[left:right] = order.cont[left:right]
+          order.err[left:right] = 9e9
+
+      #Remove whole order if it is too small
+      remove = False
+      if order.x.size <= windowsize:
+        remove = True
+      else:
+        velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
+        if velrange <= 1000.0:
+          remove = True
+      if remove:
+        print "Removing order %i" %(numorders - 1 - i)
+        orders_original.pop(numorders - 1 - i)
+      else:
+        order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=1, lowreject=1.5, highreject=5)
+        orders_original[numorders -1 -i] = order.copy()
+       
+        
+    for order in orders_original:
+      plt.plot(order.x, order.y)
+      plt.plot(order.x, order.cont)
+    plt.show()
+    
+    #Read in the name of the star from the fits header
+    header = pyfits.getheader(fname)
+    starname = header["OBJECT"]
+    print starname
+
+    #Get spectral type of the primary from the name and simbad
+    stardata = StarData.GetData(starname)
+    primary_temp = MS.Interpolate(MS.Temperature, stardata.spectype[:2])
+    primary_radius = MS.Interpolate(MS.Radius, stardata.spectype[:2])
+    primary_mass = MS.Interpolate(MS.Mass, stardata.spectype[:2])
+    companions = HelperFunctions.CheckMultiplicityWDS(starname)
+
+    #Begin loop over model spectra
+    for j, model in enumerate(model_data):
+	    
+      #Get info about the secondary star for this model temperature
+      secondary_spt = MS.GetSpectralType(MS.Temperature, temp_list[j])
+      secondary_radius = MS.Interpolate(MS.Radius, secondary_spt)
+      secondary_mass = MS.Interpolate(MS.Mass, secondary_spt)
+      massratio = secondary_mass / primary_mass
+
+      #Rotationally Broaden model
+      left = numpy.searchsorted(model.x, orders_original[0].x[0] - 10.0)
+      right = numpy.searchsorted(model.x, orders_original[-1].x[-1] + 10.0)
+      model = RotBroad.Broaden(model[left:right], vsini, linear=False)
+      model_data[j] = model.copy()
+      MODEL = interp(model.x, model.y)
+
+      #Loop over velocities
+      for vel in vel_list:
+        corrlist = []
+        normalization = 0.0
+        orders = [order.copy() for order in orders_original]   #Make a copy of orders
+        for i, order in enumerate(orders):
+          order2 = order.copy()
+          #Process the model
+          #a: make a segment of the total model to work with
+          left = max(0, numpy.searchsorted(model.x, order2.x[0] - 10)-1 )
+          right = min(model.size()-1, numpy.searchsorted(model.x, order2.x[-1] + 10))
+      
+          model2 = DataStructures.xypoint(right - left + 1)
+          model2.x = numpy.linspace(model.x[left], model.x[right], right - left + 1)
+          model2.y = MODEL(model2.x*(1.0+vel/3e5))
+          model2.cont = FittingUtilities.Continuum(model2.x, model2.y, fitorder=2, lowreject=1.5, highreject=10.0)
+          print min(model2.cont)
+          model2.cont[model2.cont < 1e-5] = 1e-5
+
+          #b: Convolve to detector resolution
+          model2 = MakeModel.ReduceResolution(model2.copy(), 60000, extend=False)
+
+          #c: rebin to the same spacing as the data
+          xgrid = numpy.arange(model2.x[0], model2.x[-1], order2.x[1] - order2.x[0])
+          model2 = MakeModel.RebinData(model2.copy(), xgrid)
+
+          #d: scale to be at the appropriate flux ratio
+          primary_flux = Planck(order2.x.mean()*units.nm.to(units.cm), primary_temp)
+          #Check for known secondaries
+          if companions:
+            for configuration in companions:
+              component = companions[configuration]
+              if component["Separation"] < 3.0 and component["Secondary SpT"] != "Unknown":
+		if i == 0:
+                  print "Known %s companion with a separation of %g arcseconds!" %(component["Secondary SpT"], component["Separation"])
+                temperature = MS.Interpolate(MS.Temperature, component["Secondary SpT"])
+                primary_flux += Planck(order2.x.mean()*units.nm.to(units.cm), temperature)
+          secondary_flux = Planck(order2.x.mean()*units.nm.to(units.cm), temp_list[j])
+          scale = secondary_flux / primary_flux * (secondary_radius/primary_radius)**2
+          model2.y = (model2.y/model2.cont - 1.0)*scale
+          model2.cont = numpy.ones(model2.size())
+          model_fcn = interp(model2.x, model2.y)
+          order2.y = (order2.y/order2.cont + model_fcn(order2.x))*order2.cont
+
+          #Smooth data in the same way I would normally
+          smoothed = Smooth.SmoothData(order2, windowsize, 5)
+          order2.y /= smoothed.y
+          order2.cont = FittingUtilities.Continuum(order2.x, order2.y, fitorder=2)
+          orders[i] = order2.copy()
+
+
+        for i, order in enumerate(orders):
+          plt.plot(order.x, order.y)
+          plt.plot(order.x, order.cont)
+        plt.show()
+          
+        #Do the actual cross-correlation using PyCorr2 (order by order with appropriate weighting)
+        corr = Correlate.PyCorr2(orders, resolution=60000, models=[model_data[j],], stars=[star_list[j],], temps=[temp_list[j],], gravities=[gravity_list[j],], metallicities=[metal_list[j],], vsini=0.0, debug=False, save_output=False)[0]
+              
+        #output
+        outfilename = "%s%s_t%i_v%i" %(outdir, fname.split(".fits")[0], temp_list[j], vel)
+        print "Outputting CCF to %s" %outfilename
+        numpy.savetxt(outfilename, numpy.transpose((corr.x, corr.y)), fmt="%.10g")
+
+        #Write to logfile
+        idx = numpy.argmax(corr.y)
+        vmax = corr.x[idx]
+        fit = FittingUtilities.Continuum(corr.x, corr.y, fitorder=2, lowreject=3, highreject=3)
+        corr.y -= fit
+        mean = corr.y.mean()
+        std = corr.y.std()
+        significance = (corr.y[idx] - mean)/std
+        tolerance = 10.0
+        if numpy.abs(vmax - vel) <= tolerance:
+          #Signal found!
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp, temp_list[j], secondary_mass, massratio, vel, significance) )
+        else:
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\t%.2f\n" %(fname, primary_temp, temp_list[j], secondary_mass, massratio, vel, significance) )
+
+
+          
+  outfile.close()
+      
+    
+
+

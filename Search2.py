@@ -14,8 +14,6 @@ homedir = os.environ["HOME"]
 modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
 
 #Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
-badregions = [[588.8, 589.9],
-              [627.1, 635.4]]
 badregions = [[567.5, 575.5],
               [588.5, 598.5],
               [627, 632],
