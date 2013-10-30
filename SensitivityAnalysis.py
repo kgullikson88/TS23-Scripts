@@ -190,10 +190,10 @@ if __name__ == "__main__":
         orders_original[numorders -1 -i] = order.copy()
        
         
-    for order in orders_original:
-      plt.plot(order.x, order.y)
-      plt.plot(order.x, order.cont)
-    plt.show()
+    #for order in orders_original:
+    #  plt.plot(order.x, order.y)
+    #  plt.plot(order.x, order.cont)
+    #plt.show()
     
     #Read in the name of the star from the fits header
     header = pyfits.getheader(fname)
@@ -239,7 +239,6 @@ if __name__ == "__main__":
           model2.x = numpy.linspace(model.x[left], model.x[right], right - left + 1)
           model2.y = MODEL(model2.x*(1.0+vel/3e5))
           model2.cont = FittingUtilities.Continuum(model2.x, model2.y, fitorder=2, lowreject=1.5, highreject=10.0)
-          print min(model2.cont)
           model2.cont[model2.cont < 1e-5] = 1e-5
 
           #b: Convolve to detector resolution
@@ -274,10 +273,10 @@ if __name__ == "__main__":
           orders[i] = order2.copy()
 
 
-        for i, order in enumerate(orders):
-          plt.plot(order.x, order.y)
-          plt.plot(order.x, order.cont)
-        plt.show()
+        #for i, order in enumerate(orders):
+        #  plt.plot(order.x, order.y)
+        #  plt.plot(order.x, order.cont)
+        #plt.show()
           
         #Do the actual cross-correlation using PyCorr2 (order by order with appropriate weighting)
         corr = Correlate.PyCorr2(orders, resolution=60000, models=[model_data[j],], stars=[star_list[j],], temps=[temp_list[j],], gravities=[gravity_list[j],], metallicities=[metal_list[j],], vsini=0.0, debug=False, save_output=False)[0]
