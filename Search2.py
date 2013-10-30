@@ -5,7 +5,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import os
 import sys
 import DataStructures
-import FindContinuum
+import FittingUtilities
 import matplotlib.pyplot as plt
 from astropy import units, constants
 
@@ -23,7 +23,7 @@ badregions = [[567.5, 575.5],
               [759, 9e9]]
 
 #Set up model list
-"""
+
 model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -51,21 +51,11 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte61-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte62-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte63-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-"""
-model_list = [ modeldir + "lte64-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+	       modeldir + "lte64-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte65-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte66-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte67-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte68-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte69-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte69-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
-"""               modeldir + "lte70-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte70-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte72-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte74-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte74-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte30-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
                modeldir + "lte30-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
                modeldir + "lte31-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
@@ -137,18 +127,8 @@ model_list = [ modeldir + "lte64-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte66-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte67-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte68-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte68-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte69-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte69-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte70-3.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte70-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte72-3.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte72-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte74-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte76-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte78-3.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte78-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted"]
-"""               
+               modeldir + "lte68-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted"]
+               
                
 star_list = []
 temp_list = []
@@ -193,7 +173,7 @@ if __name__ == "__main__":
       if tellurics:
         model_orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="model")
         for i, order in enumerate(orders):
-          orders[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=2)
+          orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=2)
           orders[i].y /= model_orders[i].y
           
     else:
@@ -260,6 +240,6 @@ if __name__ == "__main__":
         
     #Do the cross-correlation
     for vsini in [10, 20, 30, 40]:
-      Correlate.PyCorr2(orders, resolution=60000, outdir="Cross_correlations/", models=model_data, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*units.km.to(units.cm), debug=True, outfilebase=fname)
+      Correlate.PyCorr2(orders, resolution=60000, outdir=output_dir, models=model_data, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*units.km.to(units.cm), debug=False, outfilebase=outfilebase)
 
 
