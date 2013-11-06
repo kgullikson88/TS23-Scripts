@@ -29,10 +29,14 @@ if __name__ == "__main__":
   start = 0
   makenew = True
   exists = True
+  edit_atmosphere = False
   for arg in sys.argv[1:]:
     if "-start" in arg:
       makenew = False
       start = int(arg.split("=")[-1])
+    elif "-atmos" in arg:
+      edit_atmosphere = True
+      atmosphere_fname = arg.split("=")[-1]
     else:
       fileList.append(arg)
 
@@ -84,10 +88,28 @@ if __name__ == "__main__":
     angle = float(header["ZD"])
     resolution = 60000.0
     humidity = RH[bestindex]
-    #humidity = 90.0
     T_fahrenheit = T[bestindex]
     pressure = P[bestindex]*Units.hPa/Units.inch_Hg
     temperature = (T_fahrenheit - 32.0)*5.0/9.0 + 273.15
+
+    if edit_atmosphere:
+      #Read in NAM atmosphere profile information
+      Pres,height,Temp,dew = numpy.loadtxt(atmosphere_fname, usecols=(0,1,2,3), unpack=True)
+      sorter = numpy.argsort(height)
+      height = height[sorter]
+      Pres = Pres[sorter]
+      Temp = Temp[sorter]
+      dew = dew[sorter]
+      
+      #Convert dew point temperature to ppmv
+      Pw = 6.116441 * 10**(7.591386*Temp/(Temp + 240.7263))
+      h2o = Pw / (Pres-Pw) * 1e6
+      
+      height /= 1000.0
+      Temp += 273.15
+      fitter.EditAtmosphereProfile("Temperature", height, Temp)
+      fitter.EditAtmosphereProfile("Pressure", height, Pres)
+      fitter.EditAtmosphereProfile("H2O", height, h2o)
     
     #Adjust fitter values
     fitter.FitVariable({"h2o": humidity, 
