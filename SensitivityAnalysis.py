@@ -118,6 +118,7 @@ if __name__ == "__main__":
   windowsize = 101
   vsini = 20.0*units.km.to(units.cm)
   MS = SpectralTypeRelations.MainSequence()
+  PMS = SpectralTypeRelations.PreMainSequence()
   vel_list = range(-400, 400, 50)
   outdir = "Sensitivity/"
   for arg in sys.argv[1:]:
@@ -202,6 +203,7 @@ if __name__ == "__main__":
 
     #Get spectral type of the primary from the name and simbad
     stardata = StarData.GetData(starname)
+    primary_mass = PMS.Interpolate(stardata.spectype[:2], 1e10)
     primary_temp = MS.Interpolate(MS.Temperature, stardata.spectype[:2])
     primary_radius = MS.Interpolate(MS.Radius, stardata.spectype[:2])
     primary_mass = MS.Interpolate(MS.Mass, stardata.spectype[:2])
