@@ -13,16 +13,13 @@ import FindContinuum
 
 homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
-linelist = homedir + "/School/Research/Useful_Datafiles/Linelist_visible.dat"
 telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 
 
 if __name__ == "__main__":
   #Initialize fitter
   fitter = TelluricFitter.TelluricFitter(debug=False, debug_level=5)
-  fitter.SetTelluricLineListFile(linelist)
   fitter.SetObservatory("McDonald")
-  LineList = numpy.loadtxt(linelist, usecols=(0,))
   logfile = open("fitlog.txt", "w")
  
   fileList = []
@@ -127,7 +124,7 @@ if __name__ == "__main__":
     fitter.AdjustValue({"wavestart": orders[start].x[0]-20,
                         "waveend": orders[-1].x[-1]+20})
     fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
-    test_model = fitter.GenerateModel(fitpars, LineList, nofit=True)
+    test_model = fitter.GenerateModel(fitpars, nofit=True)
     
 
     #START LOOPING OVER ORDERS
@@ -153,7 +150,7 @@ if __name__ == "__main__":
         print "Skipping order %i" %(i+start)
         data = order.copy()
         fitter.resolution_fit_mode = "gauss"
-        model = fitter.GenerateModel(fitpars, LineList)
+        model = fitter.GenerateModel(fitpars)
         #model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
         primary = model.copy()
       elif model_amplitude >= 0.01 and model_amplitude < 1:

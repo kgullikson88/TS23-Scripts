@@ -3,10 +3,10 @@ import pyfits
 import numpy
 from numpy.polynomial import chebyshev
 import DataStructures
-import Units
-import FindContinuum
+import FittingUtilities
 import readmultispec as multispec
 import subprocess
+from astropy import units
 
 
 #Make a dictionary for converting from standard polynomial to chebyshev
@@ -111,7 +111,7 @@ def MakeXYpoints(datafile, errors=False, extensions=False, x=None, y=None, cont=
         if "label=Wavelength"  in header[key] and "units" in header[key]:
           units = header[key].split("units=")[-1]
           if units == "angstroms" or units == "Angstroms":
-            wave_factor = Units.nm/Units.angstrom
+            wave_factor = units.angstroms.to(units.nm)
             print "Wavelength units are Angstroms. Scaling wavelength by ", wave_factor
 
     if errors == False:
@@ -131,7 +131,7 @@ def MakeXYpoints(datafile, errors=False, extensions=False, x=None, y=None, cont=
           errors = int(raw_input("Enter the band number (in C-numbering) of the error/sigma band: "))
         flux = retdict['flux'][0][i]
         err = retdict['flux'][errors][i]
-      cont = FindContinuum.Continuum(wave, flux, lowreject=2, highreject=4)
+      cont = FittingUtilities.Continuum(wave, flux, lowreject=2, highreject=4)
       orders.append(DataStructures.xypoint(x=wave, y=flux, err=err , cont=cont))
   return orders
   
