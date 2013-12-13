@@ -150,7 +150,7 @@ if __name__ == "__main__":
         print "Skipping order %i" %(i+start)
         data = order.copy()
         fitter.resolution_fit_mode = "gauss"
-        model = fitter.GenerateModel(fitpars, LineList)
+        model = fitter.GenerateModel(fitpars)
         #model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
         primary = model.copy()
       elif model_amplitude >= 0.01 and model_amplitude < 1:
