@@ -6,7 +6,6 @@ import scipy.signal
 import os
 import sys
 import DataStructures
-#import FindContinuum
 import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from astropy import units, constants
@@ -15,11 +14,10 @@ import SpectralTypeRelations
 from PlotBlackbodies import Planck
 import RotBroad_Fast as RotBroad
 import FittingUtilities
-import MakeModel
 import Smooth
 import HelperFunctions
-import Correlate
-
+#import Correlate
+import Sensitivity
 
 #Ensure a directory exists. Create it if not
 def ensure_dir(f):
@@ -84,7 +82,9 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
    
-               
+
+model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted", ]
+
 star_list = []
 temp_list = []
 gravity_list = []
@@ -101,7 +101,9 @@ for fname in model_list:
     metallicity = float(fname.split("lte")[-1][7:11])
   print "Reading in file %s" %fname
   x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
-  model_data.append( DataStructures.xypoint(x=x*units.angstrom.to(units.nm)/1.00026, y=10**y) )
+  model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm)/1.00026, y=10**y)
+  model = FittingUtilities.RebinData(model, numpy.linspace(model.x[0], model.x[-1], model.size()))
+  model_data.append( model )
   star_list.append(str(temp))
   temp_list.append(temp)
   gravity_list.append(gravity)
@@ -164,16 +166,15 @@ if __name__ == "__main__":
       for region in badregions:
         left = numpy.searchsorted(order.x, region[0])
         right = numpy.searchsorted(order.x, region[1])
-        if left == 0 or right == order.size():
-          order.x = numpy.delete(order.x, numpy.arange(left, right))
-          order.y = numpy.delete(order.y, numpy.arange(left, right))
-          order.cont = numpy.delete(order.cont, numpy.arange(left, right))
-          order.err = numpy.delete(order.err, numpy.arange(left, right))
-        else:
+        if left > 0 and right < order.size():
           print "Warning! Bad region covers the middle of order %i" %i
-          print "Interpolating rather than removing"
-          order.y[left:right] = order.cont[left:right]
-          order.err[left:right] = 9e9
+          print "Removing full order!"
+          left = 0
+          right = order.size()
+        order.x = numpy.delete(order.x, numpy.arange(left, right))
+        order.y = numpy.delete(order.y, numpy.arange(left, right))
+        order.cont = numpy.delete(order.cont, numpy.arange(left, right))
+        order.err = numpy.delete(order.err, numpy.arange(left, right))
 
       #Remove whole order if it is too small
       remove = False
@@ -191,10 +192,6 @@ if __name__ == "__main__":
         orders_original[numorders -1 -i] = order.copy()
        
         
-    #for order in orders_original:
-    #  plt.plot(order.x, order.y)
-    #  plt.plot(order.x, order.cont)
-    #plt.show()
     
     #Read in the name of the star from the fits header
     header = pyfits.getheader(fname)
@@ -203,11 +200,26 @@ if __name__ == "__main__":
 
     #Get spectral type of the primary from the name and simbad
     stardata = StarData.GetData(starname)
-    primary_mass = PMS.Interpolate(stardata.spectype[:2], 1e10)
-    primary_temp = MS.Interpolate(MS.Temperature, stardata.spectype[:2])
+    primary_temp = [ MS.Interpolate(MS.Temperature, stardata.spectype[:2]), ]
     primary_radius = MS.Interpolate(MS.Radius, stardata.spectype[:2])
+    age = 'MS'   #Play with this later!
     primary_mass = MS.Interpolate(MS.Mass, stardata.spectype[:2])
+
+    #Check for close companions
     companions = HelperFunctions.CheckMultiplicityWDS(starname)
+    if companions:
+      for configuration in companions:
+        component = companions[configuration]
+        if component["Separation"] < 3.0 and component["Secondary SpT"] != "Unknown":
+          print "Known %s companion with a separation of %g arcseconds!" %(component["Secondary SpT"], component["Separation"])
+          primary_temp.append(MS.Interpolate(MS.Temperature, component["Secondary SpT"]))
+    companion = HelperFunctions.CheckMultiplicitySB9(starname)
+    if companion:
+      if companion['K1'] != 'Unknown' and companion['K2'] != 'Unknown':
+        mass = primary_mass * companion['K1'] / companion['K2']
+        spt = MS.GetSpectralType(MS.Mass, mass, interpolate=True)
+        primary_temp.append(MS.Interpolate(MS.Temperature, spt))
+          
 
     #Begin loop over model spectra
     for j, model in enumerate(model_data):
@@ -221,88 +233,32 @@ if __name__ == "__main__":
       #Rotationally Broaden model
       left = numpy.searchsorted(model.x, orders_original[0].x[0] - 10.0)
       right = numpy.searchsorted(model.x, orders_original[-1].x[-1] + 10.0)
-      model = RotBroad.Broaden(model[left:right], vsini, linear=False)
-      model_data[j] = model.copy()
-      MODEL = interp(model.x, model.y)
+      model = RotBroad.Broaden(model[left:right], vsini, linear=True)
 
-      #Loop over velocities
-      for vel in vel_list:
-        corrlist = []
-        normalization = 0.0
-        orders = [order.copy() for order in orders_original]   #Make a copy of orders
-        for i, order in enumerate(orders):
-          order2 = order.copy()
-          #Process the model
-          #a: make a segment of the total model to work with
-          left = max(0, numpy.searchsorted(model.x, order2.x[0] - 10)-1 )
-          right = min(model.size()-1, numpy.searchsorted(model.x, order2.x[-1] + 10))
-      
-          model2 = DataStructures.xypoint(right - left + 1)
-          model2.x = numpy.linspace(model.x[left], model.x[right], right - left + 1)
-          model2.y = MODEL(model2.x*(1.0+vel/3e5))
-          model2.cont = FittingUtilities.Continuum(model2.x, model2.y, fitorder=2, lowreject=1.5, highreject=10.0)
-          model2.cont[model2.cont < 1e-5] = 1e-5
+      #Reduce resolution
+      model = FittingUtilities.ReduceResolution2(model, 60000, extend=False)
 
-          #b: Convolve to detector resolution
-          model2 = MakeModel.ReduceResolution(model2.copy(), 60000, extend=False)
+      #Check sensitivity to this star
+      orders = [order.copy() for order in orders_original]   #Make a copy of orders
+      found, significance = Sensitivity.Analyze(orders, 
+                                                model, 
+                                                prim_temp=primary_temp, 
+                                                sec_temp=temp_list[j],
+                                                age=age,
+                                                smoothing_windowsize=101,
+                                                smoothing_order=5,
+                                                debug=True)
 
-          #c: rebin to the same spacing as the data
-          xgrid = numpy.arange(model2.x[0], model2.x[-1], order2.x[1] - order2.x[0])
-          model2 = MakeModel.RebinData(model2.copy(), xgrid)
-
-          #d: scale to be at the appropriate flux ratio
-          primary_flux = Planck(order2.x.mean()*units.nm.to(units.cm), primary_temp)
-          #Check for known secondaries
-          if companions:
-            for configuration in companions:
-              component = companions[configuration]
-              if component["Separation"] < 3.0 and component["Secondary SpT"] != "Unknown":
-		if i == 0:
-                  print "Known %s companion with a separation of %g arcseconds!" %(component["Secondary SpT"], component["Separation"])
-                temperature = MS.Interpolate(MS.Temperature, component["Secondary SpT"])
-                primary_flux += Planck(order2.x.mean()*units.nm.to(units.cm), temperature)
-          secondary_flux = Planck(order2.x.mean()*units.nm.to(units.cm), temp_list[j])
-          scale = secondary_flux / primary_flux * (secondary_radius/primary_radius)**2
-          model2.y = (model2.y/model2.cont - 1.0)*scale
-          model2.cont = numpy.ones(model2.size())
-          model_fcn = interp(model2.x, model2.y)
-          order2.y = (order2.y/order2.cont + model_fcn(order2.x))*order2.cont
-
-          #Smooth data in the same way I would normally
-          smoothed = Smooth.SmoothData(order2, windowsize, 5)
-          order2.y /= smoothed.y
-          order2.cont = FittingUtilities.Continuum(order2.x, order2.y, fitorder=2)
-          orders[i] = order2.copy()
-
-
-        #for i, order in enumerate(orders):
-        #  plt.plot(order.x, order.y)
-        #  plt.plot(order.x, order.cont)
-        #plt.show()
-          
-        #Do the actual cross-correlation using PyCorr2 (order by order with appropriate weighting)
-        corr = Correlate.PyCorr2(orders, resolution=60000, models=[model_data[j],], stars=[star_list[j],], temps=[temp_list[j],], gravities=[gravity_list[j],], metallicities=[metal_list[j],], vsini=0.0, debug=True, save_output=False, outdir="Sensitivity/", outfilebase = fname.split(".fits")[0])[0]
-              
-        #output
-        outfilename = "%s%s_t%i_v%i" %(outdir, fname.split(".fits")[0], temp_list[j], vel)
-        print "Outputting CCF to %s" %outfilename
-        numpy.savetxt(outfilename, numpy.transpose((corr.x, corr.y)), fmt="%.10g")
-
-        #Write to logfile
-        idx = numpy.argmax(corr.y)
-        vmax = corr.x[idx]
-        fit = FittingUtilities.Continuum(corr.x, corr.y, fitorder=2, lowreject=3, highreject=3)
-        corr.y -= fit
-        mean = corr.y.mean()
-        std = corr.y.std()
-        significance = (corr.y[idx] - mean)/std
-        tolerance = 10.0
-        if numpy.abs(vmax - vel) <= tolerance:
+      #Write to logfile
+      vels=range(-400, 450, 50)
+      for v,f,s in zip(vels, found, significance):
+        if f:
           #Signal found!
-          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp, temp_list[j], secondary_mass, massratio, vel, significance) )
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v, s) )
         else:
-          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\t%.2f\n" %(fname, primary_temp, temp_list[j], secondary_mass, massratio, vel, significance) )
-
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\t%.2f\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v, s) )
+      
+       
 
           
   outfile.close()
