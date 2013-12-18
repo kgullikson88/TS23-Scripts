@@ -93,7 +93,7 @@ def main1():
         orders[i] = order.copy()
       
       columns = {"wavelength": order.x,
-	         "flux": order.y,
+                 "flux": order.y,
                  "continuum": order.cont,
                  "error": order.err}
       
@@ -130,7 +130,7 @@ if __name__ == "__main__":
       order = trim.Plot()
 
       columns = {"wavelength": order.x,
-	         "flux": order.y,
+                 "flux": order.y,
                  "continuum": order.cont,
                  "error": order.err}
       

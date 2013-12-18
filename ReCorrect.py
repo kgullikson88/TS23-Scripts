@@ -170,7 +170,7 @@ if __name__ == "__main__":
                "flux": data.y,
                "continuum": data.cont,
                "error": data.err,
-	       "model": model.y,
+               "model": model.y,
                "primary": primary.y}
     namedict = {"pressure": ["PRESFIT", "PRESVAL", "Pressure"],
                 "temperature": ["TEMPFIT", "TEMPVAL", "Temperature"],

@@ -45,57 +45,57 @@ ensure_dir(outfiledir)
 #Define the sections of each order to use (those without telluric contamination)
 good_sections = {1: [[-1,-1],],
                  2: [[-1,-1],],
-		 3: [[-1,-1],],
-		 4: [[-1,-1],],
-		 5: [[-1,-1],],
-		 6: [[-1,-1],],
-		 7: [[-1,-1],],
-		 8: [[-1,-1],],
-		 9: [[-1,-1],],
-		 10: [[-1,-1],],
-		 11: [[-1,-1],],
-		 12: [[-1,-1],],
-		 13: [[-1,-1],],
-		 14: [[-1,-1],],
-		 15: [[-1,-1],],
-		 16: [[-1,-1],],
-		 17: [[-1,-1],],
-		 18: [[-1,-1],],
-		 19: [[-1,686.7],],
-		 20: [[-1, 1e9],],
-		 21: [[661.4, 667.3],],
-		 22: [[-1,-1],],
-		 23: [[-1, 1e9]],
-		 24: [[-1, 627.6],],
-		 25: [[-1, 1e9],],
-		 26: [[-1, 1e9],],
-		 27: [[-1,-1],],
-		 28: [[-1, -1],],
-		 29: [[-1, 1e9],],
-		 30: [[-1, 567.6],],
-		 31: [[-1, 1e9],],
-		 32: [[-1, 1e9],],
-		 33: [[-1, 1e9],],
-		 34: [[-1, 1e9],],
-		 35: [[-1, 1e9],],
-		 36: [[-1, 1e9],],
-		 37: [[-1, 1e9],],
-		 38: [[-1, 501.1],],
-		 39: [[-1, 491.6], [492.8, 1e9]],
-		 40: [[-1, 1e9],],
-		 41: [[-1, 1e9],],
-		 42: [[-1, -1],],
-		 43: [[-1, -1],],
-		 44: [[-1, -1],],
-		 45: [[-1, 1e9],],
-		 46: [[-1, 1e9],],
-		 47: [[-1, 1e9],],
-		 48: [[-1, 1e9],],
-		 49: [[-1, 1e9],],
-		 50: [[-1, 1e9],],
-		 51: [[-1, 1e9],],
+                 3: [[-1,-1],],
+                 4: [[-1,-1],],
+                 5: [[-1,-1],],
+                 6: [[-1,-1],],
+                 7: [[-1,-1],],
+                 8: [[-1,-1],],
+                 9: [[-1,-1],],
+                 10: [[-1,-1],],
+                 11: [[-1,-1],],
+                 12: [[-1,-1],],
+                 13: [[-1,-1],],
+                 14: [[-1,-1],],
+                 15: [[-1,-1],],
+                 16: [[-1,-1],],
+                 17: [[-1,-1],],
+                 18: [[-1,-1],],
+                 19: [[-1,686.7],],
+                 20: [[-1, 1e9],],
+                 21: [[661.4, 667.3],],
+                 22: [[-1,-1],],
+                 23: [[-1, 1e9]],
+                 24: [[-1, 627.6],],
+                 25: [[-1, 1e9],],
+                 26: [[-1, 1e9],],
+                 27: [[-1,-1],],
+                 28: [[-1, -1],],
+                 29: [[-1, 1e9],],
+                 30: [[-1, 567.6],],
+                 31: [[-1, 1e9],],
+                 32: [[-1, 1e9],],
+                 33: [[-1, 1e9],],
+                 34: [[-1, 1e9],],
+                 35: [[-1, 1e9],],
+                 36: [[-1, 1e9],],
+                 37: [[-1, 1e9],],
+                 38: [[-1, 501.1],],
+                 39: [[-1, 491.6], [492.8, 1e9]],
+                 40: [[-1, 1e9],],
+                 41: [[-1, 1e9],],
+                 42: [[-1, -1],],
+                 43: [[-1, -1],],
+                 44: [[-1, -1],],
+                 45: [[-1, 1e9],],
+                 46: [[-1, 1e9],],
+                 47: [[-1, 1e9],],
+                 48: [[-1, 1e9],],
+                 49: [[-1, 1e9],],
+                 50: [[-1, 1e9],],
+                 51: [[-1, 1e9],],
                  52: [[-1,-1],],
-		 53: [[-1,-1],] }
+                 53: [[-1,-1],] }
 
 
 
@@ -107,7 +107,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
     (sec_spt), and the age of the system.
     The age keyword argument can be either a string, in which case the main sequence
            spectral-type - radius relations are used, or a number in which case the
-	   radii of the two stars are determined from evolutionary tracks (NOT YET IMPLEMENTED)
+           radii of the two stars are determined from evolutionary tracks (NOT YET IMPLEMENTED)
     The 'vel' keyword gives a radial velocity at which the model should be added (MUST be given in cm/s)
     The SN_order keyword determines in which order the S/N value will be calculated. SN_order should be given in fortran-style numbering (starting at 1, not 0)
   """
@@ -224,35 +224,35 @@ if __name__ == "__main__":
     for arg in sys.argv[2:]:
       if "primary" in arg:
         found_keywords.append("primary")
-	first = arg.split("=")[-1].split("-")[0]
-	last = arg.split("=")[-1].split("-")[1]
-	for i in range(len(parent_spts)):
-	  spt = parent_spts[i]
-	  if spt == first:
-	    p_left = i
-	  if spt == last:
-	    p_right = i+1
-	#if p_right < len(p_spt)-1:
-	#  p_right += 1
+        first = arg.split("=")[-1].split("-")[0]
+        last = arg.split("=")[-1].split("-")[1]
+        for i in range(len(parent_spts)):
+          spt = parent_spts[i]
+          if spt == first:
+            p_left = i
+          if spt == last:
+            p_right = i+1
+        #if p_right < len(p_spt)-1:
+        #  p_right += 1
       elif "secondary" in arg:
         found_keywords.append("secondary")
         first = arg.split("=")[-1].split("-")[0]
-	last = arg.split("=")[-1].split("-")[1]
-	for i in range(len(sec_spts)):
-	  spt = sec_spts[i]
-	  if spt == first:
-	    s_left = i
-	  if spt == last:
-	    s_right = i+1
+        last = arg.split("=")[-1].split("-")[1]
+        for i in range(len(sec_spts)):
+          spt = sec_spts[i]
+          if spt == first:
+            s_left = i
+          if spt == last:
+            s_right = i+1
       elif "log" in arg:
         found_keywords.append("log")
-	logfilename = outfiledir + arg.split("=")[-1]
+        logfilename = outfiledir + arg.split("=")[-1]
       elif "sensitivity" in arg:
         found_keywords.append("sensitivity")
-	x,y = numpy.loadtxt(arg.split("=")[-1], unpack=True)
-	x = x[::-1]
-	y = y[::-1]
-	sensitivity_fcn = UnivariateSpline(x,y,s=0)
+        x,y = numpy.loadtxt(arg.split("=")[-1], unpack=True)
+        x = x[::-1]
+        y = y[::-1]
+        sensitivity_fcn = UnivariateSpline(x,y,s=0)
 
   if p_left > p_right:
     temp = p_left
@@ -317,11 +317,11 @@ if __name__ == "__main__":
         orders = Add(list(orders_original), model, p_spt, s_spt, vel=velocity*Units.cm/Units.km, sensitivity=sensitivity_fcn)
         outfilebase = outfiledir+p_spt+"_%.0f" %snr +"_"+s_spt+"_v%i" %velocity
         #FitsUtils.OutputFitsFile(datafile, orders, outfilename=outfilebase+".fits")
-	print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
+        print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
-	#numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
-	
+        #numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
+        
 
         #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
