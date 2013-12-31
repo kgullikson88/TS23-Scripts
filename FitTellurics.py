@@ -72,7 +72,7 @@ if __name__ == "__main__":
         t = segments[0]
         t_seg = t.split(":")
         weather_time = 3600*float(t_seg[0]) + 60*float(t_seg[1]) + float(t_seg[2])
-        if numpy.abs(time - weather_time) < difference:
+	if numpy.abs(time - weather_time) < difference:
           difference = numpy.abs(time - weather_time)
           bestindex = idx
         times.append(segments[0])

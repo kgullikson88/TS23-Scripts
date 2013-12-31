@@ -240,6 +240,16 @@ if __name__ == "__main__":
         
     #Do the cross-correlation
     for vsini in [10, 20, 30, 40]:
-      Correlate.PyCorr2(orders, resolution=60000, outdir=output_dir, models=model_data, stars=star_list, temps=temp_list, gravities=gravity_list, metallicities=metal_list, vsini=vsini*units.km.to(units.cm), debug=False, outfilebase=outfilebase)
+      Correlate.PyCorr2(orders, 
+                        resolution=60000, 
+                        outdir=output_dir, 
+                        models=model_data, 
+                        stars=star_list, 
+                        temps=temp_list, 
+                        gravities=gravity_list, 
+                        metallicities=metal_list, 
+                        vsini=vsini*units.km.to(units.cm), 
+                        debug=False, 
+                        outfilebase=outfilebase)
 
 
