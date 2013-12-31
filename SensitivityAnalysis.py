@@ -82,10 +82,7 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
    
-
-model_list = [ #modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted", 
-               modeldir + "lte55-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
-
+               
 star_list = []
 temp_list = []
 gravity_list = []
@@ -225,7 +222,7 @@ if __name__ == "__main__":
 
     #Begin loop over model spectra
     for j, model in enumerate(model_data):
-	    
+            
       #Get info about the secondary star for this model temperature
       secondary_spt = MS.GetSpectralType(MS.Temperature, temp_list[j])
       secondary_radius = PMS.Interpolate(secondary_spt, age, key='Radius')
