@@ -83,7 +83,8 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
    
 
-model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted", ]
+model_list = [ #modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted", 
+               modeldir + "lte55-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
 
 star_list = []
 temp_list = []
@@ -201,9 +202,10 @@ if __name__ == "__main__":
     #Get spectral type of the primary from the name and simbad
     stardata = StarData.GetData(starname)
     primary_temp = [ MS.Interpolate(MS.Temperature, stardata.spectype[:2]), ]
-    primary_radius = MS.Interpolate(MS.Radius, stardata.spectype[:2])
-    age = 'MS'   #Play with this later!
+    #age = 'MS'   #Play with this later!
     primary_mass = MS.Interpolate(MS.Mass, stardata.spectype[:2])
+    age = PMS.GetMainSequenceAge(primary_mass)
+    
 
     #Check for close companions
     companions = HelperFunctions.CheckMultiplicityWDS(starname)
@@ -226,8 +228,8 @@ if __name__ == "__main__":
 	    
       #Get info about the secondary star for this model temperature
       secondary_spt = MS.GetSpectralType(MS.Temperature, temp_list[j])
-      secondary_radius = MS.Interpolate(MS.Radius, secondary_spt)
-      secondary_mass = MS.Interpolate(MS.Mass, secondary_spt)
+      secondary_radius = PMS.Interpolate(secondary_spt, age, key='Radius')
+      secondary_mass = PMS.Interpolate(secondary_spt, age, key='Mass')
       massratio = secondary_mass / primary_mass
 
       #Rotationally Broaden model
@@ -240,6 +242,9 @@ if __name__ == "__main__":
 
       #Check sensitivity to this star
       orders = [order.copy() for order in orders_original]   #Make a copy of orders
+      output_dir = "%s/Sensitivity/" %(os.path.dirname(fname))
+      if output_dir.startswith("/"):
+        output_dir = output_dir[1:]
       found, significance = Sensitivity.Analyze(orders, 
                                                 model, 
                                                 prim_temp=primary_temp, 
@@ -247,6 +252,8 @@ if __name__ == "__main__":
                                                 age=age,
                                                 smoothing_windowsize=101,
                                                 smoothing_order=5,
+                                                outdir=output_dir,
+                                                outfilebase=fname.split(".fits")[0],
                                                 debug=True)
 
       #Write to logfile
@@ -256,7 +263,7 @@ if __name__ == "__main__":
           #Signal found!
           outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v, s) )
         else:
-          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\t%.2f\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v, s) )
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\tN/A\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v) )
       
        
 
