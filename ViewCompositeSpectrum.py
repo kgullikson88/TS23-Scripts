@@ -160,7 +160,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     #model2 = RotBroad.Broaden(model2, vsini)
     
     #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    model2 = FittingUtilities.ReduceResolution(model2.copy(), 60000)
 
     #fluxratio = 0.5
 

@@ -52,7 +52,7 @@ def GetModel(data, model, vel=0.0, vsini=15*Units.cm/Units.km):
     model2.cont = FindContinuum.Continuum(model2.x, model2.y, lowreject=1, fitorder=3)
     
     #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    model2 = FittingUtilities.ReduceResolution(model2.copy(), 60000)
 
     #Fit velocity with a straight shift via cross-correlation
     ycorr = numpy.correlate(order.y/order.cont-1.0, model2.y/model2.cont-1.0, mode="full")
@@ -67,7 +67,7 @@ def GetModel(data, model, vel=0.0, vsini=15*Units.cm/Units.km):
     maxindex = ycorr.argmax()
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)+offsets[maxindex]))
     model2.cont = FindContinuum.Continuum(model2.x, model2.y, lowreject=1, fitorder=3)
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    model2 = FittingUtilities.ReduceResolution(model2.copy(), 60000)
 
     #Scale using Beer's Law
     line_indices = numpy.where(model2.y / model2.cont < 0.96)[0]

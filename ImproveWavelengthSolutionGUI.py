@@ -54,7 +54,7 @@ class Improve:
     self.telluric = DataStructures.xypoint(wave.size)
     self.telluric.x = wave[::-1]*Units.nm/Units.um
     self.telluric.y = trans[::-1]
-    self.telluric = MakeModel.ReduceResolution(self.telluric, 70000)
+    self.telluric = FittingUtilities.ReduceResolution(self.telluric, 70000)
     
     
     

@@ -157,7 +157,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
     #model2 = RotBroad.Broaden(model2, vsini)
     
     #Reduce resolution
-    model2 = MakeModel.ReduceResolution(model2.copy(), 60000)
+    model2 = FittingUtilities.ReduceResolution(model2.copy(), 60000)
 
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont-1.0)*fluxratio

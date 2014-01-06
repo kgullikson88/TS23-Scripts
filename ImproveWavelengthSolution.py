@@ -57,8 +57,8 @@ if __name__ == "__main__":
     const_pars[5] = wavenum_end
     model = FitFunction(order.copy(), pars, const_pars)
 
-    model = MakeModel.ReduceResolution(model.copy(), resolution)
-    model = MakeModel.RebinData(model.copy(), order.x.copy())
+    model = FittingUtilities.ReduceResolution(model.copy(), resolution)
+    model = FittingUtilities.RebinData(model.copy(), order.x.copy())
 
     order = FitContinuum3(order, model, 4)
 

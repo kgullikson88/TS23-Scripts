@@ -268,7 +268,7 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
     model.cont = FindContinuum.Continuum(model.x, model.y, fitorder=4)
 
     #d: Convolve to a resolution of 60000
-    model = MakeModel.ReduceResolution(model.copy(), resolution, extend=False)
+    model = FittingUtilities.ReduceResolution(model.copy(), resolution, extend=False)
 
     #e: Rotationally broaden
     #model = RotBroad.Broaden(model, vsini)
@@ -282,7 +282,7 @@ def PyCorr(filename, combine=True, normalize=False, sigmaclip=False, nsigma=3, c
 
     #g: Rebin to the same spacing as the data (but not the same pixels)
     xgrid = numpy.arange(model.x[0], model.x[-1], data.x[1] - data.x[0])
-    model = MakeModel.RebinData(model.copy(), xgrid)
+    model = FittingUtilities.RebinData(model.copy(), xgrid)
 
     #h: Cross-correlate
     data_rms = numpy.sqrt(numpy.sum((data.y/data.cont-1)**2))
