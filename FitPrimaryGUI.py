@@ -1,4 +1,3 @@
-import FitsUtils
 import numpy
 from scipy.interpolate import UnivariateSpline
 import matplotlib
@@ -6,7 +5,6 @@ matplotlib.rcParams['axes.color_cycle'] = ['b', 'r', 'g']
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import DataStructures
-import FindContinuum
 import MakeModel
 import sys
 import time
@@ -24,10 +22,10 @@ class LineFitter:
 
     
     print "Reading data"
-    self.orders = FitsUtils.MakeXYpoints(infilename, errors="error", extensions=True, x="wavelength", y="flux")      
+    self.orders = HelperFunctions.ReadFits(infilename, errors="error", extensions=True, x="wavelength", y="flux")      
 
     for i, order in enumerate(self.orders):
-      self.orders[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=3, highreject=3, fitorder=2)
+      self.orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3, fitorder=2)
     
     if telluric:
       print "Reading telluric model from database"

@@ -1,5 +1,4 @@
 import numpy
-import FitsUtils
 import FittingUtilities
 import HelperFunctions
 import matplotlib.pyplot as plt
@@ -8,7 +7,6 @@ import os
 from astropy import units
 import DataStructures
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
-import HelperFunctions
 
 plot = False
 
@@ -27,7 +25,7 @@ if __name__ == "__main__":
   if len(fileList) == 0:
     fileList = [f for f in os.listdir("./") if f.endswith("telluric_corrected.fits")]
   for fname in fileList:
-    orders = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    orders = HelperFunctions.ReadFits(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
     column_list = []
     for order in orders:
       #Linearize

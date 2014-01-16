@@ -15,11 +15,15 @@ homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
 telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 
+badregions = [[588.9, 589.1],
+             [589.5, 589.6]]
+
 
 if __name__ == "__main__":
   #Initialize fitter
   fitter = TelluricFitter.TelluricFitter(debug=False, debug_level=5)
   fitter.SetObservatory("McDonald")
+  fitter.IgnoreRegions(badregions)  #Ignore strong interstellar lines
   logfile = open("fitlog.txt", "w")
  
   fileList = []

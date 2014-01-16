@@ -1,12 +1,12 @@
 from astropy.io import fits as pyfits
-import FitsUtils
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import matplotlib.pyplot as plt
 import DataStructures
 import os
-import FindContinuum
 import numpy
+import FittingUtilities
+import HelperFunctions
 
 plot = True
 
@@ -29,7 +29,7 @@ def ReadCorrectedFile(fname, yaxis="model"):
 
 def Correct(original, corrected, offset=None):
   #Read in the data and model
-  original_orders = FitsUtils.MakeXYpoints(original, extensions=True, x="wavelength", y="flux", errors="error", cont="continuum")
+  original_orders = HelperFunctions.ReadFits(original, extensions=True, x="wavelength", y="flux", errors="error", cont="continuum")
   corrected_orders, corrected_headers = ReadCorrectedFile(corrected)
   test_orders, header = ReadCorrectedFile(corrected, yaxis="flux")
 
@@ -47,7 +47,7 @@ def Correct(original, corrected, offset=None):
   offset = 0
   for i in range(offset, len(original_orders)):
     data = original_orders[i]
-    data.cont = FindContinuum.Continuum(data.x, data.y)
+    data.cont = FittingUtilities.Continuum(data.x, data.y)
     try:
       model = corrected_orders[i-offset]
       header = corrected_headers[i-offset]
@@ -105,7 +105,7 @@ def main1():
                  "continuum": data.cont,
                  "error": data.err}
       column_list.append(columns)
-    FitsUtils.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
+    HelperFunction.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
 
     if plot:
       plt.title("Corrected data")
@@ -140,7 +140,7 @@ def main1():
                      "continuum": data.cont,
                      "error": data.err}
           column_list.append(columns)
-        FitsUtils.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
+        HelperFunctions.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
 
         if plot:
           plt.title(original)

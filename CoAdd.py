@@ -1,6 +1,4 @@
-import FitsUtils
 import DataStructures
-import FindContinuum
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import numpy
@@ -9,14 +7,14 @@ from astropy.io import fits as pyfits
 from collections import defaultdict
 import os
 import FittingUtilities
-
+import HelperFunctions
 
 def MedianAdd(fileList, outfilename=None):
   all_data = []
   numorders = []
   medians = []
   for fname in fileList:
-    observation = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    observation = HelperFunctions.ReadFits(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
     all_data.append(observation)
     numorders.append(len(observation))
     medians.append([numpy.median(order.y) for order in observation])
@@ -61,7 +59,7 @@ def MedianAdd(fileList, outfilename=None):
 
   print "Outputting to %s" %outfilename
   pylab.show()
-  FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
+  HelperFunctions.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
   
   #Add the files used to the primary header of the new file
   hdulist = pyfits.open(outfilename, mode='update')
@@ -81,7 +79,7 @@ def Add(fileList, outfilename=None):
   all_data = []
   numorders = []
   for fname in fileList:
-    observation = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    observation = HelperFunctions.ReadFits(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
     all_data.append(observation)
     numorders.append(len(observation))
 
@@ -107,7 +105,7 @@ def Add(fileList, outfilename=None):
       total.y += flux(total.x)
       total.err += error(total.x)
     total.err = numpy.sqrt(total.err)
-    total.cont = FindContinuum.Continuum(total.x, total.y, fitorder=3, lowreject=1.5, highreject=5)
+    total.cont = FittingUtilities.Continuum(total.x, total.y, fitorder=3, lowreject=1.5, highreject=5)
 
     #Set up data structures for OutputFitsFile
     columns = {"wavelength": total.x,
@@ -121,7 +119,7 @@ def Add(fileList, outfilename=None):
 
   print "Outputting to %s" %outfilename
   pylab.show()
-  FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
+  HelperFunctions.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
   
   #Add the files used to the primary header of the new file
   hdulist = pyfits.open(outfilename, mode='update')

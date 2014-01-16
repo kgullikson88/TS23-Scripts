@@ -1,5 +1,4 @@
-import FitsUtils
-import FindContinuum
+import FittingUtilities
 from astropy.io import fits as pyfits
 import sys
 import os
@@ -34,9 +33,9 @@ if __name__ == "__main__":
     header = pyfits.getheader(fname)
 
     try:
-      orders = FitsUtils.MakeXYpoints(fname)
+      orders = HelperFunctions.ReadFits(fname)
     except ValueError:
-      orders = FitsUtils.MakeXYpoints(fname, errors=2)
+      orders = HelperFunctions.ReadFits(fname, errors=2)
     orders = orders[::-1]    #Reverse order so the bluest order is first
     if blazecorrect:
       header = pyfits.getheader(fname)
@@ -46,10 +45,10 @@ if __name__ == "__main__":
         allfiles = os.listdir("./")
         blazefile = [f for f in allfiles if "BLAZE" in f][0]
       try:
-        blaze = FitsUtils.MakeXYpoints(blazefile)
+        blaze = HelperFunctions.ReadFits(blazefile)
         blaze = blaze[::-1]
       except ValueError:
-        blaze = FitsUtils.MakeXYpoints(blazefile, errors=2)
+        blaze = HelperFunctions.ReadFits(blazefile, errors=2)
         blaze = blaze[::-1]
       except IOError:
         print "Error! blaze file %s does not exist!" %blazefile
@@ -92,7 +91,7 @@ if __name__ == "__main__":
       #plt.title("Order %i" %i)
       #plt.show()
 
-      order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=5)
+      order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=5)
       columns = columns = {"wavelength": order.x,
                            "flux": order.y,
                            "continuum": order.cont,
