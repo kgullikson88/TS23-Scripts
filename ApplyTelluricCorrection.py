@@ -105,7 +105,7 @@ def main1():
                  "continuum": data.cont,
                  "error": data.err}
       column_list.append(columns)
-    HelperFunction.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
+    HelperFunctions.OutputFitsFileExtensions(column_list, original, outfilename, mode="new")
 
     if plot:
       plt.title("Corrected data")
