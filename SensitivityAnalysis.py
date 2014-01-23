@@ -82,7 +82,8 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
    
-               
+              
+
 star_list = []
 temp_list = []
 gravity_list = []
@@ -116,7 +117,7 @@ if __name__ == "__main__":
   tellurics=False
   trimsize = 1
   windowsize = 101
-  vsini = 20.0*units.km.to(units.cm)
+  vsini = 10.0*units.km.to(units.cm)
   MS = SpectralTypeRelations.MainSequence()
   PMS = SpectralTypeRelations.PreMainSequence()
   vel_list = range(-400, 400, 50)
@@ -251,7 +252,7 @@ if __name__ == "__main__":
                                                 smoothing_order=5,
                                                 outdir=output_dir,
                                                 outfilebase=fname.split(".fits")[0],
-                                                debug=True)
+                                                debug=False)
 
       #Write to logfile
       vels=range(-400, 450, 50)

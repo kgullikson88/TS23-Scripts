@@ -154,5 +154,5 @@ if __name__ == "__main__":
         continue
       fileDict[starname].append(fname)
     for star in fileDict.keys():
-      MedianAdd(fileDict[star], outfilename="%s.fits" %star)
+      MedianAdd(fileDict[star], outfilename="%s_partial.fits" %star)
     

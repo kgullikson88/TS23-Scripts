@@ -15,8 +15,10 @@ homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
 telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 
-badregions = [[588.9, 589.1],
-             [589.5, 589.6]]
+badregions = [[588.9, 589.1],    #Na D line
+             [589.5, 589.6],     #Other Na D line
+	     [686.5, 691.0],     #O2 telluric band that is very deep
+	     [759.2, 769.9]]     #O2 telluric band that is very deep
 
 
 if __name__ == "__main__":
@@ -149,7 +151,7 @@ if __name__ == "__main__":
       model = DataStructures.xypoint(x=test_model.x[left:right], y=test_model.y[left:right])
       model_amplitude = 1.0 - min(model.y)
       print "Model amplitude: %g" %model_amplitude
-      if model_amplitude < 0.01:
+      if model_amplitude < 0.01 or i+start > 46:
         logfile.write("Skipping order %i\n" %(i+start))
         print "Skipping order %i" %(i+start)
         data = order.copy()

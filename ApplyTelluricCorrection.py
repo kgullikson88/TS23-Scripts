@@ -8,7 +8,7 @@ import numpy
 import FittingUtilities
 import HelperFunctions
 
-plot = True
+plot = False
 
 def ReadCorrectedFile(fname, yaxis="model"):
   orders = []
