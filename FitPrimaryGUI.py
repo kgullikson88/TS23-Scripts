@@ -25,7 +25,7 @@ class LineFitter:
     self.orders = HelperFunctions.ReadFits(infilename, errors="error", extensions=True, x="wavelength", y="flux")      
 
     for i, order in enumerate(self.orders):
-      self.orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3, fitorder=2)
+      self.orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=6, fitorder=2)
     
     if telluric:
       print "Reading telluric model from database"
