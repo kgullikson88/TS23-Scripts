@@ -107,8 +107,8 @@ for fname in model_list:
   model2 = FittingUtilities.RebinData(model, numpy.linspace(model.x[0], model.x[-1], model.size()))
   model_data.append(model2)
   for vsini in vsini_values:
-    model_orders = Correlate.Process(model, orders_original, vsini, 60000.0)
-    modeldict[temp][gravity][metallicity][vsini] = model_orders
+    #model_orders = Correlate.Process(model, orders_original, vsini, 60000.0)
+    #modeldict[temp][gravity][metallicity][vsini] = model_orders
     fullmodels[temp][gravity][metallicity][vsini] = model2
 
   
@@ -224,11 +224,15 @@ if __name__ == "__main__":
      
     # Process all of the model spectra up front. 
     # As long as you do more than one star at once, this is faster
-    for temp in sorted(modeldict.keys()):
-      for gravity in sorted(modeldict[temp].keys()):
-	for metallicity in sorted(modeldict[temp][gravity].keys()):
+    for temp in sorted(fullmodels.keys()):
+      for gravity in sorted(fullmodels[temp].keys()):
+	for metallicity in sorted(fullmodels[temp][gravity].keys()):
 	  for vsini in vsini_values:
-	    model_orders = modeldict[temp][gravity][metallicity][vsini]
+	    if modeldict[temp][gravity][metallicity][vsini] == []:
+	      model_orders = Correlate.Process(model, orders_original, vsini, 60000, debug=True)
+	      modeldict[temp][gravity][metallicity][vsini] = model_orders
+	    else:
+	      model_orders = modeldict[temp][gravity][metallicity][vsini]
 	    model = fullmodels[temp][gravity][metallicity][vsini]
             
             #Get info about the secondary star for this model temperature
@@ -246,14 +250,14 @@ if __name__ == "__main__":
             found, significance = Sensitivity.Analyze(orders, 
                                                 model, 
                                                 prim_temp=primary_temp, 
-                                                sec_temp=temp_list[j],
+                                                sec_temp=temp,
                                                 age=age,
                                                 smoothing_windowsize=101,
                                                 smoothing_order=5,
                                                 outdir=output_dir,
                                                 outfilebase=fname.split(".fits")[0],
                                                 process_model=False,
-                                                model_orders=model_orders
+                                                model_orders=model_orders,
                                                 debug=False)
 
       #Write to logfile
@@ -261,9 +265,9 @@ if __name__ == "__main__":
       for v,f,s in zip(vels, found, significance):
         if f:
           #Signal found!
-          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v, s) )
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tyes\t\t%.2f\n" %(fname, primary_temp[0], temp, secondary_mass, massratio, v, s) )
         else:
-          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\tN/A\n" %(fname, primary_temp[0], temp_list[j], secondary_mass, massratio, v) )
+          outfile.write("%s\t%i\t\t\t%i\t\t\t\t%.2f\t\t%.4f\t\t%i\t\tno\t\tN/A\n" %(fname, primary_temp[0], temp, secondary_mass, massratio, v) )
       
        
 
