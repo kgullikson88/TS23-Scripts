@@ -25,7 +25,6 @@ badregions = [[567.5, 575.5],
 
 #Define the values of vsini to search
 vsini_values = [10,20,30,40]
-vsini_values = [10,]
 
 #Set up model list
 model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -134,8 +133,6 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte68-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted"]
 
 
-model_list = model_list[10:14]
-          
 modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
 
