@@ -139,7 +139,7 @@ if __name__ == "__main__":
     fileList.append(arg)
 
   if len(fileList) > 1:
-    MedianAdd(fileList)
+    MedianAdd(fileList, outfilename="Total.fits")
   else:
     allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-" in f]
     fileDict = defaultdict(list)

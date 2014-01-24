@@ -8,6 +8,16 @@ import numpy
 from scipy.stats.mstats import mquantiles
 
 
+#Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
+badregions = [[567.5, 575.5],
+              [588.5, 598.5],
+              [627, 632],
+              [647,655],
+              [686, 706],
+              [716, 734],
+              [759, 9e9]]
+              
+
 homedir = os.environ["HOME"]
 modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
 
@@ -195,8 +205,41 @@ if __name__ == "__main__":
                                       y="flux",
                                       errors="error",
                                       cont="continuum")[:50]
-    for order in orders:
-      order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+                                      
+    numorders = len(orders)
+    for i, order in enumerate(orders[::-1]):
+    
+      #Remove bad regions from the data
+      for region in badregions:
+        left = numpy.searchsorted(order.x, region[0])
+        right = numpy.searchsorted(order.x, region[1])
+        if left > 0 and right < order.size():
+          print "Warning! Bad region covers the middle of order %i" %i
+          print "Removing full order!"
+          left = 0
+          right = order.size()
+        order.x = numpy.delete(order.x, numpy.arange(left, right))
+        order.y = numpy.delete(order.y, numpy.arange(left, right))
+        order.cont = numpy.delete(order.cont, numpy.arange(left, right))
+        order.err = numpy.delete(order.err, numpy.arange(left, right))
+
+
+      #Remove whole order if it is too small
+      remove = False
+      if order.x.size <= 1:
+        remove = True
+      else:
+        velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
+        if velrange <= 1050.0:
+          remove = True
+      if remove:
+        print "Removing order %i" %(numorders - 1 - i)
+        orders.pop(numorders - 1 - i)
+      else:
+        order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+        orders[numorders -1 -i] = order.copy()  
+      
+      
     
     
     #Get bootstrap samples
@@ -207,9 +250,9 @@ if __name__ == "__main__":
     print "The mean CCF height is %g" %numpy.mean(y)
     print "The median CCF height is %g" %quantiles[1]
     print "The standard deviation of the peak height is %g" %numpy.std(y)
-    print "The 25% quantile is %g" %quantiles[0]
-    print "The 75% quantile is %g" %quantiles[2]
-    plt.hist(y)
+    print "The 25%% quantile is %g" %quantiles[0]
+    print "The 75%% quantile is %g" %quantiles[2]
+    plt.hist(y, bins=50)
     plt.show()
   
   
