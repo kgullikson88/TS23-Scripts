@@ -40,6 +40,7 @@ badregions = [[567.5, 575.5],
               [759, 9e9]]
               
 vsini_values = [10,]
+vsini_values = [v*units.km.to(units.cm) for v in vsini_values]
 
 #Set up model list
 model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -87,8 +88,8 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
    
 model_list = model_list[5:7]              
 
-modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
-processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
+modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(list))))
+fullmodels = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 
 model_data = []
 for fname in model_list:
@@ -103,9 +104,12 @@ for fname in model_list:
   print "Reading in file %s" %fname
   x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
   model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm)/1.00026, y=10**y)
+  model2 = FittingUtilities.RebinData(model, numpy.linspace(model.x[0], model.x[-1], model.size()))
+  model_data.append(model2)
   for vsini in vsini_values:
-    modeldict[temp][gravity][metallicity][vsini] = model
-    processed[temp][gravity][metallicity][vsini] = False
+    model_orders = Correlate.Process(model, orders_original, vsini, 60000.0)
+    modeldict[temp][gravity][metallicity][vsini] = model_orders
+    fullmodels[temp][gravity][metallicity][vsini] = model2
 
   
 
@@ -224,27 +228,23 @@ if __name__ == "__main__":
       for gravity in sorted(modeldict[temp].keys()):
 	for metallicity in sorted(modeldict[temp][gravity].keys()):
 	  for vsini in vsini_values:
-	    model = modeldict[temp][gravity][metallicity][vsini]
-	    model_orders = Correlate.Process(model, orders_original, vsini, 60000.0, debug=True)
-	    modeldict[temp][gravity][metallicity][vsini] = model_orders
-
-    #Begin loop over model spectra
-    for j, model in enumerate(model_data):
+	    model_orders = modeldict[temp][gravity][metallicity][vsini]
+	    model = fullmodels[temp][gravity][metallicity][vsini]
             
-      #Get info about the secondary star for this model temperature
-      secondary_spt = MS.GetSpectralType(MS.Temperature, temp_list[j])
-      secondary_radius = PMS.Interpolate(secondary_spt, age, key='Radius')
-      secondary_mass = PMS.Interpolate(secondary_spt, age, key='Mass')
-      massratio = secondary_mass / primary_mass
+            #Get info about the secondary star for this model temperature
+            secondary_spt = MS.GetSpectralType(MS.Temperature, temp)
+            secondary_radius = PMS.Interpolate(secondary_spt, age, key='Radius')
+            secondary_mass = PMS.Interpolate(secondary_spt, age, key='Mass')
+            massratio = secondary_mass / primary_mass
 
 
-      #Check sensitivity to this star
-      orders = [order.copy() for order in orders_original]   #Make a copy of orders
-      output_dir = "%s/Sensitivity/" %(os.path.dirname(fname))
-      if output_dir.startswith("/"):
-        output_dir = output_dir[1:]
-      found, significance = Sensitivity.Analyze(orders, 
-                                                model_orders, 
+            #Check sensitivity to this star
+            orders = [order.copy() for order in orders_original]   #Make a copy of orders
+            output_dir = "%s/Sensitivity/" %(os.path.dirname(fname))
+            if output_dir.startswith("/"):
+              output_dir = output_dir[1:]
+            found, significance = Sensitivity.Analyze(orders, 
+                                                model, 
                                                 prim_temp=primary_temp, 
                                                 sec_temp=temp_list[j],
                                                 age=age,
@@ -253,6 +253,7 @@ if __name__ == "__main__":
                                                 outdir=output_dir,
                                                 outfilebase=fname.split(".fits")[0],
                                                 process_model=False,
+                                                model_orders=model_orders
                                                 debug=False)
 
       #Write to logfile
