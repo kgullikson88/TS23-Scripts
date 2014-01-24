@@ -8,6 +8,7 @@ import FittingUtilities
 import HelperFunctions
 import matplotlib.pyplot as plt
 from astropy import units, constants
+from collections import defaultdict
 
 
 homedir = os.environ["HOME"]
@@ -22,8 +23,11 @@ badregions = [[567.5, 575.5],
               [716, 734],
               [759, 9e9]]
 
-#Set up model list
+#Define the values of vsini to search
+vsini_values = [10,20,30,40]
+vsini_values = [10,]
 
+#Set up model list
 model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
@@ -131,11 +135,10 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
 
 
 model_list = model_list[10:14]
-               
-star_list = []
-temp_list = []
-gravity_list = []
-metal_list = []
+          
+modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
+processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
+
 model_data = []
 for fname in model_list:
   if "PHOENIX2004" in fname:
@@ -148,11 +151,10 @@ for fname in model_list:
     metallicity = float(fname.split("lte")[-1][7:11])
   print "Reading in file %s" %fname
   x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
-  model_data.append( DataStructures.xypoint(x=x*units.angstrom.to(units.nm), y=10**y) )
-  star_list.append(str(temp))
-  temp_list.append(temp)
-  gravity_list.append(gravity)
-  metal_list.append(metallicity)
+  model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm), y=10**y)
+  for vsini in vsini_values:
+    modeldict[temp][gravity][metallicity][vsini] = model
+    processed[temp][gravity][metallicity][vsini] = False
   
 
 if __name__ == "__main__":
@@ -236,30 +238,31 @@ if __name__ == "__main__":
         
     #Do the cross-correlation
     rebin=True
-    for vsini in [10, 20, 30, 40]:
-      for i, model in enumerate(model_data):
-        retdict = Correlate.GetCCF(orders, 
-                                   model,
-                                   resolution=60000.0,
-                                   vsini=vsini*units.km.to(units.cm), 
-                                   rebin_data=rebin
-                                   debug=False)
+    for temp in sorted(modeldict.keys()):
+      for gravity in sorted(modeldict[temp].keys()):
+	for metallicity in sorted(modeldict[temp][gravity].keys()):
+	  for vsini in vsini_values:
+	    model = modeldict[temp][gravity][metallicity][vsini]
+	    pflag = not processed[temp][gravity][metallicity][vsini]
+	    retdict = Correlate.GetCCF(orders, 
+	                               model,
+                                       resolution=60000.0,
+                                       vsini=vsini, 
+                                       rebin_data=rebin,
+				       process_model=pflag,
+                                       debug=True)
                                    
-        corr = retdict["CCF"]
-        if rebin:
-          orders = retdict["data"]
-          rebin = False
-        
-        # Make the output filename
-        temp = temps[i]
-        gravity = gravities[i]
-        metallicity = metallicities[i]
-
-        vsini_str = vsini*units.cm.to(units.km)
+            corr = retdict["CCF"]
+            if rebin:
+              orders = retdict["data"]
+              rebin = False
+	    if pflag:
+	      processed[temp][gravity][metallicity][vsini] = True
+              modeldict[temp][gravity][metallicity][vsini] = retdict["model"]
       
-        outfilename = "%s%s.%.0fkps_%sK%+.1f%+.1f" %(outdir, outfilebase, vsini_str, temp, gravity, metallicity)
-        print "Outputting to ", outfilename, "\n"
-        numpy.savetxt(outfilename, numpy.transpose((corr.x, corr.y)), fmt="%.10g")
+            outfilename = "%s%s.%.0fkps_%sK%+.1f%+.1f" %(output_dir, outfilebase, vsini, temp, gravity, metallicity)
+            print "Outputting to ", outfilename, "\n"
+            numpy.savetxt(outfilename, numpy.transpose((corr.x, corr.y)), fmt="%.10g")
         
                                    
            
