@@ -85,7 +85,7 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
                modeldir + "lte76-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
                modeldir + "lte78-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]"""
    
-              
+model_list = model_list[5:7]              
 
 modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
@@ -135,15 +135,15 @@ if __name__ == "__main__":
   
   for fname in fileList:
     if extensions:
-      orders_original = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
+      orders_original = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
       if tellurics:
-        model_orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="model")
+        model_orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="model")
         for i, order in enumerate(orders_original):
           orders_original[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=2)
           orders_original[i].y /= model_orders[i].y
           
     else:
-      orders_original = FitsUtils.MakeXYpoints(fname, errors=2)
+      orders_original = HelperFunctions.ReadFits(fname, errors=2)
 
     #Loop over orders, removing bad parts
     numorders = len(orders_original)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 	for metallicity in sorted(modeldict[temp][gravity].keys()):
 	  for vsini in vsini_values:
 	    model = modeldict[temp][gravity][metallicity][vsini]
-	    model_orders = Correlate.Process(model, orders_original, vsini, 60000.0)
+	    model_orders = Correlate.Process(model, orders_original, vsini, 60000.0, debug=True)
 	    modeldict[temp][gravity][metallicity][vsini] = model_orders
 
     #Begin loop over model spectra
