@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 from astropy.io import fits as pyfits
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import TelluricFitter
-import FitsUtils
 import DataStructures
 import Units
 from astropy import units, constants
-import FindContinuum
+import HelperFunctions
+import FittingUtilities
+
 
 homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     if outfilename not in os.listdir("./"):
       exists = False
 
-    orders = FitsUtils.MakeXYpoints(fname, errors="error", extensions=True, x="wavelength", y="flux")
+    orders = HelperFunctions.ReadFits(fname, errors="error", extensions=True, x="wavelength", y="flux")
     header = pyfits.getheader(fname)
     
     date = header["DATE-OBS"]
@@ -139,7 +140,7 @@ if __name__ == "__main__":
       fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
                           "waveend": order.x[-1] + 20.0})
       
-      order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=10)
+      order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=10)
       primary = DataStructures.xypoint(x=order.x, y=numpy.ones(order.x.size))
       
       fitter.ImportData(order)
