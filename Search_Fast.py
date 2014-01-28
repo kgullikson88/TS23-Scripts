@@ -136,6 +136,7 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
 modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
 
+
 model_data = []
 for fname in model_list:
   if "PHOENIX2004" in fname:
@@ -154,6 +155,64 @@ for fname in model_list:
     processed[temp][gravity][metallicity][vsini] = False
   
 
+
+
+def Process_Data(fname, extensions=True):
+  if extensions:
+    orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
+    if tellurics:
+      model_orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="model")
+      for i, order in enumerate(orders):
+        orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=2)
+        orders[i].y /= model_orders[i].y
+          
+  else:
+    orders = HelperFunctions.ReadFits(fname, errors=2)
+    
+    
+  numorders = len(orders)
+  for i, order in enumerate(orders[::-1]):
+    DATA = interp(order.x, order.y)
+    CONT = interp(order.x, order.cont)
+    ERROR = interp(order.x, order.err)
+    order.x = numpy.linspace(order.x[trimsize], order.x[-trimsize], order.size() - 2*trimsize)
+    order.y = DATA(order.x)
+    order.cont = CONT(order.x)
+    order.err = ERROR(order.x)
+      
+    #Remove bad regions from the data
+    for region in badregions:
+      left = numpy.searchsorted(order.x, region[0])
+      right = numpy.searchsorted(order.x, region[1])
+      if left > 0 and right < order.size():
+        print "Warning! Bad region covers the middle of order %i" %i
+        print "Removing full order!"
+        left = 0
+        right = order.size()
+      order.x = numpy.delete(order.x, numpy.arange(left, right))
+      order.y = numpy.delete(order.y, numpy.arange(left, right))
+      order.cont = numpy.delete(order.cont, numpy.arange(left, right))
+      order.err = numpy.delete(order.err, numpy.arange(left, right))
+
+
+    #Remove whole order if it is too small
+    remove = False
+    if order.x.size <= 1:
+      remove = True
+    else:
+      velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
+      if velrange <= 1050.0:
+        remove = True
+    if remove:
+      print "Removing order %i" %(numorders - 1 - i)
+      orders.pop(numorders - 1 - i)
+    else:
+      order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+      orders[numorders -1 -i] = order.copy()
+  return orders
+
+
+
 if __name__ == "__main__":
   #Parse command line arguments:
   fileList = []
@@ -168,91 +227,38 @@ if __name__ == "__main__":
     else:
       fileList.append(arg)
 
-  for fname in fileList:
-    if extensions:
-      orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
-      if tellurics:
-        model_orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="model")
-        for i, order in enumerate(orders):
-          orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=2)
-          orders[i].y /= model_orders[i].y
-          
-    else:
-      orders = HelperFunctions.ReadFits(fname, errors=2)
-    numorders = len(orders)
-    for i, order in enumerate(orders[::-1]):
-      DATA = interp(order.x, order.y)
-      CONT = interp(order.x, order.cont)
-      ERROR = interp(order.x, order.err)
-      order.x = numpy.linspace(order.x[trimsize], order.x[-trimsize], order.size() - 2*trimsize)
-      order.y = DATA(order.x)
-      order.cont = CONT(order.x)
-      order.err = ERROR(order.x)
-      
-      #Remove bad regions from the data
-      for region in badregions:
-        left = numpy.searchsorted(order.x, region[0])
-        right = numpy.searchsorted(order.x, region[1])
-        if left > 0 and right < order.size():
-          print "Warning! Bad region covers the middle of order %i" %i
-          print "Removing full order!"
-          left = 0
-          right = order.size()
-        order.x = numpy.delete(order.x, numpy.arange(left, right))
-        order.y = numpy.delete(order.y, numpy.arange(left, right))
-        order.cont = numpy.delete(order.cont, numpy.arange(left, right))
-        order.err = numpy.delete(order.err, numpy.arange(left, right))
-
-
-      #Remove whole order if it is too small
-      remove = False
-      if order.x.size <= 1:
-        remove = True
-      else:
-        velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
-        if velrange <= 1050.0:
-          remove = True
-      if remove:
-        print "Removing order %i" %(numorders - 1 - i)
-        orders.pop(numorders - 1 - i)
-      else:
-        order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
-        orders[numorders -1 -i] = order.copy()
-
+  #Do the cross-correlation
+  for temp in sorted(modeldict.keys()):
+    for gravity in sorted(modeldict[temp].keys()):
+      for metallicity in sorted(modeldict[temp][gravity].keys()):
+        for vsini in vsini_values:
+	  for fname in fileList:
+	    orders = Process_Data(fname, extensions=True)
+	    
+	    
+            output_dir = "Cross_correlations/"
+            outfilebase = fname.split(".fits")[0]
+            if "/" in fname:
+              dirs = fname.split("/")
+              output_dir = ""
+              outfilebase = dirs[-1].split(".fits")[0]
+              for directory in dirs[:-1]:
+                output_dir = output_dir + directory + "/"
+              output_dir = output_dir + "Cross_correlations/"
+            HelperFunctions.ensure_dir(output_dir)
         
-
     
-    output_dir = "Cross_correlations/"
-    outfilebase = fname.split(".fits")[0]
-    if "/" in fname:
-      dirs = fname.split("/")
-      output_dir = ""
-      outfilebase = dirs[-1].split(".fits")[0]
-      for directory in dirs[:-1]:
-        output_dir = output_dir + directory + "/"
-      output_dir = output_dir + "Cross_correlations/"
-    HelperFunctions.ensure_dir(output_dir)
-        
-    #Do the cross-correlation
-    rebin=True
-    for temp in sorted(modeldict.keys()):
-      for gravity in sorted(modeldict[temp].keys()):
-	for metallicity in sorted(modeldict[temp][gravity].keys()):
-	  for vsini in vsini_values:
 	    model = modeldict[temp][gravity][metallicity][vsini]
 	    pflag = not processed[temp][gravity][metallicity][vsini]
 	    retdict = Correlate.GetCCF(orders, 
 	                               model,
                                        resolution=60000.0,
                                        vsini=vsini, 
-                                       rebin_data=rebin,
+                                       rebin_data=True,
 				       process_model=pflag,
                                        debug=True)
                                    
             corr = retdict["CCF"]
-            if rebin:
-              orders = retdict["data"]
-              rebin = False
 	    if pflag:
 	      processed[temp][gravity][metallicity][vsini] = True
               modeldict[temp][gravity][metallicity][vsini] = retdict["model"]
@@ -260,6 +266,11 @@ if __name__ == "__main__":
             outfilename = "%s%s.%.0fkps_%sK%+.1f%+.1f" %(output_dir, outfilebase, vsini, temp, gravity, metallicity)
             print "Outputting to ", outfilename, "\n"
             numpy.savetxt(outfilename, numpy.transpose((corr.x, corr.y)), fmt="%.10g")
+        
+        
+          #Delete the model. We don't need it anymore and it just takes up ram.
+          modeldict[temp][gravity][metallicity][vsini] = []
+        
         
                                    
            
