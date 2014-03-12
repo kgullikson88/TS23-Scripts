@@ -31,12 +31,14 @@ def Correct(original, corrected, offset=None):
   #Read in the data and model
   original_orders = HelperFunctions.ReadFits(original, extensions=True, x="wavelength", y="flux", errors="error", cont="continuum")
   corrected_orders, corrected_headers = ReadCorrectedFile(corrected)
+  primary_orders, header = ReadCorrectedFile(corrected, yaxis="primary")
   test_orders, header = ReadCorrectedFile(corrected, yaxis="flux")
 
   if plot:
-    for order, model in zip(test_orders, corrected_orders):
-      plt.plot(order.x, order.y/order.cont)
-      plt.plot(model.x, model.y)
+    for order, model, primary in zip(test_orders, corrected_orders, primary_orders):
+      plt.plot(order.x, order.y/order.cont, 'b-')
+      plt.plot(model.x, model.y, 'r-')
+      plt.plot(primary.x, primary.y, 'g-')
     plt.title("Correction in corrected file only")
     plt.show()
 
