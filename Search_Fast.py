@@ -23,6 +23,9 @@ badregions = [[567.5, 575.5],
               [716, 734],
               [759, 9e9]]
 
+#Define the amount to trim from either side of every order
+trimsize = 1
+
 #Define the values of vsini to search
 vsini_values = [10,20,30,40]
 
@@ -136,7 +139,7 @@ model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.s
 modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
 
-
+"""
 model_data = []
 for fname in model_list:
   if "PHOENIX2004" in fname:
@@ -153,18 +156,13 @@ for fname in model_list:
   for vsini in vsini_values:
     modeldict[temp][gravity][metallicity][vsini] = model
     processed[temp][gravity][metallicity][vsini] = False
-  
+"""
 
 
 
 def Process_Data(fname, extensions=True):
   if extensions:
-    orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
-    if tellurics:
-      model_orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="model")
-      for i, order in enumerate(orders):
-        orders[i].cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=2)
-        orders[i].y /= model_orders[i].y
+    orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error", cont="continuum")
           
   else:
     orders = HelperFunctions.ReadFits(fname, errors=2)
@@ -207,7 +205,13 @@ def Process_Data(fname, extensions=True):
       print "Removing order %i" %(numorders - 1 - i)
       orders.pop(numorders - 1 - i)
     else:
+      # Find outliers from e.g. bad telluric line or stellar spectrum removal.
+      outliers = HelperFunctions.FindOutliers(data)
+      order.y[outliers] = 0.0
       order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+      order.y[outliers] = order.cont[outliers]
+
+      # Save this order
       orders[numorders -1 -i] = order.copy()
   return orders
 
@@ -232,10 +236,9 @@ if __name__ == "__main__":
     for gravity in sorted(modeldict[temp].keys()):
       for metallicity in sorted(modeldict[temp][gravity].keys()):
         for vsini in vsini_values:
-	  for fname in fileList:
-	    orders = Process_Data(fname, extensions=True)
-	    
-	    
+          for fname in fileList:
+            orders = Process_Data(fname, extensions=True)
+
             output_dir = "Cross_correlations/"
             outfilebase = fname.split(".fits")[0]
             if "/" in fname:
@@ -248,19 +251,18 @@ if __name__ == "__main__":
             HelperFunctions.ensure_dir(output_dir)
         
     
-	    model = modeldict[temp][gravity][metallicity][vsini]
-	    pflag = not processed[temp][gravity][metallicity][vsini]
-	    retdict = Correlate.GetCCF(orders, 
-	                               model,
+            model = modeldict[temp][gravity][metallicity][vsini]
+            pflag = not processed[temp][gravity][metallicity][vsini]
+            retdict = Correlate.GetCCF(orders, 
+                                       model,
                                        resolution=60000.0,
                                        vsini=vsini, 
                                        rebin_data=True,
-				       process_model=pflag,
+                                       process_model=pflag,
                                        debug=True)
-                                   
             corr = retdict["CCF"]
-	    if pflag:
-	      processed[temp][gravity][metallicity][vsini] = True
+            if pflag:
+              processed[temp][gravity][metallicity][vsini] = True
               modeldict[temp][gravity][metallicity][vsini] = retdict["model"]
       
             outfilename = "%s%s.%.0fkps_%sK%+.1f%+.1f" %(output_dir, outfilebase, vsini, temp, gravity, metallicity)
