@@ -70,12 +70,28 @@ def GetAtmosphereFile(header):
 
 
 
+def FindOrderNums(orders, wavelengths):
+  """
+    Given a list of xypoint orders and
+    another list of wavelengths, this
+    finds the order numbers with the
+    requested wavelengths
+  """
+  nums = []
+  for wave in wavelengths:
+    for i, order in enumerate(orders):
+      if order.x[0] < wave and order.x[-1] > wave:
+        nums.append(i)
+        break
+  return nums
+
+
+
 
 if __name__ == "__main__":
   #Initialize fitter
   fitter = TelluricFitter.TelluricFitter()
   fitter.SetObservatory("McDonald")
-  logfile = open("fitlog.txt", "a")
  
   fileList = []
   start = 0
@@ -97,6 +113,7 @@ if __name__ == "__main__":
 
   #START LOOPING OVER INPUT FILES
   for fname in fileList:
+    logfile = open("fitlog_%s.txt" %(fname.split(".fits")[0]), "a")
     logfile.write("Fitting file %s\n" %(fname))
     name = fname.split(".fits")[0]
     outfilename = "Corrected_%s.fits" %name
@@ -141,7 +158,7 @@ if __name__ == "__main__":
     
     angle = float(header["ZD"])
     resolution = 60000.0
-    humidity = RH[bestindex]
+    humidity = max(5, RH[bestindex])
     T_fahrenheit = T[bestindex]
     pressure = P[bestindex]*Units.hPa/Units.inch_Hg
     temperature = (T_fahrenheit - 32.0)*5.0/9.0 + 273.15
@@ -171,8 +188,8 @@ if __name__ == "__main__":
       
     
     #Adjust fitter values
-    fitter.FitVariable({"h2o": humidity,
-                        "temperature": temperature})
+    fitter.FitVariable({"h2o": humidity})
+    #                    "temperature": temperature})
     #                    "o2": 2.12e5})
     fitter.AdjustValue({"angle": angle,
                         "pressure": pressure,
@@ -181,7 +198,7 @@ if __name__ == "__main__":
     fitter.SetBounds({"h2o": [humidity_low, humidity_high],
                       "temperature": [temperature-10, temperature+10],
                       "o2": [5e4, 1e6],
-                      "resolution": [70000, 120000]})
+                      "resolution": [50000, 70000]})
     
     #Ignore the interstellar sodium D lines and parts of the O2 bands
     fitter.IgnoreRegions(badregions)
@@ -195,7 +212,8 @@ if __name__ == "__main__":
     waveshifts = []
     wave0 = []
     chisquared = []
-    for i in [30, 35, 39, 41]:
+    #for i in [30, 35, 39, 41]:
+    for i in FindOrderNums(orders, [595, 700, 717, 730]):
       print "\n***************************\nFitting order %i: " %(i)
       order = orders[i]
       fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
@@ -210,10 +228,13 @@ if __name__ == "__main__":
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())
-      idx = fitter.parnames.index("h2o")
-      h2o.append(fitter.const_pars[idx])
-      idx = fitter.parnames.index("temperature")
-      T.append(fitter.const_pars[idx])
+      h2o.append(fitter.GetValue("h2o"))
+      T.append(fitter.GetValue("temperature"))
+      
+      #idx = fitter.parnames.index("h2o")
+      #h2o.append(fitter.const_pars[idx])
+      #idx = fitter.parnames.index("temperature")
+      #T.append(fitter.const_pars[idx])
       chisquared.append((1.0-min(model.y))/fitter.chisq_vals[-1])
 
     # Determine the average humidity (weight by chi-squared)
@@ -228,7 +249,8 @@ if __name__ == "__main__":
     
     # Now, determine the O2 abundance
     fitter.FitVariable({"o2": 2.12e5})
-    for i in [33, 38]:
+    #for i in [33, 38]:
+    for i in FindOrderNums(orders, [630, 690]):
       order = orders[i]
       fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
                           "waveend": order.x[-1] + 20.0})
