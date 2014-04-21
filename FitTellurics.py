@@ -303,53 +303,24 @@ if __name__ == "__main__":
       order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
       fitter.ImportData(order)
       fitter.resolution_fit_mode = "gauss"
-      wave0 = order.x.mean()
-      fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
+      #wave0 = order.x.mean()
+      #fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
       print "fitter.shift = ", fitter.shift
       primary, model = fitter.GenerateModel(fitpars, 
                                             separate_primary=True, 
                                             return_resolution=False)
-      if min(model.y) > 0.9:
-	# The wavelength calibration might be off.
-	fitter.shift = 0.0
-	model = fitter.GenerateModel(fitpars, separate_primary=False, nofit=True)
-
-	model.x /= (1.0 + vel/(constants.c.cgs.value*units.cm.to(units.km)))
-	xgrid = numpy.linspace(model.x[0], model.x[-1], model.size())
-	model = FittingUtilities.RebinData(model, xgrid)
-	#order2 = order.copy()
-	#p = FittingUtilities.Iterative_SV(order2.y/order2.cont, 61, 4)
-	#order2.y /= p
-	#model2 = FittingUtilities.RebinData(model, order2.x)
-	left = numpy.searchsorted(model.x, order.x[0])
-	right = numpy.searchsorted(model.x, order.x[-1])
-	if min(model.y[left:right]) < 0.99:
-	  #Interpolate to finer spacing
-	  oversampling = 5.0
-          xgrid = numpy.linspace(order.x[0], order.x[-1], order.size()*oversampling)
-          order2 = FittingUtilities.RebinData(order, xgrid)
-          model2 = FittingUtilities.RebinData(model, xgrid)
-          p = FittingUtilities.Iterative_SV(order2.y/order2.cont, 61*oversampling, 4)
-	  order2.y /= p
-  	  shift, corr = FittingUtilities.CCImprove(order2, 
-	                                           model2,
-	                                           be_safe=True,
-	                                           tol=0.05,
-	                                           debug=True)
-	  model.x -= shift
-	  #plt.figure(1)
-	  #plt.plot(order2.x, order2.y/order2.cont)
-	  #plt.plot(order2.x, p)
-	  #plt.plot(model2.x, model2.y/model2.cont)
-	  #plt.figure(2)
-	  #plt.plot(corr.x, corr.y)
-	  #plt.show()
-	  print "Model has low amplitude! Shifting by %.5g nm" %shift
-	model = FittingUtilities.ReduceResolution(model, resolution)
-	model = FittingUtilities.RebinData(model, order.x)
 
       data = fitter.data
-      data.cont = FittingUtilities.Continuum(data.x, data.y, fitorder=3, lowreject=2, highreject=2)
+      if min(model.y) > 0.98:
+        #The wavelength calibration might be off
+        wave0 = order.x.mean()
+        fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
+        model = fitter.GenerateModel(fitpars, separate_primary=False, nofit=True)
+        model.x /= (1.0 + vel/(constants.c.cgs.value*units.cm.to(units.km)))
+        model = FittingUtilities.RebinData(model, order.x)
+        data = order.copy()
+        data.cont = FittingUtilities.Continuum(data.x, data.y, fitorder=3, lowreject=2, highreject=5)
+
 
       # Set up data structures for OutputFitsFile
       columns = {"wavelength": data.x,
@@ -379,5 +350,4 @@ if __name__ == "__main__":
         HelperFunctions.OutputFitsFileExtensions(columns, outfilename, outfilename, headers_info=[header_info,], mode="append")
       
       
-  #plt.show()
-  logfile.close()
+    logfile.close()
