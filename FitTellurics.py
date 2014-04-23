@@ -11,6 +11,7 @@ import Units
 from astropy import units, constants
 import HelperFunctions
 import FittingUtilities
+import GetAtmosphere
 
 
 homedir = os.environ["HOME"]
@@ -41,31 +42,6 @@ namedict = {"pressure": ["PRESFIT", "PRESVAL", "Pressure"],
 
 
 
-def GetAtmosphereFile(header):
-  fnames = [f for f in os.listdir("./") if "GDAS_atmosphere" in f]
-  datestr = header["DATE-OBS"]
-  year = int(datestr.split("-")[0])
-  month = int(datestr.split("-")[1])
-  day = int(datestr.split("-")[2])
-  time = header["UT"]
-  hour = int(time.split(":")[0])
-  minute = int(time.split(":")[1])
-  obstime = year + (month*30 + day)/365.0 + (hour*60 + minute)/(365.0*24.0*60.0)
-  #obstime = hour + minute/60.0
-  filename = ""
-  mindiff = 9e12
-  for fname in fnames:
-    datestr = fname.split("_")[2]
-    year = int(datestr.split("-")[0])
-    month = int(datestr.split("-")[1])
-    day = int(datestr.split("-")[2])
-    hour = (float(fname.split("_")[3]) + float(fname.split("_")[4].split(".")[0]))/2.0
-    atmos_time = year + (month*30 + day)/365.0 + hour/(365.0*24.0)
-    #atmos_time = hour
-    if abs(atmos_time - obstime) < mindiff:
-      mindiff = abs(atmos_time - obstime)
-      filename = fname
-  return filename
 
 
 
@@ -165,28 +141,13 @@ if __name__ == "__main__":
 
 
     if edit_atmosphere:
-      #Find the appropriate filename
-      atmosphere_fname = GetAtmosphereFile(header)
-      
-      #Read in GDAS atmosphere profile information
-      Pres,height,Temp,dew = numpy.loadtxt(atmosphere_fname, usecols=(0,1,2,3), unpack=True)
-      sorter = numpy.argsort(height)
-      height = height[sorter]
-      Pres = Pres[sorter]
-      Temp = Temp[sorter]
-      dew = dew[sorter]
-      
-      #Convert dew point temperature to ppmv
-      Pw = 6.116441 * 10**(7.591386*Temp/(Temp + 240.7263))
-      h2o = Pw / (Pres-Pw) * 1e6
-      
-      height /= 1000.0
-      Temp += 273.15
+      filenames = [f for f in os.listdir("./") if "GDAS" in f]      
+      height, Pres, Temp, h2o = GetAtmosphere.GetProfile(filenames, header['date-obs'], header['ut'])
+
       fitter.EditAtmosphereProfile("Temperature", height, Temp)
       fitter.EditAtmosphereProfile("Pressure", height, Pres)
       fitter.EditAtmosphereProfile("H2O", height, h2o)
       
-    
     #Adjust fitter values
     fitter.FitVariable({"h2o": humidity})
     #                    "temperature": temperature})
