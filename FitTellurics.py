@@ -162,7 +162,6 @@ if __name__ == "__main__":
     
     #Ignore the interstellar sodium D lines and parts of the O2 bands
     fitter.IgnoreRegions(badregions)
-    models = []
     
     # Determine the H2O abundance
     resolution = []
@@ -181,15 +180,6 @@ if __name__ == "__main__":
                           "waveend": order.x[-1] + 20.0})
       order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
       primary = DataStructures.xypoint(x=order.x, y=numpy.ones(order.x.size))
-      
-      fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
-      model = fitter.GenerateModel(fitpars, nofit=True)
-      model.x -= 0.01
-      model = FittingUtilities.RebinData(model, order.x)
-      plt.plot(order.x, order.y/order.cont)
-      plt.plot(model.x, model.y)
-      plt.show()
-      sys.exit()
       primary, model, R = fitter.Fit(data=order.copy(), 
                                      resolution_fit_mode="gauss", 
                                      fit_source=True, 
@@ -201,10 +191,6 @@ if __name__ == "__main__":
       h2o.append(fitter.GetValue("h2o"))
       T.append(fitter.GetValue("temperature"))
       
-      #idx = fitter.parnames.index("h2o")
-      #h2o.append(fitter.const_pars[idx])
-      #idx = fitter.parnames.index("temperature")
-      #T.append(fitter.const_pars[idx])
       chisquared.append((1.0-min(model.y))/fitter.chisq_vals[-1])
 
     # Determine the average humidity (weight by chi-squared)
