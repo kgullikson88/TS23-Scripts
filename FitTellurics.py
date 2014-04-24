@@ -139,7 +139,6 @@ if __name__ == "__main__":
     pressure = P[bestindex]*Units.hPa/Units.inch_Hg
     temperature = (T_fahrenheit - 32.0)*5.0/9.0 + 273.15
 
-
     if edit_atmosphere:
       filenames = [f for f in os.listdir("./") if "GDAS" in f]      
       height, Pres, Temp, h2o = GetAtmosphere.GetProfile(filenames, header['date-obs'], header['ut'])
@@ -149,13 +148,13 @@ if __name__ == "__main__":
       fitter.EditAtmosphereProfile("H2O", height, h2o)
       
     #Adjust fitter values
-    fitter.FitVariable({"h2o": humidity})
-    #                    "temperature": temperature})
-    #                    "o2": 2.12e5})
     fitter.AdjustValue({"angle": angle,
                         "pressure": pressure,
                         "resolution": resolution,
+                        "temperature": temperature,
 			                  "o2": 2.12e5})
+    fitter.FitVariable({"h2o": humidity})
+    #                    "temperature": temperature})
     fitter.SetBounds({"h2o": [humidity_low, humidity_high],
                       "temperature": [temperature-10, temperature+10],
                       "o2": [5e4, 1e6],
@@ -173,6 +172,7 @@ if __name__ == "__main__":
     waveshifts = []
     wave0 = []
     chisquared = []
+    fitter.DisplayVariables()
     #for i in [30, 35, 39, 41]:
     for i in FindOrderNums(orders, [595, 700, 717, 730]):
       print "\n***************************\nFitting order %i: " %(i)
@@ -181,11 +181,20 @@ if __name__ == "__main__":
                           "waveend": order.x[-1] + 20.0})
       order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
       primary = DataStructures.xypoint(x=order.x, y=numpy.ones(order.x.size))
+      
+      fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
+      model = fitter.GenerateModel(fitpars, nofit=True)
+      model.x -= 0.01
+      model = FittingUtilities.RebinData(model, order.x)
+      plt.plot(order.x, order.y/order.cont)
+      plt.plot(model.x, model.y)
+      plt.show()
+      sys.exit()
       primary, model, R = fitter.Fit(data=order.copy(), 
                                      resolution_fit_mode="gauss", 
-                                     fit_primary=True, 
+                                     fit_source=True, 
                                      return_resolution=True,
-				     adjust_wave="model")
+                                     adjust_wave="model")
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())
@@ -219,8 +228,8 @@ if __name__ == "__main__":
       primary = DataStructures.xypoint(x=order.x, y=numpy.ones(order.x.size))
       primary, model, R = fitter.Fit(data=order.copy(), 
                                      resolution_fit_mode="gauss", 
-                                     fit_primary=True,
-				     return_resolution=True,
+                                     fit_source=True,
+                                     return_resolution=True,
                                      adjust_wave="model")
       resolution.append(R)
       waveshifts.append(fitter.shift)
