@@ -158,7 +158,7 @@ if __name__ == "__main__":
     fitter.SetBounds({"h2o": [humidity_low, humidity_high],
                       "temperature": [temperature-10, temperature+10],
                       "o2": [5e4, 1e6],
-                      "resolution": [50000, 70000]})
+                      "resolution": [50000, 90000]})
     
     #Ignore the interstellar sodium D lines and parts of the O2 bands
     fitter.IgnoreRegions(badregions)
@@ -184,7 +184,8 @@ if __name__ == "__main__":
                                      resolution_fit_mode="gauss", 
                                      fit_source=True, 
                                      return_resolution=True,
-                                     adjust_wave="model")
+                                     adjust_wave="model",
+                                     wavelength_fit_order=5)
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())
@@ -216,7 +217,8 @@ if __name__ == "__main__":
                                      resolution_fit_mode="gauss", 
                                      fit_source=True,
                                      return_resolution=True,
-                                     adjust_wave="model")
+                                     adjust_wave="model",
+                                     wavelength_fit_order=5)
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())

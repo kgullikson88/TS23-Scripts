@@ -1,4 +1,6 @@
+import FitsUtils
 import DataStructures
+import FindContinuum
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import numpy
@@ -6,15 +8,16 @@ import pylab
 from astropy.io import fits as pyfits
 from collections import defaultdict
 import os
-import FittingUtilities
 import HelperFunctions
+import FittingUtilities
 
-def MedianAdd(fileList, outfilename=None):
+
+def MedianAdd(fileList, outfilename="Total.fits"):
   all_data = []
   numorders = []
   medians = []
   for fname in fileList:
-    observation = HelperFunctions.ReadFits(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    observation = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
     all_data.append(observation)
     numorders.append(len(observation))
     medians.append([numpy.median(order.y) for order in observation])
@@ -41,10 +44,10 @@ def MedianAdd(fileList, outfilename=None):
       error += interp(observation[i].x, observation[i].err**2, k=1)(x)
       total[j] = flux(x)
       norm += medians[j][i]
-    
-    #for j in range(total.shape[0]):
-    #  pylab.plot(x, total[j])
-    #pylab.show()
+
+    pylab.figure(2)
+    for j in range(total.shape[0]):
+      pylab.plot(x, total[j])
     flux = numpy.median(total, axis=0)*norm
     cont = FittingUtilities.Continuum(x, flux, fitorder=3, lowreject=1.5, highreject=5)
     #Set up data structures for OutputFitsFile
@@ -54,12 +57,13 @@ def MedianAdd(fileList, outfilename=None):
                "error": numpy.sqrt(error)}
     column_list.append(columns)
 
+    pylab.figure(1)
     pylab.plot(x, flux/cont)
     #pylab.plot(total.x, total.cont)
 
   print "Outputting to %s" %outfilename
   pylab.show()
-  HelperFunctions.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
+  FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
   
   #Add the files used to the primary header of the new file
   hdulist = pyfits.open(outfilename, mode='update')
@@ -69,11 +73,8 @@ def MedianAdd(fileList, outfilename=None):
   hdulist[0].header = header
   hdulist.flush()
   hdulist.close()
-    
   
-  
-  
-  
+
 
 def Add(fileList, outfilename=None):
   all_data = []
@@ -91,7 +92,7 @@ def Add(fileList, outfilename=None):
 
   #If we get this far, all is well. Add each order indidually
   numorders = numorders[0]
-  if outfilename == "None":
+  if outfilename == None:
     outfilename = "Total.fits"
   column_list = []
   for i in range(numorders):
@@ -100,14 +101,18 @@ def Add(fileList, outfilename=None):
     total.err = total.err**2
     for observation in all_data[1:]:
       observation[i].y[observation[i].y < 0.0] = 0.0
-      flux = interp(observation[i].x, observation[i].y)
-      error = interp(observation[i].x, observation[i].err**2, k=1)
-      total.y += flux(total.x)
-      total.err += error(total.x)
+      #flux = interp(observation[i].x, observation[i].y)
+      #error = interp(observation[i].x, observation[i].err**2, k=1)
+      rebinned = FittingUtilities.RebinData(observation[i], total.x)
+      #total.y += flux(total.x)
+      #total.err += error(total.x)
+      total.y += rebinned.y
+      total.err += rebinned.err**2
+      
     total.err = numpy.sqrt(total.err)
     total.cont = FittingUtilities.Continuum(total.x, total.y, fitorder=3, lowreject=1.5, highreject=5)
 
-    #Set up data structures for OutputFitsFile
+     #Set up data structures for OutputFitsFile
     columns = {"wavelength": total.x,
                "flux": total.y,
                "continuum": total.cont,
@@ -139,20 +144,14 @@ if __name__ == "__main__":
     fileList.append(arg)
 
   if len(fileList) > 1:
-    MedianAdd(fileList, outfilename="Total.fits")
+    Add(fileList)
   else:
-    allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-" in f]
+    allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-0" in f and "telluric" in f]
     fileDict = defaultdict(list)
     for fname in allfiles:
       header = pyfits.getheader(fname)
-      if header["IMAGETYP"].strip() != 'object':
-        print "%s has image type of %s. Skipping" %(fname, header["IMAGETYP"])
-        continue
       starname = header['OBJECT'].replace(" ", "_")
-      if "Solar" in starname:
-        print "Not outputting Solar Port spectrum in %s" %fname
-        continue
       fileDict[starname].append(fname)
     for star in fileDict.keys():
-      MedianAdd(fileDict[star], outfilename="%s_partial.fits" %star)
+      Add(fileDict[star], outfilename="%s.fits" %star)
     
