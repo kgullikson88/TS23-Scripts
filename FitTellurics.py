@@ -256,33 +256,39 @@ if __name__ == "__main__":
 
     # Finally, apply these parameters to all orders in the data
     for i, order in enumerate(orders):
-      print "\n\nGenerating model for order %i of %i\n" %(i, len(orders))
-      fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
-                          "waveend": order.x[-1] + 20.0,
-                          "o2": o2,
-                          "h2o": humidity,
-                          "resolution": resolution})
-      fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
-      order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
-      fitter.ImportData(order)
-      fitter.resolution_fit_mode = "gauss"
-      #wave0 = order.x.mean()
-      #fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
-      print "fitter.shift = ", fitter.shift
-      primary, model = fitter.GenerateModel(fitpars, 
-                                            separate_primary=True, 
-                                            return_resolution=False)
-
-      data = fitter.data
-      if min(model.y) > 0.98:
-        #The wavelength calibration might be off
-        wave0 = order.x.mean()
-        fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
-        model = fitter.GenerateModel(fitpars, separate_primary=False, nofit=True)
-        model.x /= (1.0 + vel/(constants.c.cgs.value*units.cm.to(units.km)))
-        model = FittingUtilities.RebinData(model, order.x)
+      if order.x[0] > 470 and order.x[-1] > 470 or max(order.y) < 0.01:
+        model = order.copy()
+        model.y = numpy.ones(order.size())
         data = order.copy()
-        data.cont = FittingUtilities.Continuum(data.x, data.y, fitorder=3, lowreject=2, highreject=5)
+        data.cont = numpy.ones(data.size())
+      else:
+        print "\n\nGenerating model for order %i of %i\n" %(i, len(orders))
+        fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
+                            "waveend": order.x[-1] + 20.0,
+                            "o2": o2,
+                            "h2o": humidity,
+                            "resolution": resolution})
+        fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
+        order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
+        fitter.ImportData(order)
+        fitter.resolution_fit_mode = "gauss"
+        #wave0 = order.x.mean()
+        #fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
+        print "fitter.shift = ", fitter.shift
+        primary, model = fitter.GenerateModel(fitpars, 
+                                              separate_primary=True, 
+                                              return_resolution=False)
+
+        data = fitter.data
+        if min(model.y) > 0.98:
+          #The wavelength calibration might be off
+          wave0 = order.x.mean()
+          fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
+          model = fitter.GenerateModel(fitpars, separate_primary=False, nofit=True)
+          model.x /= (1.0 + vel/(constants.c.cgs.value*units.cm.to(units.km)))
+          model = FittingUtilities.RebinData(model, order.x)
+          data = order.copy()
+          data.cont = FittingUtilities.Continuum(data.x, data.y, fitorder=3, lowreject=2, highreject=5)
 
 
       # Set up data structures for OutputFitsFile
