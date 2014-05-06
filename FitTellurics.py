@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
     # Finally, apply these parameters to all orders in the data
     for i, order in enumerate(orders):
-      if order.x[0] > 470 and order.x[-1] > 470 or max(order.y) < 0.01:
+      if (order.x[0] < 470 and order.x[-1] > 470) or max(order.y) < 0.01:
         model = order.copy()
         model.y = numpy.ones(order.size())
         data = order.copy()
