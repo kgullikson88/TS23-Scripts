@@ -1,5 +1,3 @@
-#import Correlate
-import FitsUtils
 import numpy
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import scipy.signal
@@ -16,7 +14,7 @@ import RotBroad_Fast as RotBroad
 import FittingUtilities
 import Smooth
 import HelperFunctions
-#import Correlate
+import Broaden
 import Sensitivity
 
 #Ensure a directory exists. Create it if not
@@ -137,15 +135,15 @@ if __name__ == "__main__":
   
   for fname in fileList:
     if extensions:
-      orders_original = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
+      orders_original = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error")
       if tellurics:
-        model_orders = FitsUtils.MakeXYpoints(fname, extensions=extensions, x="wavelength", y="model")
+        model_orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="model")
         for i, order in enumerate(orders_original):
           orders_original[i].cont = FindContinuum.Continuum(order.x, order.y, lowreject=2, highreject=2)
           orders_original[i].y /= model_orders[i].y
           
     else:
-      orders_original = FitsUtils.MakeXYpoints(fname, errors=2)
+      orders_original = HelperFunctions.ReadFits(fname, errors=2)
 
     #Loop over orders, removing bad parts
     numorders = len(orders_original)
@@ -233,7 +231,7 @@ if __name__ == "__main__":
       #Rotationally Broaden model
       left = numpy.searchsorted(model.x, orders_original[0].x[0] - 10.0)
       right = numpy.searchsorted(model.x, orders_original[-1].x[-1] + 10.0)
-      model = RotBroad.Broaden(model[left:right], vsini, linear=True)
+      model = Broaden.RotBroad(model[left:right], vsini, linear=True)
 
       #Reduce resolution
       model = FittingUtilities.ReduceResolution2(model, 60000, extend=False)

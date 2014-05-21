@@ -11,8 +11,18 @@ from astropy import units, constants
 from collections import defaultdict
 
 
-homedir = os.environ["HOME"]
-modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
+#homedir = os.environ["HOME"]
+#modeldir = homedir + "/School/Research/Models/Sorted/Stellar/Vband/"
+
+if "darwin" in sys.platform:
+  modeldir = "/Volumes/DATADRIVE/Stellar_Models/PHOENIX/Stellar/Vband/"
+elif "linux" in sys.platform:
+  modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
+else:
+  modeldir = raw_input("sys.platform not recognized. Please enter model directory below: ")
+  if not modeldir.endswith("/"):
+    modeldir = modeldir + "/"
+
 
 #Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
 badregions = [[567.5, 575.5],
@@ -30,133 +40,137 @@ trimsize = 1
 vsini_values = [10,20,30,40]
 
 #Set up model list
-model_list = [ modeldir + "lte30-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte32-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte34-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte35-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte36-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte37-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte38-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte39-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte40-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte42-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte44-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte46-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte48-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte50-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte51-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+model_list = [ modeldir + "lte30-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte30-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte30-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte31-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte31-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte31-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte32-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte32-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte32-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte33-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte33-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte33-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte34-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte35-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte36-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte37-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte37-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte37-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte38-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.50+0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte39-4.50-0.5.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte40-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte40-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte40-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte41-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte41-4.5-0.0.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte41-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte42-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte42-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte42-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte43-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte43-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte43-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte44-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte44-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte44-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte45-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte45-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte45-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte46-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte46-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte46-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte47-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte47-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte47-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte48-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte48-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte48-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte49-4.5+0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte49-4.5-0.5.Cond.PHOENIX2004.tab.7.sorted",
+               modeldir + "lte49-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte50-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte50-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte50-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte51-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte51-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte51-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte52-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte52-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte53-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte53-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte53-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte54-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte54-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte54-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte55-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte55-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte56-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte56-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte57-4.00-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte57-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte57-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte57-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte58-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte58-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte59-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte59-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte60-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte60-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte60-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte61-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte61-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte62-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte62-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte62-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte63-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte63-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte63-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte64-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte64-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte65-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte65-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte65-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte66-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte66-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte66-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
+               modeldir + "lte67-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
                modeldir + "lte67-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte68-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted",
-               modeldir + "lte30-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte30-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte31-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte31-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte32-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte32-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte33-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte33-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte34-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte34-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte35-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte35-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte36-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte36-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte37-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte37-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte38-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte38-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte39-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte39-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte40-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte40-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte41-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte41-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte42-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte42-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte43-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte43-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte44-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte44-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte45-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte45-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte46-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte46-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte47-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte47-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte48-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte48-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte49-4.0-0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte49-4.0+0.5.Cond.PHOENIX2004.tab.7.sorted",
-               modeldir + "lte50-3.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte50-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte51-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte51-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte52-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte52-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte53-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte54-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte54-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte55-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte55-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte56-3.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte56-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte57-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte57-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte58-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte58-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte59-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte60-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte61-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte61-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte62-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte63-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte63-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte64-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte64-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte65-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte66-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte66-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte67-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte68-4.0-0.5.Cond.PHOENIX2004.direct.7.sorted",
-               modeldir + "lte68-4.0+0.5.Cond.PHOENIX2004.direct.7.sorted"]
+               modeldir + "lte68-4.5+0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte68-4.5-0.5.Cond.PHOENIX2004.direct.7.sorted",
+               modeldir + "lte68-4.50-0.0.AGS.Cond.PHOENIX-ACES-2009.HighRes.7.sorted"]
 
 
 modeldict = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(DataStructures.xypoint))))
 processed = defaultdict( lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(bool))))
 
-"""
-model_data = []
-for fname in model_list:
-  if "PHOENIX2004" in fname:
-    temp = int(fname.split("lte")[-1][:2])*100
-    gravity = float(fname.split("lte")[-1][3:6])
-    metallicity = float(fname.split("lte")[-1][6:10])
-  elif "PHOENIX-ACES" in fname:
-    temp = int(fname.split("lte")[-1][:2])*100
-    gravity = float(fname.split("lte")[-1][3:7])
-    metallicity = float(fname.split("lte")[-1][7:11])
-  print "Reading in file %s" %fname
-  x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
-  model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm), y=10**y)
-  for vsini in vsini_values:
-    modeldict[temp][gravity][metallicity][vsini] = model
-    processed[temp][gravity][metallicity][vsini] = False
-"""
+if __name__ == "__main__":
+  model_data = []
+  for fname in model_list:
+    if "PHOENIX2004" in fname:
+      temp = int(fname.split("lte")[-1][:2])*100
+      gravity = float(fname.split("lte")[-1][3:6])
+      metallicity = float(fname.split("lte")[-1][6:10])
+    elif "PHOENIX-ACES" in fname:
+      temp = int(fname.split("lte")[-1][:2])*100
+      gravity = float(fname.split("lte")[-1][3:7])
+      metallicity = float(fname.split("lte")[-1][7:11])
+    print "Reading in file %s" %fname
+    x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
+    model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm), y=10**y)
+    for vsini in vsini_values:
+      modeldict[temp][gravity][metallicity][vsini] = model
+      processed[temp][gravity][metallicity][vsini] = False
 
 
 

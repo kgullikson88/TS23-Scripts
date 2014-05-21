@@ -89,6 +89,12 @@ if __name__ == "__main__":
 
   #START LOOPING OVER INPUT FILES
   for fname in fileList:
+    #Make sure this file is an object file
+    header = pyfits.getheader(fname)
+    if header['imagetyp'].strip() != 'object' or "solar" in header['object'].lower():
+      print "Skipping file %s, with imagetype = %s and object = %s" %(fname, header['imagetyp'], header['object'])
+      continue
+
     logfile = open("fitlog_%s.txt" %(fname.split(".fits")[0]), "a")
     logfile.write("Fitting file %s\n" %(fname))
     name = fname.split(".fits")[0]
@@ -97,7 +103,7 @@ if __name__ == "__main__":
     #Read file
     orders = HelperFunctions.ReadFits(fname, errors="error", extensions=True, x="wavelength", y="flux")
 
-    header = pyfits.getheader(fname)
+    #Get the observation time
     date = header["DATE-OBS"]
     time = header["UT"]
     t_seg = time.split(":")
