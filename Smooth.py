@@ -6,22 +6,35 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from astropy import units
+from astropy.io import fits, ascii
 import DataStructures
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import MakeModel
 import HelperFunctions
 from collections import Counter
 from sklearn.gaussian_process import GaussianProcess
+import warnings
 
-plot = False
 
-def SmoothData(order, windowsize=91, smoothorder=5, lowreject=3, highreject=3, numiters=10, normalize=True):
+def SmoothData(order, windowsize=91, smoothorder=5, lowreject=3, highreject=3, numiters=10, expand=0, normalize=True):
   denoised = HelperFunctions.Denoise(order.copy())
-  denoised.y = FittingUtilities.Iterative_SV(denoised.y, windowsize, smoothorder, lowreject=lowreject, highreject=highreject, numiters=numiters)
+  denoised.y = FittingUtilities.Iterative_SV(denoised.y, windowsize, smoothorder, lowreject=lowreject, highreject=highreject, numiters=numiters, expand=expand)
   if normalize:
     denoised.y /= denoised.y.max()
   return denoised
 
+
+
+
+def roundodd(num):
+  rounded = round(num)
+  if rounded%2 != 0:
+    return rounded
+  else:
+    if rounded > num:
+      return rounded - 1
+    else:
+      return rounded + 1
 
 
 
@@ -66,12 +79,41 @@ def GPSmooth(data, low=0.1, high=10, debug=False):
 
 if __name__ == "__main__":
   fileList = []
+  plot = False
+  vsini_file = "%s/School/Research/Useful_Datafiles/Vsini.csv" %(os.environ["HOME"])
   for arg in sys.argv[1:]:
-    fileList.append(arg)
+    if "-p" in arg:
+      plot = True
+    elif "-vsini" in arg:
+      vsini_file = arg.split("=")[-1]
+    else:
+      fileList.append(arg)
+
+  #Read in the vsini table
+  vsini_data = ascii.read(vsini_file)[10:]
+
   if len(fileList) == 0:
     fileList = [f for f in os.listdir("./") if f.endswith("telluric_corrected.fits")]
   for fname in fileList:
     orders = HelperFunctions.ReadFits(fname, extensions=True, x="wavelength", y="flux", cont="continuum", errors="error")
+    
+    
+    #Find the vsini of this star
+    header = fits.getheader(fname)
+    starname = header["object"]
+    found = False
+    for data in vsini_data:
+      if data[0] == starname:
+        vsini = float(data[1])
+        found = True
+    if not found:
+      outfile = open("Warnings.log", "a")
+      outfile.write("Cannot find %s in the vsini data: %s\n" %(starname, vsini_file))
+      outfile.close()
+      warnings.warn("Cannot find %s in the vsini data: %s" %(starname, vsini_file))
+    print starname, vsini
+    
+    #Begin looping over the orders
     column_list = []
     header_list = []
     for i, order in enumerate(orders):
@@ -83,8 +125,22 @@ if __name__ == "__main__":
       xgrid = numpy.linspace(order.x[0], order.x[-1], order.x.size)
       order = FittingUtilities.RebinData(order, xgrid)
       
-      #denoised = SmoothData(order, 101, 5, 2, 2, 10)
-      denoised, theta = GPSmooth(order.copy())
+      dx = order.x[1] - order.x[0]
+      smooth_factor = 0.8
+      theta = roundodd(vsini/3e5 * order.x.mean()/dx * smooth_factor)
+      denoised = SmoothData(order, 
+                            windowsize=theta, 
+                            smoothorder=3, 
+                            lowreject=3, 
+                            highreject=3,
+                            expand=10, 
+                            numiters=10)
+      #denoised, theta = GPSmooth(order.copy())
+      #denoised, theta = CrossValidation(order.copy(), 5, 2, 2, 10)
+      #denoised, theta = OptimalSmooth(order.copy())
+      #denoised.y *= order.cont/order.cont.mean()
+      print "Window size = %.4f nm" %theta
+
 
       column = {"wavelength": denoised.x,
                 "flux": order.y / denoised.y,
@@ -96,10 +152,12 @@ if __name__ == "__main__":
         plt.figure(1)
         plt.plot(order.x, order.y/order.y.mean())
         plt.plot(denoised.x, denoised.y/denoised.y.mean())
+        plt.title(starname)
         plt.figure(2)
         plt.plot(order.x, order.y/denoised.y)
-        plt.plot(order.x, (order.y-denoised.y)/numpy.median(order.y))
-        plt.show()
+        plt.title(starname)
+        #plt.plot(order.x, (order.y-denoised.y)/numpy.median(order.y))
+        #plt.show()
     if plot:
       plt.show()
     outfilename = "%s_smoothed.fits" %(fname.split(".fits")[0])

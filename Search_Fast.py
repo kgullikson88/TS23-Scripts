@@ -220,10 +220,19 @@ def Process_Data(fname, extensions=True):
       orders.pop(numorders - 1 - i)
     else:
       # Find outliers from e.g. bad telluric line or stellar spectrum removal.
-      outliers = HelperFunctions.FindOutliers(data)
-      order.y[outliers] = 0.0
+      #outliers = HelperFunctions.FindOutliers(order.copy())
+      #order.y[outliers] = 0.0
+      #order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+      #order.y[outliers] = order.cont[outliers]
+
       order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
-      order.y[outliers] = order.cont[outliers]
+      outliers = HelperFunctions.FindOutliers(order, expand=10, numsiglow=5, numsighigh=5)
+      if len(outliers) > 0:
+	order.y[outliers] = 1.0
+	order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+	order.y[outliers] = order.cont[outliers]
+	#plt.plot(order.x, order.y/order.cont)
+	#plt.text(order.x.mean(), 1.01,str(numorders -1 -i))
 
       # Save this order
       orders[numorders -1 -i] = order.copy()
