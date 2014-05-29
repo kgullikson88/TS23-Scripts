@@ -171,12 +171,13 @@ if __name__ == "__main__":
     for vsini in vsini_values:
       modeldict[temp][gravity][metallicity][vsini] = model
       processed[temp][gravity][metallicity][vsini] = False
+  
 
 
 
-def Process_Data(fname, extensions=True):
+def Process_Data(fname, extensions=True, trimsize=100):
   if extensions:
-    orders = HelperFunctions.ReadFits(fname, extensions=extensions, x="wavelength", y="flux", errors="error", cont="continuum")
+    orders = HelperFunctions.ReadExtensionFits(fname)
           
   else:
     orders = HelperFunctions.ReadFits(fname, errors=2)
@@ -220,22 +221,18 @@ def Process_Data(fname, extensions=True):
       orders.pop(numorders - 1 - i)
     else:
       # Find outliers from e.g. bad telluric line or stellar spectrum removal.
-      #outliers = HelperFunctions.FindOutliers(order.copy())
-      #order.y[outliers] = 0.0
-      #order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
-      #order.y[outliers] = order.cont[outliers]
-
       order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
       outliers = HelperFunctions.FindOutliers(order, expand=10, numsiglow=5, numsighigh=5)
       if len(outliers) > 0:
-	order.y[outliers] = 1.0
-	order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
-	order.y[outliers] = order.cont[outliers]
-	#plt.plot(order.x, order.y/order.cont)
-	#plt.text(order.x.mean(), 1.01,str(numorders -1 -i))
-
+        order.y[outliers] = 1.0
+        order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=3, highreject=3)
+        order.y[outliers] = order.cont[outliers]
+        #plt.plot(order.x, order.y/order.cont)
+        #plt.text(order.x.mean(), 1.01,str(numorders -1 -i))
+      
       # Save this order
       orders[numorders -1 -i] = order.copy()
+  #plt.show()
   return orders
 
 
@@ -278,11 +275,12 @@ if __name__ == "__main__":
             pflag = not processed[temp][gravity][metallicity][vsini]
             retdict = Correlate.GetCCF(orders, 
                                        model,
-                                       resolution=60000.0,
+                                       resolution=80000.0,
                                        vsini=vsini, 
                                        rebin_data=True,
                                        process_model=pflag,
-                                       debug=True)
+                                       debug=False,
+                                       outputdir=output_dir.split("Cross_corr")[0])
             corr = retdict["CCF"]
             if pflag:
               processed[temp][gravity][metallicity][vsini] = True

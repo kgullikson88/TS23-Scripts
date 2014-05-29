@@ -49,11 +49,14 @@ if __name__ == "__main__":
         plt.plot(order.x, model[i].y, 'r-')
       else:
         if normalize:
-          plt.plot(order.x, order.y/order.cont)
+          plt.plot(order.x, order.y/order.cont, 'k-')
           plt.text(order.x.mean(), 1.1, str(i+1))
         else:
           plt.plot(order.x, order.y, ls)
           plt.plot(order.x, order.cont)
+      plt.xlabel("Wavelength (nm)")
+      plt.ylabel("Flux")
+      plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
       if byorder:
         plt.title("Order %i" %i)
         plt.show()

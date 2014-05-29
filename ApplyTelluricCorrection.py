@@ -11,7 +11,7 @@ import numpy
 import HelperFunctions
 import MakeModel
 
-plot = False
+plot = True
 
 def ReadCorrectedFile(fname, yaxis="model"):
   orders = []
@@ -56,7 +56,8 @@ def Correct(original, corrected, offset=None, get_primary=False):
       header = corrected_headers[i]
       if get_primary:
         primary = primary_orders[i]
-      print "Order = %i\nHumidity: %g\nO2 concentration: %g\n" %(i, header['h2oval'], header['o2val'])
+      if i == 0:
+        print "Order = %i\nHumidity: %g\nO2 concentration: %g\n" %(i, header['h2oval'], header['o2val'])
     except IndexError:
       model = DataStructures.xypoint(x=data.x, y=numpy.ones(data.x.size))
       print "Warning!!! Telluric Model not found for order %i" %i
@@ -130,7 +131,7 @@ def main1():
 
   else:
     allfiles = os.listdir("./")
-    corrected_files = [f for f in allfiles if "Corrected_" in f and f.endswith("-0.fits")]
+    corrected_files = [f for f in allfiles if "Corrected_KG" in f and f.endswith("-0.fits")]
     #original_files = [f for f in allfiles if any(f in cf for cf in corrected_files)]
 
     #print corrected_files
@@ -145,6 +146,12 @@ def main1():
       #  sys.exit("Error! %i matches found to corrected file %s" %(len(original), corrected))
 
       print corrected, original
+      header = pyfits.getheader(original)
+      if header['imagetyp'].strip().lower() != 'object' or "solar" in header['object'].lower():
+        print "Skipping file %s, with imagetype = %s and object = %s" %(original, header['imagetyp'], header['object'])
+        continue
+
+
       outfilename = "%s_telluric_corrected.fits" %(original.split(".fits")[0])
       print "Outputting to %s" %outfilename
 
