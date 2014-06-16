@@ -38,7 +38,7 @@ def roundodd(num):
 
 
 
-def GPSmooth(data, low=0.1, high=10, debug=False):
+def GPSmooth(data, low=0.1, high=10, debug=False, findoutliers=True):
   """
   This will smooth the data using Gaussian processes. It will find the best
   smoothing parameter via cross-validation to be between the low and high.
@@ -50,21 +50,21 @@ def GPSmooth(data, low=0.1, high=10, debug=False):
   smoothed = data.copy()
 
   # First, find outliers by doing a guess smooth
-  smoothed = SmoothData(data, normalize=False)
-  temp = smoothed.copy()
-  temp.y = data.y/smoothed.y
-  temp.cont = FittingUtilities.Continuum(temp.x, temp.y, lowreject=2, highreject=2, fitorder=3)
-  outliers = HelperFunctions.FindOutliers(temp, numsiglow=3, expand=5)
-  if len(outliers) > 0:
-    data.y[outliers] = smoothed.y[outliers]
+  if findoutliers:
+    smoothed = SmoothData(data, normalize=False)
+    temp = smoothed.copy()
+    temp.y = data.y/smoothed.y
+    temp.cont = FittingUtilities.Continuum(temp.x, temp.y, lowreject=2, highreject=2, fitorder=3)
+    outliers = HelperFunctions.FindOutliers(temp, numsiglow=3, expand=5)
+    if len(outliers) > 0:
+      data.y[outliers] = smoothed.y[outliers]
     
   gp = GaussianProcess(corr='squared_exponential',
                        theta0 = numpy.sqrt(low*high),
                        thetaL = low,
                        thetaU = high,
                        normalize = False,
-                       nugget = (data.err / data.y)**2,
-                       random_start=1)
+                       nugget = (data.err / data.y)**2)
   try:
     gp.fit(data.x[:,None], data.y)
   except ValueError:
@@ -72,7 +72,7 @@ def GPSmooth(data, low=0.1, high=10, debug=False):
     # Just fall back to the old smoothing method in that case.
     return SmoothData(data), 91
   if debug:
-    print "\tSmoothing parameter theta = ", gp.theta_
+    print "\tSmoothing parameter theta = ", gp.theta_, gp.theta0, gp.thetaL, gp.thetaU
   smoothed.y, smoothed.err = gp.predict(data.x[:,None], eval_MSE=True)
   return smoothed, gp.theta_[0][0]
 
