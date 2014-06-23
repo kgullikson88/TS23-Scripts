@@ -191,7 +191,7 @@ if __name__ == "__main__":
                                      fit_source=True, 
                                      return_resolution=True,
                                      adjust_wave="model",
-                                     wavelength_fit_order=5)
+                                     wavelength_fit_order=3)
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())
@@ -225,7 +225,7 @@ if __name__ == "__main__":
                                      fit_source=True,
                                      return_resolution=True,
                                      adjust_wave="model",
-                                     wavelength_fit_order=5)
+                                     wavelength_fit_order=3)
       resolution.append(R)
       waveshifts.append(fitter.shift)
       wave0.append(fitter.data.x.mean())
