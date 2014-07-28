@@ -1,5 +1,5 @@
 print "Very beginning of script!"
-import numpy
+import numpy as np
 import os
 import sys
 from scipy.interpolate import UnivariateSpline
@@ -27,8 +27,8 @@ def Planck(x,T):
   h = 6.626e-27
   c = 3e10
   k = 1.38e-16
-  pi = numpy.pi
-  return 2*pi*h*c**2/x**5*1.0/(numpy.exp(h*c/(x*k*T)) - 1.0)
+  pi = np.pi
+  return 2*pi*h*c**2/x**5*1.0/(np.exp(h*c/(x*k*T)) - 1.0)
 
 
 print "Very beginning of script!"
@@ -139,7 +139,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
     prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
     sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
     fluxratio = sec_flux/prim_flux
-    print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
+    print "order %i flux ratio = %.3g" %(i+1, np.mean(fluxratio))
 
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
     
@@ -154,15 +154,15 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0):
     fit_order = 2
     while not done:
       done = True
-      fit = numpy.poly1d(numpy.polyfit(x2 - x2.mean(), y2, fit_order))
+      fit = np.poly1d(np.polyfit(x2 - x2.mean(), y2, fit_order))
       residuals = y2 - fit(x2 - x2.mean())
-      mean = numpy.mean(residuals)
-      std = numpy.std(residuals)
-      badpoints = numpy.where((residuals - mean) < -std)[0]
+      mean = np.mean(residuals)
+      std = np.std(residuals)
+      badpoints = np.where((residuals - mean) < -std)[0]
       if badpoints.size > 0 and x2.size - badpoints.size > 5*fit_order:
         done = False
-        x2 = numpy.delete(x2, badpoints)
-        y2 = numpy.delete(y2, badpoints)
+        x2 = np.delete(x2, badpoints)
+        y2 = np.delete(y2, badpoints)
     model2.cont = fit(model2.x - x2.mean())
 
     #Scale the model by the above scale factor and normalize
@@ -268,20 +268,20 @@ if __name__ == "__main__":
         p_mass = MS.Interpolate(MS.Mass, p_spt)
         radius = MS.Interpolate(MS.Radius, s_spt)
         temperature = MS.Interpolate(MS.Temperature, s_spt)
-        logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
+        logg = np.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
         best_key = modelfiles.keys()[0]
         for key in modelfiles.keys():
-          if numpy.abs(temperature - key) < numpy.abs(temperature - best_key):
+          if np.abs(temperature - key) < np.abs(temperature - best_key):
             best_key = key
         best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
         modelfile = modelfiles[best_key][0]
         for fname in modelfiles[best_key]:
           model_logg = float(fname.split("lte")[-1][3:7])
-          if numpy.abs(logg - model_logg) < numpy.abs(logg - best_logg):
+          if np.abs(logg - model_logg) < np.abs(logg - best_logg):
             best_logg = logg
             modelfile = fname
         
-        x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
+        x,y = np.loadtxt(modelfile, usecols=(0,1), unpack=True)
         x = x*Units.nm/Units.angstrom
         y = 10**y
         model = DataStructures.xypoint(x=x, y=y)
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         #Cross-correlate with original model
         Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, outfilename=outfilebase+"_CC.dat")
 
-        vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
+        vel, corr = np.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
         std = corr.std()
         mean = corr.mean()
@@ -304,8 +304,8 @@ if __name__ == "__main__":
           sig.append(significance)
           found += 1.
 
-      print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
-      outfilestring = p_spt+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
+      print "Found %i signals with a mean significance of %.3g" %(found, np.mean(sig))
+      outfilestring = p_spt+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), np.mean(sig))
       print outfilestring
       logfile.write(outfilestring)
   

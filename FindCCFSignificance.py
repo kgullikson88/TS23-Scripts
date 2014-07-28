@@ -4,7 +4,7 @@ import FittingUtilities
 import matplotlib.pyplot as plt
 import os
 import sys
-import numpy
+import numpy as np
 from scipy.stats.mstats import mquantiles
 
 
@@ -162,9 +162,9 @@ for fname in model_list:
   temp_list.append(temp)
   gravity_list.append(gravity)
   metal_list.append(metallicity)
-temp_list = numpy.array(temp_list)
-gravity_list = numpy.array(gravity_list)
-metal_list = numpy.array(metal_list)
+temp_list = np.array(temp_list)
+gravity_list = np.array(gravity_list)
+metal_list = np.array(metal_list)
 
 
 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
   
   
   #Find the model with the closest T, logg, and metallicity
-  idx = numpy.argmin(5*(T-temp_list)**2 + 
+  idx = np.argmin(5*(T-temp_list)**2 + 
                     2*(metal-metal_list)**2 + 
                     1*(logg-gravity_list)**2)
   T = temp_list[idx]
@@ -211,17 +211,17 @@ if __name__ == "__main__":
     
       #Remove bad regions from the data
       for region in badregions:
-        left = numpy.searchsorted(order.x, region[0])
-        right = numpy.searchsorted(order.x, region[1])
+        left = np.searchsorted(order.x, region[0])
+        right = np.searchsorted(order.x, region[1])
         if left > 0 and right < order.size():
           print "Warning! Bad region covers the middle of order %i" %i
           print "Removing full order!"
           left = 0
           right = order.size()
-        order.x = numpy.delete(order.x, numpy.arange(left, right))
-        order.y = numpy.delete(order.y, numpy.arange(left, right))
-        order.cont = numpy.delete(order.cont, numpy.arange(left, right))
-        order.err = numpy.delete(order.err, numpy.arange(left, right))
+        order.x = np.delete(order.x, np.arange(left, right))
+        order.y = np.delete(order.y, np.arange(left, right))
+        order.cont = np.delete(order.cont, np.arange(left, right))
+        order.err = np.delete(order.err, np.arange(left, right))
 
 
       #Remove whole order if it is too small
@@ -229,7 +229,7 @@ if __name__ == "__main__":
       if order.x.size <= 1:
         remove = True
       else:
-        velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
+        velrange = 3e5 * (np.median(order.x) - order.x[0]) / np.median(order.x)
         if velrange <= 1050.0:
           remove = True
       if remove:
@@ -245,11 +245,11 @@ if __name__ == "__main__":
     #Get bootstrap samples
     y = Bootstrap.GetSamples(orders, model_list[idx].split("/")[-1], Nboot, vsini=10, resolution=60000.0)
     
-    numpy.savetxt("Bootstrap_samples.dat", numpy.transpose((y,)) )
+    np.savetxt("Bootstrap_samples.dat", np.transpose((y,)) )
     quantiles = mquantiles(y)
-    print "The mean CCF height is %g" %numpy.mean(y)
+    print "The mean CCF height is %g" %np.mean(y)
     print "The median CCF height is %g" %quantiles[1]
-    print "The standard deviation of the peak height is %g" %numpy.std(y)
+    print "The standard deviation of the peak height is %g" %np.std(y)
     print "The 25%% quantile is %g" %quantiles[0]
     print "The 75%% quantile is %g" %quantiles[2]
     plt.hist(y, bins=50)

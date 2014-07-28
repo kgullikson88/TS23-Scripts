@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import scipy
 import pylab
 from FitTellurics import FitFunction, FitContinuum3, CCImprove
@@ -40,12 +40,12 @@ if __name__ == "__main__":
 
   for order in orders:
     order.x *= Units.nm/Units.angstrom
-    order.cont = numpy.ones(order.x.size)
-    order.err = numpy.sqrt(order.y)
+    order.cont = np.ones(order.x.size)
+    order.err = np.sqrt(order.y)
   hdulist.close()
 
   #Read in line list:
-  linelist = numpy.loadtxt(LineListFile)
+  linelist = np.loadtxt(LineListFile)
 
   
   for order in orders[-2:]:

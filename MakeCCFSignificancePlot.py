@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import os
@@ -24,25 +24,25 @@ if __name__ == "__main__":
     Temperatures = defaultdict(list)
     Significances = defaultdict(list)
     for fname in files:
-      vels, corr = numpy.loadtxt(Corr_dir + fname, unpack=True)
-      fit = numpy.poly1d( numpy.polyfit(vels, corr, 2) )
-      std = numpy.std(corr - fit(vels))
-      index = numpy.searchsorted(vels, velocity)
+      vels, corr = np.loadtxt(Corr_dir + fname, unpack=True)
+      fit = np.poly1d( np.polyfit(vels, corr, 2) )
+      std = np.std(corr - fit(vels))
+      index = np.searchsorted(vels, velocity)
       metallicity = fname[-4:]
       #Temperatures.append(float(fname.split("_")[-1].split("K")[0]))
       Temperatures[metallicity].append(float(fname.split("_")[-1].split("K")[0]))
       #Significances.append((corr[index] - fit(vels[index]))/std)
       Significances[metallicity].append((corr[index] - fit(vels[index]))/std)
-    Temperatures2 = defaultdict(numpy.array)
+    Temperatures2 = defaultdict(np.array)
     sorter = defaultdict(list)
     for metal in Temperatures:
-      Temperatures2[metal] = numpy.array(Temperatures[metal])
+      Temperatures2[metal] = np.array(Temperatures[metal])
       sorter[metal] = sorted(range(len(Temperatures2[metal])),key=lambda x:Temperatures2[metal][x])
-    Significances2 = defaultdict(numpy.array)
+    Significances2 = defaultdict(np.array)
     for metal in Significances:
-      Significances2[metal] = numpy.array(Significances[metal])
-    #Temperatures = numpy.array(Temperatures)
-    #Significances = numpy.array(Significances)
+      Significances2[metal] = np.array(Significances[metal])
+    #Temperatures = np.array(Temperatures)
+    #Significances = np.array(Significances)
     #sorter = sorted(range(len(Temperatures)),key=lambda x:Temperatures[x])
     #T = Temperatures[sorter]
     #S = Significances[sorter]

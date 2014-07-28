@@ -15,10 +15,10 @@ Keywords:
   SPECTRUM ANALYSIS, SIGNAL  PROCESSING
 
 Example:
-  > import numpy
+  > import numpy as np
   > import lomb
-  > x = numpy.arange(10)
-  > y = numpy.sin(x)
+  > x = np.arange(10)
+  > y = np.sin(x)
   > fx,fy, nout, jmax, prob = lomb.fasper(x,y, 6., 6.)
 
 Reference: 
@@ -28,8 +28,8 @@ Reference:
   bib code: 1989ApJ...338..277P
 
 """
-from numpy import *
-from numpy.fft import *
+from np import *
+from np.fft import *
 
 def __spread__(y, yy, n, x, m):
   """
@@ -206,7 +206,7 @@ def getSignificance(wk1, wk2, nout, ofac):
 if __name__ == "__main__":
   import FitsUtils
   import pylab
-  import numpy
+  import numpy as np
   ordernum = 7
   orders = FitsUtils.MakeXYpoints("output-8.fits")
   order = orders[ordernum]
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
   #Make data window
   window_period = 2.0
-  window_y = numpy.sin(2*numpy.pi/window_period*order.x)
+  window_y = np.sin(2*np.pi/window_period*order.x)
   wfx, wfy, wnout, wjmax, wprob = fasper(order.x, window_y, 6, 6)
   wfx = 1./wfx
 

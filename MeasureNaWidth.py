@@ -7,7 +7,7 @@ Poznanski et al. 2012 MNRAS, 426, 1465
 """
 
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 from scipy.optimize import leastsq
 from scipy.interpolate import UnivariateSpline
 import SpectralTypeRelations
@@ -38,14 +38,14 @@ def GetReddening(D1_ew, D2_ew):
 def Measure3(filename, figure, title):
   orders = HelperFunctions.ReadExtensionFits(filename)
   order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
+  left = np.searchsorted(order.x, 588)
+  right = np.searchsorted(order.x, 590.5)
   order = order[left:right]
 
   #Get the line positions
   order.y /= order.cont
   order.err /= order.cont
-  xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
+  xgrid = np.linspace(order.x[0], order.x[-1], order.size())
   order = FittingUtilities.RebinData(order, xgrid)
   lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
   print lines
@@ -82,13 +82,13 @@ def Measure3(filename, figure, title):
     fourth = float(segments[3])
 
   #Make a new array, not including the Na line
-  left1 = numpy.searchsorted(order.x, first)
-  right1 = numpy.searchsorted(order.x, second)
-  left2 = numpy.searchsorted(order.x, third)
-  right2 = numpy.searchsorted(order.x, fourth)
-  x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
-  y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
-  e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
+  left1 = np.searchsorted(order.x, first)
+  right1 = np.searchsorted(order.x, second)
+  left2 = np.searchsorted(order.x, third)
+  right2 = np.searchsorted(order.x, fourth)
+  x = np.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
+  y = np.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
+  e = np.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
   order2 = DataStructures.xypoint(x=x, y=y, err=e)
   order2.output("Spec.dat")
 
@@ -116,10 +116,10 @@ def Measure3(filename, figure, title):
       smooth_value -= 1e-4
 
   #Measure the equivalent width
-  dx = numpy.array([order.x[i+1] - order.x[i] for i in range(left1, right1)])
-  ew1 = numpy.sum((1.0 - order.y[left1:right1]/order.cont[left1:right1])*dx)
-  dx = numpy.array([order.x[i+1] - order.x[i] for i in range(left2, right2)])
-  ew2 = numpy.sum((1.0 - order.y[left2:right2]/order.cont[left2:right2])*dx)
+  dx = np.array([order.x[i+1] - order.x[i] for i in range(left1, right1)])
+  ew1 = np.sum((1.0 - order.y[left1:right1]/order.cont[left1:right1])*dx)
+  dx = np.array([order.x[i+1] - order.x[i] for i in range(left2, right2)])
+  ew2 = np.sum((1.0 - order.y[left2:right2]/order.cont[left2:right2])*dx)
   
   return [ew1, ew2], GetReddening(ew1, ew2)
 
@@ -139,13 +139,13 @@ def Measure2(filename, figure, title):
   """
   orders = HelperFunctions.ReadExtensionFits(filename)
   order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
+  left = np.searchsorted(order.x, 588)
+  right = np.searchsorted(order.x, 590.5)
   order = order[left:right]
 
   # Get the Na line positions
   order.y /= order.cont
-  xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
+  xgrid = np.linspace(order.x[0], order.x[-1], order.size())
   order = FittingUtilities.RebinData(order, xgrid)
   lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
   print lines
@@ -161,13 +161,13 @@ def Measure2(filename, figure, title):
   # Make a new array, not including the Na line
   first, second = D2-0.1, D2+0.1
   third, fourth = D1-0.1, D1+0.1
-  left1 = numpy.searchsorted(order.x, first)
-  right1 = numpy.searchsorted(order.x, second)
-  left2 = numpy.searchsorted(order.x, third)
-  right2 = numpy.searchsorted(order.x, fourth)
-  x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
-  y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
-  e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
+  left1 = np.searchsorted(order.x, first)
+  right1 = np.searchsorted(order.x, second)
+  left2 = np.searchsorted(order.x, third)
+  right2 = np.searchsorted(order.x, fourth)
+  x = np.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
+  y = np.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
+  e = np.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
   order2 = DataStructures.xypoint(x=x, y=y, err=e)
 
   # Let user decide if the fit is okay
@@ -243,8 +243,8 @@ def Measure2(filename, figure, title):
   #Find the equivalent width for both lines
   ews = []
   for line in [[start1, end1], [start2, end2]]:
-    xmin=numpy.searchsorted(order.x, line[0])
-    xmax=numpy.searchsorted(order.x, line[1])
+    xmin=np.searchsorted(order.x, line[0])
+    xmax=np.searchsorted(order.x, line[1])
     ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=False, plot=True)
     ews.append(ew*10)  #Save the equivalent width in angstroms
   done = raw_input("hit enter ")
@@ -263,8 +263,8 @@ def Measure(filename, figure, title):
   """
   orders = HelperFunctions.ReadExtensionFits(filename)
   order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
+  left = np.searchsorted(order.x, 588)
+  right = np.searchsorted(order.x, 590.5)
   order = order[left:right]
 
   x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
@@ -293,16 +293,16 @@ def Measure(filename, figure, title):
     fiterrs = fiterrs[4:] + fiterrs[:4]
 
   #Determine the start and end of each line
-  start1 = fitpars[1] - 7*numpy.sqrt(fitpars[2]**2 + fitpars[3]**2)
-  end1 = fitpars[1] + 7*numpy.sqrt(fitpars[2]**2 + fitpars[3]**2)
-  start2 = fitpars[5] - 7*numpy.sqrt(fitpars[6]**2 + fitpars[7]**2)
-  end2 = fitpars[5] + 7*numpy.sqrt(fitpars[6]**2 + fitpars[7]**2)
+  start1 = fitpars[1] - 7*np.sqrt(fitpars[2]**2 + fitpars[3]**2)
+  end1 = fitpars[1] + 7*np.sqrt(fitpars[2]**2 + fitpars[3]**2)
+  start2 = fitpars[5] - 7*np.sqrt(fitpars[6]**2 + fitpars[7]**2)
+  end2 = fitpars[5] + 7*np.sqrt(fitpars[6]**2 + fitpars[7]**2)
 
   #Find the equivalent width for both lines
   ews = []
   for line in [[start1, end1], [start2, end2]]:
-    xmin=numpy.searchsorted(order.x, line[0])
-    xmax=numpy.searchsorted(order.x, line[1])
+    xmin=np.searchsorted(order.x, line[0])
+    xmax=np.searchsorted(order.x, line[1])
     ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=True, continuum=1.0, plot=True)
     ews.append(ew*10)  #Save the equivalent width in angstroms
   done = raw_input("hit enter ")

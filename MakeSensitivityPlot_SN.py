@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import sys
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     sys.exit()
 
   MS = SpectralTypeRelations.MainSequence()
-  vband = numpy.arange(500, 600, 0.1)*Units.cm/Units.nm
+  vband = np.arange(500, 600, 0.1)*Units.cm/Units.nm
   #Read in file/files  WARNING! ASSUMES A CERTAIN FORMAT. MUST CHANGE THIS IF THE FORMAT CHANGES!
   
   for infilename in infiles:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
       q[p_spt][snr].append(float(segments[5]))
       det_rate[p_spt][snr].append(float(segments[6]))
       sig[p_spt][snr].append(float(segments[7]))
-      magdiff[p_spt][snr].append(2.5*numpy.log10(fluxratio))
+      magdiff[p_spt][snr].append(2.5*np.log10(fluxratio))
 
 
     #plot

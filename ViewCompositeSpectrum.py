@@ -1,5 +1,5 @@
 #!/opt/local/bin/python
-import numpy
+import numpy as np
 import os
 import sys
 import pylab
@@ -138,7 +138,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
 
   #Figure out how to add noise to the spectrum to get the desired S/N
   flux = Planck(data2[SN_order-1].x*Units.cm/Units.nm, prim_temp).mean()
-  SN_factor = SNR/numpy.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
+  SN_factor = SNR/np.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
 
   ##############################################################
   #Begin main loop over the orders
@@ -149,7 +149,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
     sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
     fluxratio = sec_flux/prim_flux
-    print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
+    print "order %i flux ratio = %.3g" %(i+1, np.mean(fluxratio))
 
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
     
@@ -167,7 +167,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     #Scale the model by the above scale factor and normalize
     scaled_model = (model2.y/model2.cont - 1.0)*fluxratio + 1.0
     model2.y = scaled_model
-    model2.cont = numpy.ones(model2.size())
+    model2.cont = np.ones(model2.size())
     output_orders.append(model2.copy())
 
     pylab.plot(order.x, order.y/order.cont, 'k-')
@@ -175,7 +175,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SNR=1e6, SN_order=19,
     
 
     #Add noise to the data
-    noise = numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
+    noise = np.random.normal(loc=0, scale=1.0/(SN_factor*np.sqrt(np.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
     #data2[i].y += noise
 
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     else:
       continue
     
-    if numpy.abs(metallicity) < 0.1:
+    if np.abs(metallicity) < 0.1:
       modelfiles[temperature].append(modeldir+fname)
 
   #Read in data
@@ -263,21 +263,21 @@ if __name__ == "__main__":
   s_spt = MS.GetSpectralType(MS.Temperature, s_temp)
   s_mass = MS.Interpolate(MS.Mass, s_spt)
   radius = MS.Interpolate(MS.Radius, s_spt)
-  logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
+  logg = np.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
   best_key = modelfiles.keys()[0]
   
   for key in modelfiles.keys():
-    if numpy.abs(s_temp - key) < numpy.abs(s_temp - best_key):
+    if np.abs(s_temp - key) < np.abs(s_temp - best_key):
       best_key = key
       logg_values = [float(fname.split("lte")[-1].split("-")[1]) for fname in modelfiles[key]]
       
   best_logg = float(modelfiles[best_key][0].split("lte")[-1].split("-")[1])
-  logg_index = numpy.argmin(numpy.array(logg_values - logg))
+  logg_index = np.argmin(np.array(logg_values - logg))
   modelfile = modelfiles[best_key][logg_index]
 
   #Read in model
   print "Model file: %s" %modelfile
-  x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
+  x,y = np.loadtxt(modelfile, usecols=(0,1), unpack=True)
   x = x*Units.nm/Units.angstrom
   y = 10**y
   model = DataStructures.xypoint(x=x, y=y)
@@ -291,8 +291,8 @@ if __name__ == "__main__":
   for i, order in enumerate(orders[2:-1]):
     original = orders_original[i]
     original.cont = FindContinuum.Continuum(original.x, original.y, lowreject=2, highreject=2)
-    std = numpy.std(order.y/order.cont - original.y/original.cont)
-    shift = (std + numpy.std(original.y/original.cont))*3
+    std = np.std(order.y/order.cont - original.y/original.cont)
+    shift = (std + np.std(original.y/original.cont))*3
     pylab.plot(original.x, original.y/original.cont, 'k-')
     pylab.plot(order.x, order.y/order.cont - original.y/original.cont + 1.0 + shift, 'r-')
   pylab.show()

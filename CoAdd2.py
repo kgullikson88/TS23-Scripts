@@ -3,7 +3,7 @@ import DataStructures
 import FindContinuum
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
-import numpy
+import numpy as np
 import pylab
 from astropy.io import fits as pyfits
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
       error = interp(observation[i].x, observation[i].err**2, k=1)
       total.y += flux(total.x)
       total.err += error(total.x)
-    total.err = numpy.sqrt(total.err)
+    total.err = np.sqrt(total.err)
     total.cont = FindContinuum.Continuum(total.x, total.y, fitorder=3, lowreject=2, highreject=5)
 
      #Set up data structures for OutputFitsFile

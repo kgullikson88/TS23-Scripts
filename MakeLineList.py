@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 import FitsUtils
 from astropy.io import fits as pyfits
@@ -15,15 +15,15 @@ def main1():
   orders = FitsUtils.MakeXYpoints(hdulist[0].header, hdulist[0].data)[::-1]
   hdulist.close()
 
-  boxcar = numpy.ones(bclength)/float(bclength)
+  boxcar = np.ones(bclength)/float(bclength)
 
 
   lines = []
   for order, index in zip(orders, range(len(orders))):
-    smoothed = numpy.convolve(order.y, boxcar, mode='same')
+    smoothed = np.convolve(order.y, boxcar, mode='same')
     residuals = order.y - smoothed
-    std = numpy.std(residuals)
-    linepoints = numpy.where(numpy.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, order.y[bclength:-bclength] > 0.9*numpy.max(order.y[bclength:-bclength])))[0] + bclength
+    std = np.std(residuals)
+    linepoints = np.where(np.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, order.y[bclength:-bclength] > 0.9*np.max(order.y[bclength:-bclength])))[0] + bclength
 
     #Find all sets of consecutive points
     points = []
@@ -31,10 +31,10 @@ def main1():
       if len(points) == 0 or int(line) - 1 == points[-1]:
         points.append(int(line))
       else:
-        lines.append(order.x[int(numpy.median(points) + 0.5)])
+        lines.append(order.x[int(np.median(points) + 0.5)])
         points = [int(line),]
         print lines[-1]
-        yval = order.y[int(numpy.median(points) + 0.5)]
+        yval = order.y[int(np.median(points) + 0.5)]
         plt.plot((lines[-1], lines[-1]), (yval-0.1, yval-0.2), 'r-')
     
     plt.figure()
@@ -44,29 +44,29 @@ def main1():
 
     #plt.show()
 
-  numpy.savetxt("Linelist.dat", lines, fmt="%.8f")
+  np.savetxt("Linelist.dat", lines, fmt="%.8f")
 
 
 def main2():
   filename = os.environ["HOME"] + "/School/Research/Useful_Datafiles/Telluric_Visible.dat"
   print "Reading telluric model"
-  x,trans = numpy.loadtxt(filename, unpack=True)
+  x,trans = np.loadtxt(filename, unpack=True)
   x = x[::-1]
   trans = trans[::-1]
 
-  boxcar = numpy.ones(bclength)/float(bclength)
-  smoothed = numpy.convolve(trans, boxcar, mode='same')
+  boxcar = np.ones(bclength)/float(bclength)
+  smoothed = np.convolve(trans, boxcar, mode='same')
   residuals = trans - smoothed
-  std = numpy.std(residuals[bclength:-bclength])
+  std = np.std(residuals[bclength:-bclength])
 
   #plt.plot(x, residuals - residuals[bclength:-bclength].mean())
   #plt.plot(x, smoothed)
-  #plt.plot(x, (-std)*numpy.ones(x.size))
+  #plt.plot(x, (-std)*np.ones(x.size))
   #plt.show()
 
-  #linepoints = numpy.where(numpy.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, trans[bclength:-bclength] > 0.9*numpy.max(trans[bclength:-bclength])))[0] + bclength
-  linepoints = numpy.where(residuals[bclength:-bclength] - residuals[bclength:-bclength].mean() < -std)[0] + bclength
-  linepoints = numpy.where(trans < 0.98)[0]
+  #linepoints = np.where(np.logical_and(residuals[bclength:-bclength] - residuals.mean() < std, trans[bclength:-bclength] > 0.9*np.max(trans[bclength:-bclength])))[0] + bclength
+  linepoints = np.where(residuals[bclength:-bclength] - residuals[bclength:-bclength].mean() < -std)[0] + bclength
+  linepoints = np.where(trans < 0.98)[0]
 
   print "Finding lines"
   points = []
@@ -76,7 +76,7 @@ def main2():
     if len(points) == 0 or int(line) - 1 == points[-1]:
       points.append(int(line))
     else:
-      index = int(numpy.median(points) + 0.5)
+      index = int(np.median(points) + 0.5)
       if len(points) > 1:
         minindex = trans[points[0]:points[-1]].argmin() + points[0]
       else:
@@ -91,23 +91,23 @@ def main2():
   tol = 0.05
   lines = sorted(lines)
   for i in range(len(lines) - 2, 0, -1):
-    if numpy.abs(lines[i] - lines[i-1]) < tol:
+    if np.abs(lines[i] - lines[i-1]) < tol:
       del lines[i]
       del lines[i-1]
-    elif numpy.abs(lines[i] - lines[i+1]) < tol:
+    elif np.abs(lines[i] - lines[i+1]) < tol:
       del lines[i+1]
       del lines[i]
     else:
-      index = numpy.searchsorted(x,lines[i]) - 1
+      index = np.searchsorted(x,lines[i]) - 1
       yval = trans[index]
       plt.plot((lines[i], lines[i]), (yval-0.05, yval-0.1), 'r-')
   """
   plt.plot(x, trans, 'k-')
   for line in lines:
-    idx = numpy.searchsorted(x, line)
+    idx = np.searchsorted(x, line)
     plt.plot([x[idx], x[idx]], [trans[idx]-0.05, trans[idx]-0.1], 'r-')
   plt.show()
-  numpy.savetxt("Linelist3.dat", lines, fmt="%.8f")
+  np.savetxt("Linelist3.dat", lines, fmt="%.8f")
 
 
 """
@@ -132,8 +132,8 @@ def FindLines(spectrum, tol=0.99, linespacing = 0.01, debug=False):
     else:
       lines.pop(i)
   plt.show()
-  return numpy.array(lines)
-#numpy.savetxt("Linelist4.dat", lines, fmt="%.8f")
+  return np.array(lines)
+#np.savetxt("Linelist4.dat", lines, fmt="%.8f")
 
 
 
@@ -141,6 +141,6 @@ if __name__ == "__main__":
   filename = os.environ["HOME"] + "/School/Research/Useful_Datafiles/Telluric_Visible.dat"
   filename = "tell.dat"
   print "Reading telluric model"
-  x,trans = numpy.loadtxt(filename, unpack=True)
+  x,trans = np.loadtxt(filename, unpack=True)
   model = DataStructures.xypoint(x=x[::-1], y=trans[::-1])
   FindLines(model, debug=True)

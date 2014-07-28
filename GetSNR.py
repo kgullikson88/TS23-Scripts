@@ -2,7 +2,7 @@ import sys
 import os
 import pylab
 from astropy.io import fits as pyfits
-import numpy
+import numpy as np
 import FittingUtilities
 import HelperFunctions
 
@@ -53,21 +53,21 @@ def main1():
     order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=2)
 
     for j, region in enumerate(goodregions):
-      left = numpy.searchsorted(order.x, region[0])
-      right = numpy.searchsorted(order.x, region[1])
+      left = np.searchsorted(order.x, region[0])
+      right = np.searchsorted(order.x, region[1])
       if j == 0:
-        goodindices = numpy.arange(left,right)
+        goodindices = np.arange(left,right)
       else:
-        goodindices = numpy.r_[goodindices, numpy.arange(left, right)]
+        goodindices = np.r_[goodindices, np.arange(left, right)]
 
     #Get S/N
-    snr = 1.0 / numpy.std( (order.y/order.cont)[goodindices] )
+    snr = 1.0 / np.std( (order.y/order.cont)[goodindices] )
 
     #Get Emeter counts
     emfile = "em%i.tbl" %number
     if emfile in emfiles:
-      counts = numpy.loadtxt(emfile, usecols=(1,))
-      emcounts = numpy.sum(counts)
+      counts = np.loadtxt(emfile, usecols=(1,))
+      emcounts = np.sum(counts)
     else:
       emcounts = 0
     
@@ -93,7 +93,7 @@ def main2():
     bestsnr = -1
     for i, order in enumerate(orders):
       order.cont = FittingUtilities.Continuum(order.x, order.y, lowreject=2, highreject=3)
-      snr = 1.0 / numpy.std( (order.y/order.cont) )
+      snr = 1.0 / np.std( (order.y/order.cont) )
       #print "S/N in order %i = %g" %(i+1, snr)
       if snr > bestsnr:
         bestorder = i

@@ -2,7 +2,7 @@ import FittingUtilities
 from astropy.io import fits as pyfits
 import sys
 import os
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 import HelperFunctions
 
@@ -60,15 +60,15 @@ if __name__ == "__main__":
       left, right = left_trim, order.size()-right_trim
       if i in bad_regions.keys():
         region = bad_regions[i]
-        left = numpy.searchsorted(order.x, region[0])
-        right = numpy.searchsorted(order.x, region[1])
+        left = np.searchsorted(order.x, region[0])
+        right = np.searchsorted(order.x, region[1])
         if left == 0 or right == order.size():
-          order.x = numpy.delete(order.x, numpy.arange(left, right))
-          order.y = numpy.delete(order.y, numpy.arange(left, right))
-          order.cont = numpy.delete(order.cont, numpy.arange(left, right))
-          order.err = numpy.delete(order.err, numpy.arange(left, right))
+          order.x = np.delete(order.x, np.arange(left, right))
+          order.y = np.delete(order.y, np.arange(left, right))
+          order.cont = np.delete(order.cont, np.arange(left, right))
+          order.err = np.delete(order.err, np.arange(left, right))
           if blazecorrect:
-            blaze[i].y = numpy.delete(blaze[i].y, numpy.arange(left, right))
+            blaze[i].y = np.delete(blaze[i].y, np.arange(left, right))
         else:
           print "Warning! Bad region covers the middle of order %i" %i
           print "Interpolating rather than removing"

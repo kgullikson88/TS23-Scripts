@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import sys
 import os
 import matplotlib.pyplot as plt
@@ -19,7 +19,7 @@ telluric_orders = [3,4,5,6,8,9,10,11,13,14,15,16,17,19,20,24,25]
 """
   Function to output a fits file
   column_dict is a dictionary where the key is the name of the column
-     and the value is a numpy array with the data. Example of a column
+     and the value is a np array with the data. Example of a column
      would be the wavelength or flux at each pixel
   template is the filename of the template fits file. The header will
      be taken from this file and used as the main header
@@ -62,7 +62,7 @@ if __name__ == "__main__":
   #Initialize fitter
   fitter = TelluricFitter.TelluricFitter()
   fitter.SetTelluricLineListFile(linelist)
-  LineList = numpy.loadtxt(linelist)
+  LineList = np.loadtxt(linelist)
   logfile = open("fitlog.txt", "w")
 
   #Find and read in blaze function (MUST BE IN CURRENT DIRECTORY!)
@@ -103,8 +103,8 @@ if __name__ == "__main__":
       t = segments[0]
       t_seg = t.split(":")
       weather_time = 3600*float(t_seg[0]) + 60*float(t_seg[1]) + float(t_seg[2])
-      if numpy.abs(time - weather_time) < difference:
-        difference = numpy.abs(time - weather_time)
+      if np.abs(time - weather_time) < difference:
+        difference = np.abs(time - weather_time)
         bestindex = idx
       times.append(segments[0])
       T.append(float(segments[3]))
@@ -144,10 +144,10 @@ if __name__ == "__main__":
 
     #Error propagation not right, but (hopefully) close enough!
     order.err /= blaze_functions[i](order.x)
-    #order.err = numpy.sqrt( (order.err/blaze_functions[i+start](order.x))**2 + (order.y/(blaze_functions[i+start](order.x))**2 * blaze_errors[i+start](order.x))**2 )
+    #order.err = np.sqrt( (order.err/blaze_functions[i+start](order.x))**2 + (order.y/(blaze_functions[i+start](order.x))**2 * blaze_errors[i+start](order.x))**2 )
       
     order.cont = FindContinuum.Continuum(order.x, order.y, fitorder=3, lowreject=2, highreject=10)
-    primary = DataStructures.xypoint(x=order.x, y=numpy.ones(order.x.size))
+    primary = DataStructures.xypoint(x=order.x, y=np.ones(order.x.size))
       
     fitter.ImportData(order)
     fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j] ]
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     model_amplitude = 1.0 - min(model.y)
     if model_amplitude < 0.01 or i > 29:
       print "Skipping order %i" %(i)
-      #model = DataStructures.xypoint(x=order.x.copy(), y=numpy.ones(order.x.size))
+      #model = DataStructures.xypoint(x=order.x.copy(), y=np.ones(order.x.size))
     elif model_amplitude >= 0.01 and model_amplitude < 0.1:        
       print "Fitting line profiles with gaussian profile"
       model = fitter.Fit(resolution_fit_mode="gauss", fit_primary=False, adjust_wave="model")

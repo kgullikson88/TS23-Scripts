@@ -2,7 +2,7 @@
 
 from astropy.io import fits as pyfits
 import pylab
-import numpy
+import numpy as np
 import scipy
 import scipy.interpolate
 import scipy.optimize
@@ -50,7 +50,7 @@ class Improve:
     
     
   def ImportTelluric(self, filename):
-    wave, trans = numpy.loadtxt(filename, usecols=(0,1), unpack=True)
+    wave, trans = np.loadtxt(filename, usecols=(0,1), unpack=True)
     self.telluric = DataStructures.xypoint(wave.size)
     self.telluric.x = wave[::-1]*Units.nm/Units.um
     self.telluric.y = trans[::-1]
@@ -68,7 +68,7 @@ class Improve:
     outfile = open("residuals.log", "w")
     outfile2 = open("UsedLines.log", "a")
 
-    linelist = numpy.loadtxt(utils.LineListFile)
+    linelist = np.loadtxt(utils.LineListFile)
     
     #Loop over the spectral orders
     for i in range(37,51):
@@ -82,17 +82,17 @@ class Improve:
       
       #Do a cross-correlation first, to get the wavelength solution close
       ycorr = scipy.correlate(flux-1.0, tell-1.0, mode="full")
-      xcorr = numpy.arange(ycorr.size)
+      xcorr = np.arange(ycorr.size)
       lags = xcorr - (flux.size-1)
       distancePerLag = (wave[-1] - wave[0])/float(wave.size)
       offsets = -lags*distancePerLag
       offsets = offsets[::-1]
       ycorr = ycorr[::-1]
 
-      fit = numpy.poly1d(numpy.polyfit(offsets, ycorr, ycorr.size/100))
+      fit = np.poly1d(np.polyfit(offsets, ycorr, ycorr.size/100))
       ycorr = ycorr - fit(offsets)
-      left = numpy.searchsorted(offsets, -1.0)
-      right = numpy.searchsorted(offsets, +1.0)
+      left = np.searchsorted(offsets, -1.0)
+      right = np.searchsorted(offsets, +1.0)
       maxindex = ycorr[left:right].argmax() + left
       print "maximum offset: ", offsets[maxindex], " nm"
       pylab.plot(offsets, ycorr)
@@ -103,17 +103,17 @@ class Improve:
       
       #Fit using the (GridSearch) utility function
       data = DataStructures.xypoint(self.orders[i].x.size)
-      data.x = numpy.copy(self.orders[i].x)
-      data.y = numpy.copy(self.orders[i].y)
-      data.cont = numpy.copy(self.orders[i].cont)
+      data.x = np.copy(self.orders[i].x)
+      data.y = np.copy(self.orders[i].y)
+      data.cont = np.copy(self.orders[i].cont)
       fitfcn, offset = FitWavelength2(data, self.telluric, linelist)
       self.orders[i].x = fitfcn(self.orders[i].x - offset)
       
       #Let user fix, if plot is true
       if plot:
         #First, just plot all at once so user can examine fit
-        left = numpy.searchsorted(self.telluric.x, self.orders[i].x[0])
-        right = numpy.searchsorted(self.telluric.x, self.orders[i].x[-1])
+        left = np.searchsorted(self.telluric.x, self.orders[i].x[0])
+        right = np.searchsorted(self.telluric.x, self.orders[i].x[-1])
         pylab.plot(self.orders[i].x, self.orders[i].y/self.orders[i].cont, label="data")
         pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right]*BSTAR(self.telluric.x[left:right]), label="model")
         pylab.legend(loc='best')
@@ -123,21 +123,21 @@ class Improve:
         #We only want to plot about 3 nm at a time
         spacing = 3.0
         data_left = 0
-        data_right = numpy.searchsorted(self.orders[i].x, self.orders[i].x[0]+spacing)
+        data_right = np.searchsorted(self.orders[i].x, self.orders[i].x[0]+spacing)
         while (data_left < self.orders[i].x.size):
           #Bind mouseclick:
           self.fig = pylab.figure()
           self.clickid = self.fig.canvas.mpl_connect('button_press_event', self.onclick)
 
-          left = numpy.searchsorted(self.telluric.x, self.orders[i].x[data_left])
-          right = numpy.searchsorted(self.telluric.x, self.orders[i].x[min(self.orders[i].x.size-1, data_right)])
+          left = np.searchsorted(self.telluric.x, self.orders[i].x[data_left])
+          right = np.searchsorted(self.telluric.x, self.orders[i].x[min(self.orders[i].x.size-1, data_right)])
           pylab.plot(self.orders[i].x[data_left:data_right], self.orders[i].y[data_left:data_right]/self.orders[i].cont[data_left:data_right], label="data")
           pylab.plot(self.telluric.x[left:right], self.telluric.y[left:right]*BSTAR(self.telluric.x[left:right]), label="model")
           pylab.legend(loc='best')
           pylab.title("Order "+str(self.orderNum+1))
           pylab.show()
           data_left = data_right
-          data_right = numpy.searchsorted(self.orders[i].x, self.orders[i].x[min(self.orders[i].x.size-1, data_left)]+spacing)
+          data_right = np.searchsorted(self.orders[i].x, self.orders[i].x[min(self.orders[i].x.size-1, data_left)]+spacing)
 
 
         #Once you close the window, you will get past the pylab.show() command
@@ -147,13 +147,13 @@ class Improve:
         while not done:
           #self.fitpoints is filled when you are clicking in the window
           if (len(self.fitpoints.x) > 3):
-            pars = numpy.polyfit(self.fitpoints.x, self.fitpoints.y, 3)
+            pars = np.polyfit(self.fitpoints.x, self.fitpoints.y, 3)
           else:
             pars = [0,1,0] #y=x... meaning don't try to improve on this order
-          func = numpy.poly1d(pars)
+          func = np.poly1d(pars)
           ignorelist = []
-          x = numpy.array(self.fitpoints.x)
-          y = numpy.array(self.fitpoints.y)
+          x = np.array(self.fitpoints.x)
+          y = np.array(self.fitpoints.y)
           resid = y - func(x) #residuals from the fit
           mean = resid.mean()
           std_dev = resid.std()
@@ -162,7 +162,7 @@ class Improve:
           #   standard deviations from the mean
           for j in range(len(self.fitpoints.x)):
             residual = self.fitpoints.y[j] - func(self.fitpoints.x[j])
-            if numpy.abs(residual) > 0.01 or numpy.abs(residual) > std_dev*2.5:
+            if np.abs(residual) > 0.01 or np.abs(residual) > std_dev*2.5:
               ignorelist.append(j)
           if len(ignorelist) == 0:
             done = True
@@ -221,12 +221,12 @@ class Improve:
     
     if len(self.fitpoints.x) == len(self.fitpoints.y):
       #Find lowest point in observed array:
-      left = numpy.searchsorted(self.orders[self.orderNum].x, event.xdata - tol)
-      right = numpy.searchsorted(self.orders[self.orderNum].x, event.xdata + tol)
+      left = np.searchsorted(self.orders[self.orderNum].x, event.xdata - tol)
+      right = np.searchsorted(self.orders[self.orderNum].x, event.xdata + tol)
       i = self.orders[self.orderNum].y[left:right].argmin()
       left = left + i
-      left = numpy.searchsorted(self.orders[self.orderNum].x, self.orders[self.orderNum].x[left] - tol)
-      right = numpy.searchsorted(self.orders[self.orderNum].x, self.orders[self.orderNum].x[left] + 2*tol)      
+      left = np.searchsorted(self.orders[self.orderNum].x, self.orders[self.orderNum].x[left] - tol)
+      right = np.searchsorted(self.orders[self.orderNum].x, self.orders[self.orderNum].x[left] + 2*tol)      
       centroid = self.Centroid(self.orders[self.orderNum].x[left:right], self.orders[self.orderNum].y[left:right])
       
       #Fit to gaussian:
@@ -241,12 +241,12 @@ class Improve:
       self.fitpoints.x.append(params[2])
     else:
       #Find lowest point in observed array:
-      left = numpy.searchsorted(self.telluric.x, event.xdata - tol)
-      right = numpy.searchsorted(self.telluric.x, event.xdata + tol)
+      left = np.searchsorted(self.telluric.x, event.xdata - tol)
+      right = np.searchsorted(self.telluric.x, event.xdata + tol)
       i = self.telluric.y[left:right].argmin()
       left = left + i
-      left = numpy.searchsorted(self.telluric.x, self.telluric.x[left] - tol)
-      right = numpy.searchsorted(self.telluric.x, self.telluric.x[left] + 2*tol)
+      left = np.searchsorted(self.telluric.x, self.telluric.x[left] - tol)
+      right = np.searchsorted(self.telluric.x, self.telluric.x[left] + 2*tol)
       centroid = self.Centroid(self.telluric.x[left:right], self.telluric.y[left:right])
       #Fit to gaussian:
       cont = 1.0
@@ -278,7 +278,7 @@ def FitFunction(x,params):
   depth = params[1]
   mu = params[2]
   sig = params[3]
-  return cont - depth*numpy.exp(-(x-mu)**2/(2*sig**2))
+  return cont - depth*np.exp(-(x-mu)**2/(2*sig**2))
 
 #Returns the residuals between the fit from above and the actual values
 def ErrFunction(params, x, y):
@@ -288,7 +288,7 @@ def ErrFunction(params, x, y):
 #Second wavelength-fitting function that just shifts lines, instead of fitting them to gaussians
 def WavelengthErrorFunction(shift, data, model):
   modelfcn = scipy.interpolate.UnivariateSpline(model.x, model.y, s=0)
-  weight = 1.0/numpy.sqrt(data.y)
+  weight = 1.0/np.sqrt(data.y)
   weight[weight < 0.01] = 0.0
   newmodel = modelfcn(model.x + float(shift))
   if shift < 0:
@@ -305,7 +305,7 @@ def GaussianFitFunction(x,params):
   depth = params[1]
   mu = params[2]
   sig = params[3]
-  return cont - depth*numpy.exp(-(x-mu)**2/(2*sig**2))
+  return cont - depth*np.exp(-(x-mu)**2/(2*sig**2))
 
 #Returns the residuals between the fit from above and the actual values
 def GaussianErrorFunction(params, x, y):
@@ -326,43 +326,43 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_or
   CONT_FCN = scipy.interpolate.UnivariateSpline(order.x, order.cont, s=0)
   MODEL_FCN = scipy.interpolate.UnivariateSpline(telluric.x, telluric.y, s=0)
   data = DataStructures.xypoint(order.x.size*oversampling)
-  data.x = numpy.linspace(order.x[0], order.x[-1], order.x.size*oversampling)
+  data.x = np.linspace(order.x[0], order.x[-1], order.x.size*oversampling)
   data.y = DATA_FCN(data.x)
   data.cont = CONT_FCN(data.x)
   model = DataStructures.xypoint(data.x.size)
-  model.x = numpy.copy(data.x)
+  model.x = np.copy(data.x)
   model.y = MODEL_FCN(model.x)*BSTAR(model.x)
   
   #Begin loop over the lines
   for line in linelist:
     if line-tol > data.x[0] and line+tol < data.x[-1]:
       #Find line in the model
-      left = numpy.searchsorted(model.x, line - tol)
-      right = numpy.searchsorted(model.x, line + tol)
+      left = np.searchsorted(model.x, line - tol)
+      right = np.searchsorted(model.x, line + tol)
       minindex = model.y[left:right].argmin() + left
 
       mean = model.x[minindex]
-      left2 = numpy.searchsorted(model.x, mean - tol*2)
-      right2 = numpy.searchsorted(model.x, mean + tol*2)
+      left2 = np.searchsorted(model.x, mean - tol*2)
+      right2 = np.searchsorted(model.x, mean + tol*2)
 
       argmodel = DataStructures.xypoint(right2 - left2)
-      argmodel.x = numpy.copy(model.x[left2:right2])
-      argmodel.y = numpy.copy(model.y[left2:right2])
+      argmodel.x = np.copy(model.x[left2:right2])
+      argmodel.y = np.copy(model.y[left2:right2])
 
       #Do the same for the data
-      left = numpy.searchsorted(data.x, line - tol)
-      right = numpy.searchsorted(data.x, line + tol)
+      left = np.searchsorted(data.x, line - tol)
+      right = np.searchsorted(data.x, line + tol)
       minindex = data.y[left:right].argmin() + left
 
       mean = data.x[minindex]
 
       argdata = DataStructures.xypoint(right2 - left2)
-      argdata.x = numpy.copy(data.x[left2:right2])
-      argdata.y = numpy.copy(data.y[left2:right2]/data.cont[left2:right2])
+      argdata.x = np.copy(data.x[left2:right2])
+      argdata.y = np.copy(data.y[left2:right2]/data.cont[left2:right2])
 
       #Do a cross-correlation first, to get the wavelength solution close
       ycorr = scipy.correlate(argdata.y-1.0, argmodel.y-1.0, mode="full")
-      xcorr = numpy.arange(ycorr.size)
+      xcorr = np.arange(ycorr.size)
       maxindex = ycorr.argmax()
       lags = xcorr - (argdata.x.size-1)
       distancePerLag = (argdata.x[-1] - argdata.x[0])/float(argdata.x.size)
@@ -384,20 +384,20 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_or
     pylab.show()
   #fit = UnivariateSpline(old, new, k=1, s=0)
   #Iteratively fit to a cubic with sigma-clipping
-  fit = numpy.poly1d((1,0))
+  fit = np.poly1d((1,0))
   mean = 0.0
   done = False
   while not done and len(old) > fit_order:
     done = True
-    mean = numpy.mean(old)
-    fit = numpy.poly1d(numpy.polyfit(old - mean, new, fit_order))
+    mean = np.mean(old)
+    fit = np.poly1d(np.polyfit(old - mean, new, fit_order))
     residuals = fit(old - mean) - new
-    std = numpy.std(residuals)
+    std = np.std(residuals)
     #if debug:
     #  pylab.plot(old, residuals, 'ro')
-    #  pylab.plot(old, std*numpy.ones(len(old)))
+    #  pylab.plot(old, std*np.ones(len(old)))
     #  pylab.show()
-    badindices = numpy.where(numpy.logical_or(residuals > 2*std, residuals < -2*std))[0]
+    badindices = np.where(np.logical_or(residuals > 2*std, residuals < -2*std))[0]
     for badindex in badindices[::-1]:
       print "Deleting index ", badindex+1, "of ", len(old)
       del old[badindex]
@@ -405,9 +405,9 @@ def FitWavelength2(order, telluric, linelist, tol=0.05, oversampling = 4, fit_or
       done = False
 
   #Check if the function changed things by too much
-  difference = numpy.abs(order.x - fit(order.x - mean))
-  if numpy.any(difference > max_change):
-    fit = numpy.poly1d((1,0))
+  difference = np.abs(order.x - fit(order.x - mean))
+  if np.any(difference > max_change):
+    fit = np.poly1d((1,0))
     mean = 0.0
 
   if debug:

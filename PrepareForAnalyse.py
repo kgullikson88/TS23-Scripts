@@ -14,7 +14,7 @@ import os
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from astropy.io import fits
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 import HelperFunctions
 import FittingUtilities
 import DataStructures
@@ -29,14 +29,14 @@ def CombineOrders(orders):
     return orders[0]
 
   # Combine orders
-  xgrid = numpy.arange(orders[0].x[0], orders[-1].x[-1], 0.01)
+  xgrid = np.arange(orders[0].x[0], orders[-1].x[-1], 0.01)
   output = DataStructures.xypoint(x=xgrid)
-  output.y = numpy.ones(output.size())
-  norm = numpy.zeros(output.size())
+  output.y = np.ones(output.size())
+  norm = np.zeros(output.size())
   for order in orders:
     fcn = spline(order.x, order.y, k=1)
-    left = numpy.searchsorted(xgrid, order.x[0])
-    right = numpy.searchsorted(xgrid, order.x[-1])
+    left = np.searchsorted(xgrid, order.x[0])
+    right = np.searchsorted(xgrid, order.x[-1])
     output.y[left:right] += fcn(output.x[left:right])
     norm[left:right] += 1.0
   output.y /= norm
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     # Shift overlapping orders up so that the edges line up well
     for i, order in enumerate(orders[:-1]):
       if order.x[-1] > orders[i+1].x[0]:
-        left = numpy.searchsorted(order.x, orders[i+1].x[0])
+        left = np.searchsorted(order.x, orders[i+1].x[0])
         fcn = spline(orders[i+1].x, orders[i+1].y, k=1)
         factor = order.y[left:]/fcn(order.x[left:])
         poly = FittingUtilities.Continuum(order.x[left:], factor, fitorder=1, lowreject=2, highreject=2)
@@ -94,14 +94,14 @@ if __name__ == "__main__":
           
 
     # Combine orders
-    xgrid = numpy.arange(orders[0].x[0], orders[-1].x[-1], 0.01)
+    xgrid = np.arange(orders[0].x[0], orders[-1].x[-1], 0.01)
     output = DataStructures.xypoint(x=xgrid)
-    output.y = numpy.ones(output.size())
-    norm = numpy.zeros(output.size())
+    output.y = np.ones(output.size())
+    norm = np.zeros(output.size())
     for order in orders:
       fcn = spline(order.x, order.y, k=1)
-      left = numpy.searchsorted(xgrid, order.x[0])
-      right = numpy.searchsorted(xgrid, order.x[-1])
+      left = np.searchsorted(xgrid, order.x[0])
+      right = np.searchsorted(xgrid, order.x[-1])
       output.y[left:right] += fcn(output.x[left:right])
       #cont = FittingUtilities.Continuum(output.x[max(left-1000, 0):min(right+1000
       cfcn = spline(order.x, order.cont, k=1)
@@ -131,11 +131,11 @@ if __name__ == "__main__":
     outfilename = "%s/%s/%s/%s.txt" %(outdir, instrument, star, star)
     print outfilename
     HelperFunctions.ensure_dir(outfilename)
-    numpy.savetxt(outfilename, numpy.transpose((output.x*10.0, output.y)))
+    np.savetxt(outfilename, np.transpose((output.x*10.0, output.y)))
 
     #for i, order in enumerate(orders):
     #  outfilename = "%s/%s/%s/order%i.txt" %(outdir, instrument, star, i+1)
-    #  numpy.savetxt(outfilename, numpy.transpose((order.x*10.0, order.y/order.cont)))
+    #  np.savetxt(outfilename, np.transpose((order.x*10.0, order.y/order.cont)))
     
     
       

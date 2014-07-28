@@ -1,5 +1,5 @@
 #!/opt/local/bin/python
-import numpy
+import numpy as np
 import os
 import sys
 import pylab
@@ -137,7 +137,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
 
   #Figure out how to add noise to the spectrum to get the desired S/N
   #flux = Planck(data2[SN_order-1].x*Units.cm/Units.nm, prim_temp).mean()
-  #SN_factor = SNR/numpy.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
+  #SN_factor = SNR/np.sqrt(flux*sensitivity(data2[SN_order-1].x.mean()))
 
   ##############################################################
   #Begin main loop over the orders
@@ -146,7 +146,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
     prim_flux = Planck(order.x*Units.cm/Units.nm, prim_temp)*prim_radius**2
     sec_flux = Planck(order.x*Units.cm/Units.nm, sec_temp)*sec_radius**2
     fluxratio = sec_flux/prim_flux
-    print "order %i flux ratio = %.3g" %(i+1, numpy.mean(fluxratio))
+    print "order %i flux ratio = %.3g" %(i+1, np.mean(fluxratio))
 
     model2 = DataStructures.xypoint(x=order.x, y=model_fcn(order.x*(1.+vel/Units.c)))
     
@@ -167,7 +167,7 @@ def Add(data, model, prim_spt, sec_spt, age="MS", vel=0.0, SN_order=19, sensitiv
     
 
     #Add noise to the data
-    #noise = numpy.random.normal(loc=0, scale=1.0/(SN_factor*numpy.sqrt(numpy.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
+    #noise = np.random.normal(loc=0, scale=1.0/(SN_factor*np.sqrt(np.mean(prim_flux*sensitivity(order.x.mean())/prim_radius**2))), size=data2[i].x.size)
     #data2[i].y += noise
 
 
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         logfilename = outfiledir + arg.split("=")[-1]
       elif "sensitivity" in arg:
         found_keywords.append("sensitivity")
-        x,y = numpy.loadtxt(arg.split("=")[-1], unpack=True)
+        x,y = np.loadtxt(arg.split("=")[-1], unpack=True)
         x = x[::-1]
         y = y[::-1]
         sensitivity_fcn = UnivariateSpline(x,y,s=0)
@@ -264,7 +264,7 @@ if __name__ == "__main__":
     s_right = temp+1
   
   #Remove keyword arguments from the datafiles list, and sort
-  badindices = [i for i, name in enumerate(datafiles) if numpy.any([keyword in name for keyword in found_keywords])]
+  badindices = [i for i, name in enumerate(datafiles) if np.any([keyword in name for keyword in found_keywords])]
   removed_vals = [datafiles.pop(i) for i in sorted(badindices)[::-1]]
   datafiles.sort(key=lambda name: int(name.split("NDIT")[-1].split("-")[0]))
 
@@ -280,16 +280,16 @@ if __name__ == "__main__":
    s_mass = MS.Interpolate(MS.Mass, s_spt)
    radius = MS.Interpolate(MS.Radius, s_spt)
    temperature = MS.Interpolate(MS.Temperature, s_spt)
-   logg = numpy.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
+   logg = np.log10(Units.G*s_mass*Units.Msun/(radius*Units.Rsun)**2)
    best_key = modelfiles.keys()[0]
    for key in modelfiles.keys():
-     if numpy.abs(temperature - key) < numpy.abs(temperature - best_key):
+     if np.abs(temperature - key) < np.abs(temperature - best_key):
        best_key = key
    best_logg = float(modelfiles[best_key][0].split("lte")[-1][3:7])
    modelfile = modelfiles[best_key][0]
 
    #Read in model
-   x,y = numpy.loadtxt(modelfile, usecols=(0,1), unpack=True)
+   x,y = np.loadtxt(modelfile, usecols=(0,1), unpack=True)
    x = x*Units.nm/Units.angstrom
    y = 10**y
    model = DataStructures.xypoint(x=x, y=y)
@@ -304,10 +304,10 @@ if __name__ == "__main__":
     SN_order = 19
     snr = 0.0
     for segment in good_sections[SN_order]:
-      left = numpy.searchsorted(orders_original[SN_order].x, segment[0])
-      right = numpy.searchsorted(orders_original[SN_order].x, segment[1])
-      snr += numpy.std(orders_original[SN_order].y[left:right] / orders_original[SN_order].cont[left:right])**2
-    snr = 1.0/numpy.sqrt(snr)
+      left = np.searchsorted(orders_original[SN_order].x, segment[0])
+      right = np.searchsorted(orders_original[SN_order].x, segment[1])
+      snr += np.std(orders_original[SN_order].y[left:right] / orders_original[SN_order].cont[left:right])**2
+    snr = 1.0/np.sqrt(snr)
     for p_spt in parent_spts[p_left:p_right]:
       found = 0.0
       sig = []
@@ -320,10 +320,10 @@ if __name__ == "__main__":
         print "primary: %s\tsecondary:%s\tsnr:%g\tvelocity:%g" %(p_spt, s_spt, snr, velocity)
         #Cross-correlate with original model
         vel, corr = Correlate.PyCorr(orders, models=[[x,y],], segments=good_sections, save_output=False, vsini=15*Units.cm/Units.km, resolution=60000)
-        #numpy.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), numpy.transpose((vel, corr)))
+        #np.savetxt("corr_%s_%s_%i.dat" %(p_spt, s_spt, int(velocity)), np.transpose((vel, corr)))
         
 
-        #vel, corr = numpy.loadtxt(outfilebase+"_CC.dat", unpack=True)
+        #vel, corr = np.loadtxt(outfilebase+"_CC.dat", unpack=True)
         maxindex = corr.argmax()
         std = corr.std()
         mean = corr.mean()
@@ -334,8 +334,8 @@ if __name__ == "__main__":
           sig.append(significance)
           found += 1.
 
-      print "Found %i signals with a mean significance of %.3g" %(found, numpy.mean(sig))
-      outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), numpy.mean(sig))
+      print "Found %i signals with a mean significance of %.3g" %(found, np.mean(sig))
+      outfilestring = p_spt+"\t\t%.0f" %snr+"\t\t"+s_spt+"\t\t%.3f\t\t%.3f\t\t%.3f\t\t%.5f\t\t%.5f\n" %(p_mass, s_mass, s_mass/p_mass, found*100./float(len(velocitylist)), np.mean(sig))
       print outfilestring
       logfile.write(outfilestring)
   

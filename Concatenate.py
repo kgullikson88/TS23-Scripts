@@ -1,7 +1,7 @@
 from astropy.io import fits as pyfits
 import FitsUtils
 import sys
-import numpy
+import numpy as np
 
 
 if __name__ == "__main__":
@@ -32,7 +32,7 @@ if __name__ == "__main__":
   for i in range(1, len(hdulist2)):
     orders2.append(hdulist2[i].data.field("wavelength").mean())
 
-  if numpy.mean(orders1) > numpy.mean(orders2):
+  if np.mean(orders1) > np.mean(orders2):
     temp = orders2
     orders2 = orders1
     orders1 = temp
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     hdulist2 = hdulist1
     hdulist1 = temp
 
-  print numpy.mean(orders1), numpy.mean(orders2)
+  print np.mean(orders1), np.mean(orders2)
   done = False
   while not done:
     if orders1[-1] >= orders2[0]:

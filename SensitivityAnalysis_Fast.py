@@ -1,5 +1,5 @@
 
-import numpy
+import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import scipy.signal
 import os
@@ -102,9 +102,9 @@ for fname in model_list:
     gravity = float(fname.split("lte")[-1][3:7])
     metallicity = float(fname.split("lte")[-1][7:11])
   print "Reading in file %s" %fname
-  x,y = numpy.loadtxt(fname, usecols=(0,1), unpack=True)
+  x,y = np.loadtxt(fname, usecols=(0,1), unpack=True)
   model = DataStructures.xypoint(x=x*units.angstrom.to(units.nm)/1.00026, y=10**y)
-  model2 = FittingUtilities.RebinData(model, numpy.linspace(model.x[0], model.x[-1], model.size()))
+  model2 = FittingUtilities.RebinData(model, np.linspace(model.x[0], model.x[-1], model.size()))
   model_data.append(model2)
   for vsini in vsini_values:
     #model_orders = Correlate.Process(model, orders_original, vsini, 60000.0)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
       CONT = interp(order.x, order.cont)
       ERROR = interp(order.x, order.err)
       left, right = trimsize, order.size()-1 - trimsize
-      order.x = numpy.linspace(order.x[left], order.x[right], order.size())
+      order.x = np.linspace(order.x[left], order.x[right], order.size())
       order.y = DATA(order.x)
       order.cont = CONT(order.x)
       order.err = ERROR(order.x)
@@ -165,24 +165,24 @@ if __name__ == "__main__":
       
       #Remove bad regions from the data
       for region in badregions:
-        left = numpy.searchsorted(order.x, region[0])
-        right = numpy.searchsorted(order.x, region[1])
+        left = np.searchsorted(order.x, region[0])
+        right = np.searchsorted(order.x, region[1])
         if left > 0 and right < order.size():
           print "Warning! Bad region covers the middle of order %i" %i
           print "Removing full order!"
           left = 0
           right = order.size()
-        order.x = numpy.delete(order.x, numpy.arange(left, right))
-        order.y = numpy.delete(order.y, numpy.arange(left, right))
-        order.cont = numpy.delete(order.cont, numpy.arange(left, right))
-        order.err = numpy.delete(order.err, numpy.arange(left, right))
+        order.x = np.delete(order.x, np.arange(left, right))
+        order.y = np.delete(order.y, np.arange(left, right))
+        order.cont = np.delete(order.cont, np.arange(left, right))
+        order.err = np.delete(order.err, np.arange(left, right))
 
       #Remove whole order if it is too small
       remove = False
       if order.x.size <= windowsize:
         remove = True
       else:
-        velrange = 3e5 * (numpy.median(order.x) - order.x[0]) / numpy.median(order.x)
+        velrange = 3e5 * (np.median(order.x) - order.x[0]) / np.median(order.x)
         if velrange <= 1000.0:
           remove = True
       if remove:
