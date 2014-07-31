@@ -1,7 +1,7 @@
+import numpy as np
+import matplotlib.pyplot as plt
 import sys
 from collections import defaultdict
-
-import matplotlib.pyplot as plt
 
 
 """
@@ -20,71 +20,72 @@ import matplotlib.pyplot as plt
          filenames
 """
 
+
 if __name__ == "__main__":
-    # Defaults
-    combine = False
-    xaxis = "SecondarySpectralType"
-    yaxis = "DetectionRate"
-    infilename = "Sensitivity/summary.dat"
+  #Defaults
+  combine = False
+  xaxis = "SecondarySpectralType"
+  yaxis = "DetectionRate"
+  infilename = "Sensitivity/summary.dat"
+  
+  #Command-line overrides
+  for arg in sys.argv:
+    if "combine" in arg:
+      combine = True
+    elif "xaxis" in arg:
+      xaxis = arg.split("=")[-1]
+    elif "yaxis" in arg:
+      yaxis = arg.split("=")[-1]
+    elif "infile" in arg:
+      infilename = arg.split("=")[-1]
 
-    #Command-line overrides
-    for arg in sys.argv:
-        if "combine" in arg:
-            combine = True
-        elif "xaxis" in arg:
-            xaxis = arg.split("=")[-1]
-        elif "yaxis" in arg:
-            yaxis = arg.split("=")[-1]
-        elif "infile" in arg:
-            infilename = arg.split("=")[-1]
+  #Set up dictionaries/lists
+  s_spt = defaultdict(list)       #Secondary spectral type
+  p_mass = defaultdict(list)      #Primary mass
+  s_mass = defaultdict(list)      #Secondary mass
+  q = defaultdict(list)           #Mass ratio
+  det_rate = defaultdict(list)    #Detection rate
+  sig = defaultdict(list)         #Average detection significance
+  namedict = {"SecondarySpectralType": s_spt,
+              "SecondaryMass": s_mass,
+              "MassRatio": q,
+              "DetectionRate": det_rate,
+              "AverageSignificance": sig}
 
-    #Set up dictionaries/lists
-    s_spt = defaultdict(list)  #Secondary spectral type
-    p_mass = defaultdict(list)  #Primary mass
-    s_mass = defaultdict(list)  #Secondary mass
-    q = defaultdict(list)  #Mass ratio
-    det_rate = defaultdict(list)  #Detection rate
-    sig = defaultdict(list)  #Average detection significance
-    namedict = {"SecondarySpectralType": s_spt,
-                "SecondaryMass": s_mass,
-                "MassRatio": q,
-                "DetectionRate": det_rate,
-                "AverageSignificance": sig}
+  #Read in file/files  WARNING! ASSUMES A CERTAIN FORMAT. MUST CHANGE THIS IF THE FORMAT CHANGES!
+  if combine:
+    sys.exit("Sorry! Not implemented yet!")
+  
+  else:
+    infile = open(infilename)
+    lines = infile.readlines()
+    for line in lines[1:]:
+      segments = line.split()
+      p_spt = segments[0]
+      s_spt[p_spt].append(segments[1])
+      p_mass[p_spt].append(float(segments[2]))
+      s_mass[p_spt].append(float(segments[3]))
+      q[p_spt].append(float(segments[4]))
+      det_rate[p_spt].append(float(segments[5]))
+      sig[p_spt].append(float(segments[6]))
 
-    #Read in file/files  WARNING! ASSUMES A CERTAIN FORMAT. MUST CHANGE THIS IF THE FORMAT CHANGES!
-    if combine:
-        sys.exit("Sorry! Not implemented yet!")
 
+  #Finally, plot
+  for p_spt in sorted(s_spt.keys()):
+    x = namedict[xaxis][p_spt]
+    y = namedict[yaxis][p_spt]
+    if "SpectralType" in xaxis:
+      plt.plot(range(len(x)), y, label=p_spt+" Primary")
+      plt.xticks(range(len(x)), x, size="small")
+    elif "SpectralType" in yaxis:
+      plt.plot(x, range(len(y)), label=p_spt+" Primary")
+      plt.yticks(range(len(y)), y, size="small")
     else:
-        infile = open(infilename)
-        lines = infile.readlines()
-        for line in lines[1:]:
-            segments = line.split()
-            p_spt = segments[0]
-            s_spt[p_spt].append(segments[1])
-            p_mass[p_spt].append(float(segments[2]))
-            s_mass[p_spt].append(float(segments[3]))
-            q[p_spt].append(float(segments[4]))
-            det_rate[p_spt].append(float(segments[5]))
-            sig[p_spt].append(float(segments[6]))
-
-
-    #Finally, plot
-    for p_spt in sorted(s_spt.keys()):
-        x = namedict[xaxis][p_spt]
-        y = namedict[yaxis][p_spt]
-        if "SpectralType" in xaxis:
-            plt.plot(range(len(x)), y, label=p_spt + " Primary")
-            plt.xticks(range(len(x)), x, size="small")
-        elif "SpectralType" in yaxis:
-            plt.plot(x, range(len(y)), label=p_spt + " Primary")
-            plt.yticks(range(len(y)), y, size="small")
-        else:
-            plt.plot(x, y, label=p_spt + " Primary")
-    plt.legend(loc='best')
-    plt.xlabel(xaxis)
-    plt.ylabel(yaxis)
-    plt.show()
+      plt.plot(x, y, label=p_spt+" Primary")
+  plt.legend(loc='best')
+  plt.xlabel(xaxis)
+  plt.ylabel(yaxis)
+  plt.show()
 
 
 
