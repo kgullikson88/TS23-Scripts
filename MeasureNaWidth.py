@@ -6,353 +6,344 @@ The relationship from EW to E(B-V) is taken from
 Poznanski et al. 2012 MNRAS, 426, 1465
 """
 
-import matplotlib.pyplot as plt
-import numpy
-from scipy.optimize import leastsq
 from scipy.interpolate import UnivariateSpline
-import SpectralTypeRelations
-import HelperFunctions
-import FittingUtilities
-import DataStructures
-import pyspeckit
 import sys
 import os
+
+import matplotlib.pyplot as plt
+import numpy
+import FittingUtilities
+import DataStructures
 from astropy.io import fits
-import Smooth
+
+import HelperFunctions
+import pyspeckit
 
 
-ordernum = 30  #The order number with the Sodium lines in it
+ordernum = 30  # The order number with the Sodium lines in it
 D1_wave = 589.592
 D2_wave = 588.995
 
-#Make matplotlib interactive
+# Make matplotlib interactive
 plt.ion()
 
 
 def GetReddening(D1_ew, D2_ew):
-  #Use the sum of the lines, since it has the lowest error
-  EB_V = 10**(1.17*(D1_ew + D2_ew) - 1.85)
-  return EB_V
+    #Use the sum of the lines, since it has the lowest error
+    EB_V = 10 ** (1.17 * (D1_ew + D2_ew) - 1.85)
+    return EB_V
 
 
 def Measure3(filename, figure, title):
-  orders = HelperFunctions.ReadExtensionFits(filename)
-  order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
-  order = order[left:right]
+    orders = HelperFunctions.ReadExtensionFits(filename)
+    order = orders[ordernum]
+    left = numpy.searchsorted(order.x, 588)
+    right = numpy.searchsorted(order.x, 590.5)
+    order = order[left:right]
 
-  #Get the line positions
-  order.y /= order.cont
-  order.err /= order.cont
-  xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
-  order = FittingUtilities.RebinData(order, xgrid)
-  lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
-  print lines
-  D1 = 9e9
-  D2 = 9e9
-  for line in lines:
-    if abs(order.x[line] - D1_wave) < abs(D1 - D1_wave):
-      D1 = order.x[line]
-    if abs(order.x[line] - D2_wave) < abs(D2 - D2_wave):
-      D2 = order.x[line]
+    #Get the line positions
+    order.y /= order.cont
+    order.err /= order.cont
+    xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
+    order = FittingUtilities.RebinData(order, xgrid)
+    lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
+    print lines
+    D1 = 9e9
+    D2 = 9e9
+    for line in lines:
+        if abs(order.x[line] - D1_wave) < abs(D1 - D1_wave):
+            D1 = order.x[line]
+        if abs(order.x[line] - D2_wave) < abs(D2 - D2_wave):
+            D2 = order.x[line]
 
-  #Ask user for where the Na lines start
-  first, second = D2-0.1, D2+0.1
-  third, fourth = D1-0.1, D1+0.1
-  ax = figure.add_subplot(111)
-  ax.plot(order.x, order.y)
-  yrange = ax.get_ylim()
-
-  #Get the range for the Na line
-  ax.plot((first, first), yrange, 'r-')
-  ax.plot((second, second), yrange, 'r-')
-  ax.plot((third, third), yrange, 'r-')
-  ax.plot((fourth, fourth), yrange, 'r-')
-  plt.show()
-  inp = raw_input("Give bounds for Na line (hit enter if okay) ")
-  if inp.strip() == "":
-    first, second = D2-0.1, D2+0.1
-    third, fourth = D1-0.1, D1+0.1
-  else:
-    segments = inp.split()
-    first = float(segments[0])
-    second = float(segments[1])
-    third = float(segments[2])
-    fourth = float(segments[3])
-
-  #Make a new array, not including the Na line
-  left1 = numpy.searchsorted(order.x, first)
-  right1 = numpy.searchsorted(order.x, second)
-  left2 = numpy.searchsorted(order.x, third)
-  right2 = numpy.searchsorted(order.x, fourth)
-  x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
-  y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
-  e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
-  order2 = DataStructures.xypoint(x=x, y=y, err=e)
-  order2.output("Spec.dat")
-
-
-  done = False
-  smooth_value = 3e-4
-  while not done:
-    done = True
-    #Smooth the new array, and use the smoothed value as continuum
-    fcn = UnivariateSpline(order2.x, order2.y, s=3e-4)
-    order.cont = fcn(order.x)
-
-    #Plot this value to make sure it looks fine
+    #Ask user for where the Na lines start
+    first, second = D2 - 0.1, D2 + 0.1
+    third, fourth = D1 - 0.1, D1 + 0.1
     ax = figure.add_subplot(111)
-    plt.cla()
     ax.plot(order.x, order.y)
-    ax.plot(order.x, order.cont)
+    yrange = ax.get_ylim()
+
+    #Get the range for the Na line
+    ax.plot((first, first), yrange, 'r-')
+    ax.plot((second, second), yrange, 'r-')
+    ax.plot((third, third), yrange, 'r-')
+    ax.plot((fourth, fourth), yrange, 'r-')
     plt.show()
-    inp = raw_input("Continuum fit okay? ")
+    inp = raw_input("Give bounds for Na line (hit enter if okay) ")
     if inp.strip() == "":
-      done = True
-    elif "+" in inp:
-      smooth_value += 1e-4
-    elif "-" in inp:
-      smooth_value -= 1e-4
+        first, second = D2 - 0.1, D2 + 0.1
+        third, fourth = D1 - 0.1, D1 + 0.1
+    else:
+        segments = inp.split()
+        first = float(segments[0])
+        second = float(segments[1])
+        third = float(segments[2])
+        fourth = float(segments[3])
 
-  #Measure the equivalent width
-  dx = numpy.array([order.x[i+1] - order.x[i] for i in range(left1, right1)])
-  ew1 = numpy.sum((1.0 - order.y[left1:right1]/order.cont[left1:right1])*dx)
-  dx = numpy.array([order.x[i+1] - order.x[i] for i in range(left2, right2)])
-  ew2 = numpy.sum((1.0 - order.y[left2:right2]/order.cont[left2:right2])*dx)
-  
-  return [ew1, ew2], GetReddening(ew1, ew2)
+    #Make a new array, not including the Na line
+    left1 = numpy.searchsorted(order.x, first)
+    right1 = numpy.searchsorted(order.x, second)
+    left2 = numpy.searchsorted(order.x, third)
+    right2 = numpy.searchsorted(order.x, fourth)
+    x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
+    y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
+    e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
+    order2 = DataStructures.xypoint(x=x, y=y, err=e)
+    order2.output("Spec.dat")
 
+    done = False
+    smooth_value = 3e-4
+    while not done:
+        done = True
+        #Smooth the new array, and use the smoothed value as continuum
+        fcn = UnivariateSpline(order2.x, order2.y, s=3e-4)
+        order.cont = fcn(order.x)
 
+        #Plot this value to make sure it looks fine
+        ax = figure.add_subplot(111)
+        plt.cla()
+        ax.plot(order.x, order.y)
+        ax.plot(order.x, order.cont)
+        plt.show()
+        inp = raw_input("Continuum fit okay? ")
+        if inp.strip() == "":
+            done = True
+        elif "+" in inp:
+            smooth_value += 1e-4
+        elif "-" in inp:
+            smooth_value -= 1e-4
 
+    #Measure the equivalent width
+    dx = numpy.array([order.x[i + 1] - order.x[i] for i in range(left1, right1)])
+    ew1 = numpy.sum((1.0 - order.y[left1:right1] / order.cont[left1:right1]) * dx)
+    dx = numpy.array([order.x[i + 1] - order.x[i] for i in range(left2, right2)])
+    ew2 = numpy.sum((1.0 - order.y[left2:right2] / order.cont[left2:right2]) * dx)
 
-
+    return [ew1, ew2], GetReddening(ew1, ew2)
 
 
 def Measure2(filename, figure, title):
-  """
-  Given a filename, this will plot the appropriate order
-  and help the user measure the equivalent width of
-  both sodium D lines. Unlike the 'Measure' function,
-  this one just performs a simpson rule interpolation
-  to integrate under the curve
-  """
-  orders = HelperFunctions.ReadExtensionFits(filename)
-  order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
-  order = order[left:right]
+    """
+    Given a filename, this will plot the appropriate order
+    and help the user measure the equivalent width of
+    both sodium D lines. Unlike the 'Measure' function,
+    this one just performs a simpson rule interpolation
+    to integrate under the curve
+    """
+    orders = HelperFunctions.ReadExtensionFits(filename)
+    order = orders[ordernum]
+    left = numpy.searchsorted(order.x, 588)
+    right = numpy.searchsorted(order.x, 590.5)
+    order = order[left:right]
 
-  # Get the Na line positions
-  order.y /= order.cont
-  xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
-  order = FittingUtilities.RebinData(order, xgrid)
-  lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
-  print lines
-  D1 = 9e9
-  D2 = 9e9
-  for line in lines:
-    if abs(order.x[line] - D1_wave) < abs(D1 - D1_wave):
-      D1 = order.x[line]
-    if abs(order.x[line] - D2_wave) < abs(D2 - D2_wave):
-      D2 = order.x[line]
+    # Get the Na line positions
+    order.y /= order.cont
+    xgrid = numpy.linspace(order.x[0], order.x[-1], order.size())
+    order = FittingUtilities.RebinData(order, xgrid)
+    lines = FittingUtilities.FindLines(order, tol=0.97, linespacing=0.5)
+    print lines
+    D1 = 9e9
+    D2 = 9e9
+    for line in lines:
+        if abs(order.x[line] - D1_wave) < abs(D1 - D1_wave):
+            D1 = order.x[line]
+        if abs(order.x[line] - D2_wave) < abs(D2 - D2_wave):
+            D2 = order.x[line]
 
-  # We need to fit any large lines as continuum
-  # Make a new array, not including the Na line
-  first, second = D2-0.1, D2+0.1
-  third, fourth = D1-0.1, D1+0.1
-  left1 = numpy.searchsorted(order.x, first)
-  right1 = numpy.searchsorted(order.x, second)
-  left2 = numpy.searchsorted(order.x, third)
-  right2 = numpy.searchsorted(order.x, fourth)
-  x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
-  y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
-  e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
-  order2 = DataStructures.xypoint(x=x, y=y, err=e)
+    # We need to fit any large lines as continuum
+    # Make a new array, not including the Na line
+    first, second = D2 - 0.1, D2 + 0.1
+    third, fourth = D1 - 0.1, D1 + 0.1
+    left1 = numpy.searchsorted(order.x, first)
+    right1 = numpy.searchsorted(order.x, second)
+    left2 = numpy.searchsorted(order.x, third)
+    right2 = numpy.searchsorted(order.x, fourth)
+    x = numpy.r_[order.x[:left1], order.x[right1:left2], order.x[right2:]]
+    y = numpy.r_[order.y[:left1], order.y[right1:left2], order.y[right2:]]
+    e = numpy.r_[order.err[:left1], order.err[right1:left2], order.err[right2:]]
+    order2 = DataStructures.xypoint(x=x, y=y, err=e)
 
-  # Let user decide if the fit is okay
-  done = False
-  smooth_value = 3e-4
-  while not done:
-    done = True
-    #Smooth the new array, and use the smoothed value as continuum
-    fcn = UnivariateSpline(order2.x, order2.y, s=smooth_value)
-    order.cont = fcn(order.x)
+    # Let user decide if the fit is okay
+    done = False
+    smooth_value = 3e-4
+    while not done:
+        done = True
+        #Smooth the new array, and use the smoothed value as continuum
+        fcn = UnivariateSpline(order2.x, order2.y, s=smooth_value)
+        order.cont = fcn(order.x)
 
-    #Plot this value to make sure it looks fine
-    ax = figure.add_subplot(111)
-    plt.cla()
-    ax.plot(order.x, order.y)
-    ax.plot(order.x, order.cont)
+        #Plot this value to make sure it looks fine
+        ax = figure.add_subplot(111)
+        plt.cla()
+        ax.plot(order.x, order.y)
+        ax.plot(order.x, order.cont)
+        plt.show()
+        inp = raw_input("Continuum fit okay? ")
+        if inp.strip() == "":
+            done = True
+        elif "+" in inp:
+            smooth_value += 1e-4
+            done = False
+        elif "-" in inp:
+            smooth_value -= 1e-4
+            done = False
+
+    x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
+    spec = pyspeckit.Spectrum(data=order.y / order.cont, xarr=x, error=order.err / order.cont, units='nm')
+    pl = spec.plotter(autorefresh=True, figure=figure)
+    plt.title(title)
+
+    # Fit the baseline in this region (continuum)
+    spec.baseline(subtract=False, order=10, interactive=True)
     plt.show()
-    inp = raw_input("Continuum fit okay? ")
-    if inp.strip() == "":
-      done = True
-    elif "+" in inp:
-      smooth_value += 1e-4
-      done = False
-    elif "-" in inp:
-      smooth_value -= 1e-4
-      done = False
+    done = raw_input("hit enter ")
 
-  x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
-  spec = pyspeckit.Spectrum(data=order.y/order.cont, xarr=x, error=order.err/order.cont, units='nm')
-  pl = spec.plotter(autorefresh=True, figure=figure)
-  plt.title(title)
+    """
+    # Fit voigt profiles to the lines
+    fitguesses=[-0.5, D1, 0.01,
+                -0.5, D2, 0.01]
+    spec.specfit(fittype='gaussian', multifit=True, guesses=fitguesses)
+    plt.draw()
 
-  # Fit the baseline in this region (continuum)
-  spec.baseline(subtract=False, order=10, interactive=True)
-  plt.show()
-  done = raw_input("hit enter ")
+    # Grab the fitted parameters and their errors
+    fitpars = spec.specfit.modelpars
+    fiterrs = spec.specfit.modelerrs
 
-  """
-  # Fit voigt profiles to the lines
-  fitguesses=[-0.5, D1, 0.01,
-              -0.5, D2, 0.01]
-  spec.specfit(fittype='gaussian', multifit=True, guesses=fitguesses)
-  plt.draw()
+    # Sometimes, the lines 'switch' places, so check that
+    if fitpars[1] > fitpars[4]:
+      fitpars = fitpars[3:] + fitpars[:3]
+      fiterrs = fiterrs[3:] + fiterrs[:3]
 
-  # Grab the fitted parameters and their errors
-  fitpars = spec.specfit.modelpars
-  fiterrs = spec.specfit.modelerrs
+    #Determine the start and end of each line
+    start1 = fitpars[1] - 7*fitpars[2]
+    end1 = fitpars[1] + 7*fitpars[2]
+    start2 = fitpars[4] - 7*fitpars[5]
+    end2 = fitpars[4] + 7*fitpars[5]
+    print "%f - %f" %(start1, end1)
+    print "%f - %f" %(start2, end2)
+    """
 
-  # Sometimes, the lines 'switch' places, so check that
-  if fitpars[1] > fitpars[4]:
-    fitpars = fitpars[3:] + fitpars[:3]
-    fiterrs = fiterrs[3:] + fiterrs[:3]
+    start1, end1 = spec.baseline.xclicks[1], spec.baseline.xclicks[2]
+    start2, end2 = spec.baseline.xclicks[3], spec.baseline.xclicks[4]
+    start1 = spec.xarr[start1]
+    end1 = spec.xarr[end1]
+    start2 = spec.xarr[start2]
+    end2 = spec.xarr[end2]
+    print spec.baseline.xclicks
+    print start1, end1
+    print start2, end2
 
-  #Determine the start and end of each line
-  start1 = fitpars[1] - 7*fitpars[2]
-  end1 = fitpars[1] + 7*fitpars[2]
-  start2 = fitpars[4] - 7*fitpars[5]
-  end2 = fitpars[4] + 7*fitpars[5]
-  print "%f - %f" %(start1, end1)
-  print "%f - %f" %(start2, end2)
-  """
+    #Find the equivalent width for both lines
+    ews = []
+    for line in [[start1, end1], [start2, end2]]:
+        xmin = numpy.searchsorted(order.x, line[0])
+        xmax = numpy.searchsorted(order.x, line[1])
+        ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=False, plot=True)
+        ews.append(ew * 10)  #Save the equivalent width in angstroms
+    done = raw_input("hit enter ")
+    print "\n\n"
 
-  start1, end1 = spec.baseline.xclicks[1], spec.baseline.xclicks[2]
-  start2, end2 = spec.baseline.xclicks[3], spec.baseline.xclicks[4]
-  start1 = spec.xarr[start1]
-  end1 = spec.xarr[end1]
-  start2 = spec.xarr[start2]
-  end2 = spec.xarr[end2]
-  print spec.baseline.xclicks
-  print start1, end1
-  print start2, end2
-
-  #Find the equivalent width for both lines
-  ews = []
-  for line in [[start1, end1], [start2, end2]]:
-    xmin=numpy.searchsorted(order.x, line[0])
-    xmax=numpy.searchsorted(order.x, line[1])
-    ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=False, plot=True)
-    ews.append(ew*10)  #Save the equivalent width in angstroms
-  done = raw_input("hit enter ")
-  print "\n\n"
-
-  return ews, GetReddening(*ews)
-
-
+    return ews, GetReddening(*ews)
 
 
 def Measure(filename, figure, title):
-  """
-  Given a filename, this will plot the appropriate order
-  and help the user measure the equivalent width of
-  both sodium D lines
-  """
-  orders = HelperFunctions.ReadExtensionFits(filename)
-  order = orders[ordernum]
-  left = numpy.searchsorted(order.x, 588)
-  right = numpy.searchsorted(order.x, 590.5)
-  order = order[left:right]
+    """
+    Given a filename, this will plot the appropriate order
+    and help the user measure the equivalent width of
+    both sodium D lines
+    """
+    orders = HelperFunctions.ReadExtensionFits(filename)
+    order = orders[ordernum]
+    left = numpy.searchsorted(order.x, 588)
+    right = numpy.searchsorted(order.x, 590.5)
+    order = order[left:right]
 
-  x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
-  spec = pyspeckit.Spectrum(data=order.y/order.cont, xarr=x, error=order.err/order.cont, units='nm')
-  pl = spec.plotter(autorefresh=True, figure=figure)
-  plt.title(title)
+    x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
+    spec = pyspeckit.Spectrum(data=order.y / order.cont, xarr=x, error=order.err / order.cont, units='nm')
+    pl = spec.plotter(autorefresh=True, figure=figure)
+    plt.title(title)
 
-  # Fit the baseline in this region (continuum)
-  spec.baseline(subtract=False, order=3, interactive=True)
-  plt.show()
-  done = raw_input("hit enter ")
+    # Fit the baseline in this region (continuum)
+    spec.baseline(subtract=False, order=3, interactive=True)
+    plt.show()
+    done = raw_input("hit enter ")
 
-  # Fit voigt profiles to the lines
-  fitguesses=[-0.5, D1_wave, 0.08, 0.0,
-              -0.5, D2_wave, 0.08, 0.0]
-  spec.specfit(fittype='voigt', multifit=True, guesses=fitguesses)
-  plt.draw()
+    # Fit voigt profiles to the lines
+    fitguesses = [-0.5, D1_wave, 0.08, 0.0,
+                  -0.5, D2_wave, 0.08, 0.0]
+    spec.specfit(fittype='voigt', multifit=True, guesses=fitguesses)
+    plt.draw()
 
-  # Grab the fitted parameters and their errors
-  fitpars = spec.specfit.modelpars
-  fiterrs = spec.specfit.modelerrs
+    # Grab the fitted parameters and their errors
+    fitpars = spec.specfit.modelpars
+    fiterrs = spec.specfit.modelerrs
 
-  # Sometimes, the lines 'switch' places, so check that
-  if fitpars[1] > fitpars[5]:
-    fitpars = fitpars[4:] + fitpars[:4]
-    fiterrs = fiterrs[4:] + fiterrs[:4]
+    # Sometimes, the lines 'switch' places, so check that
+    if fitpars[1] > fitpars[5]:
+        fitpars = fitpars[4:] + fitpars[:4]
+        fiterrs = fiterrs[4:] + fiterrs[:4]
 
-  #Determine the start and end of each line
-  start1 = fitpars[1] - 7*numpy.sqrt(fitpars[2]**2 + fitpars[3]**2)
-  end1 = fitpars[1] + 7*numpy.sqrt(fitpars[2]**2 + fitpars[3]**2)
-  start2 = fitpars[5] - 7*numpy.sqrt(fitpars[6]**2 + fitpars[7]**2)
-  end2 = fitpars[5] + 7*numpy.sqrt(fitpars[6]**2 + fitpars[7]**2)
+    #Determine the start and end of each line
+    start1 = fitpars[1] - 7 * numpy.sqrt(fitpars[2] ** 2 + fitpars[3] ** 2)
+    end1 = fitpars[1] + 7 * numpy.sqrt(fitpars[2] ** 2 + fitpars[3] ** 2)
+    start2 = fitpars[5] - 7 * numpy.sqrt(fitpars[6] ** 2 + fitpars[7] ** 2)
+    end2 = fitpars[5] + 7 * numpy.sqrt(fitpars[6] ** 2 + fitpars[7] ** 2)
 
-  #Find the equivalent width for both lines
-  ews = []
-  for line in [[start1, end1], [start2, end2]]:
-    xmin=numpy.searchsorted(order.x, line[0])
-    xmax=numpy.searchsorted(order.x, line[1])
-    ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=True, continuum=1.0, plot=True)
-    ews.append(ew*10)  #Save the equivalent width in angstroms
-  done = raw_input("hit enter ")
-  print "\n\n"
+    #Find the equivalent width for both lines
+    ews = []
+    for line in [[start1, end1], [start2, end2]]:
+        xmin = numpy.searchsorted(order.x, line[0])
+        xmax = numpy.searchsorted(order.x, line[1])
+        ew = spec.specfit.EQW(xmin=xmin, xmax=xmax, fitted=True, continuum=1.0, plot=True)
+        ews.append(ew * 10)  #Save the equivalent width in angstroms
+    done = raw_input("hit enter ")
+    print "\n\n"
 
-  return ews, GetReddening(*ews)
+    return ews, GetReddening(*ews)
 
 
 if __name__ == "__main__":
-  #Read in the lines in the current log file
-  logfilename = "%s/Dropbox/School/Research/AstarStuff/TargetLists/Na_Params.csv" %os.environ['HOME']
-  logfile = open(logfilename, "r")
-  lines = logfile.readlines()
-  logfile.close()
+    #Read in the lines in the current log file
+    logfilename = "%s/Dropbox/School/Research/AstarStuff/TargetLists/Na_Params.csv" % os.environ['HOME']
+    logfile = open(logfilename, "r")
+    lines = logfile.readlines()
+    logfile.close()
 
-  #Parse command line arguments
-  fileList = []
-  for arg in sys.argv[1:]:
-    fileList.append(arg)
+    #Parse command line arguments
+    fileList = []
+    for arg in sys.argv[1:]:
+        fileList.append(arg)
 
-  #For each file, determine the EW and E(B-V)
-  fig = plt.figure()
-  for fname in fileList:
-    #First, check to make sure that this target was not already measured
-    measure = True
-    overwrite = 9999999
-    starname = fits.getheader(fname)["object"]
-    print starname
-    #Check if this star already has an entry in the logfile
-    for linenum, line in enumerate(lines):
-      star = line.split("|")[0].strip()
-      if star.lower() == starname.lower():
-        measure = False
-        print "%s found in the master logfile." %starname
-        inp = raw_input("Do you want to overwrite (y/n)? ")
-        if inp.lower() == "y":
-          measure = True
-          overwrite = linenum
+    #For each file, determine the EW and E(B-V)
+    fig = plt.figure()
+    for fname in fileList:
+        #First, check to make sure that this target was not already measured
+        measure = True
+        overwrite = 9999999
+        starname = fits.getheader(fname)["object"]
+        print starname
+        #Check if this star already has an entry in the logfile
+        for linenum, line in enumerate(lines):
+            star = line.split("|")[0].strip()
+            if star.lower() == starname.lower():
+                measure = False
+                print "%s found in the master logfile." % starname
+                inp = raw_input("Do you want to overwrite (y/n)? ")
+                if inp.lower() == "y":
+                    measure = True
+                    overwrite = linenum
 
-    if measure:
-      ews, reddening = Measure2(fname, fig, starname)
-      print ews, reddening
+        if measure:
+            ews, reddening = Measure2(fname, fig, starname)
+            print ews, reddening
 
-      outline = "%s | %.4f | %.4f | %.4f\n" %(starname, ews[0], ews[1], reddening)
-      if overwrite > len(lines):
-        lines.append(outline)
-      else:
-        lines[overwrite] = outline
+            outline = "%s | %.4f | %.4f | %.4f\n" % (starname, ews[0], ews[1], reddening)
+            if overwrite > len(lines):
+                lines.append(outline)
+            else:
+                lines[overwrite] = outline
 
-  #Finally, output the new logfile
-  logfile = open(logfilename, "w")
-  logfile.writelines(lines)
-  logfile.close()
+    #Finally, output the new logfile
+    logfile = open(logfilename, "w")
+    logfile.writelines(lines)
+    logfile.close()
