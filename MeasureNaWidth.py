@@ -21,12 +21,27 @@ from astropy.io import fits
 import Smooth
 
 
-ordernum = 30  #The order number with the Sodium lines in it
+#ordernum = 30  #The order number with the Sodium lines in it
 D1_wave = 589.592
 D2_wave = 588.995
 
 #Make matplotlib interactive
 plt.ion()
+
+
+def FindOrderNum(orders, wavelength):
+  """
+    Given a list of xypoint orders and
+    another list of wavelengths, this
+    finds the order numbers with the
+    requested wavelengths
+  """
+  num = 0
+  for i, order in enumerate(orders):
+    if order.x[0] < wavelength and order.x[-1] > wavelength:
+      num = i
+      break
+  return num
 
 
 def GetReddening(D1_ew, D2_ew):
@@ -37,6 +52,7 @@ def GetReddening(D1_ew, D2_ew):
 
 def Measure3(filename, figure, title):
   orders = HelperFunctions.ReadExtensionFits(filename)
+  ordernum = FindOrderNum(orders, 589)
   order = orders[ordernum]
   left = numpy.searchsorted(order.x, 588)
   right = numpy.searchsorted(order.x, 590.5)
@@ -138,6 +154,7 @@ def Measure2(filename, figure, title):
   to integrate under the curve
   """
   orders = HelperFunctions.ReadExtensionFits(filename)
+  ordernum = FindOrderNum(orders, 589)
   order = orders[ordernum]
   left = numpy.searchsorted(order.x, 588)
   right = numpy.searchsorted(order.x, 590.5)
@@ -192,7 +209,10 @@ def Measure2(filename, figure, title):
       smooth_value += 1e-4
       done = False
     elif "-" in inp:
-      smooth_value -= 1e-4
+      if smooth_value - 1e-4 <=0:
+        smooth_value /= 2.0
+      else:
+        smooth_value -= 1e-4
       done = False
 
   x = pyspeckit.units.SpectroscopicAxis(order.x, units='nm')
@@ -204,31 +224,6 @@ def Measure2(filename, figure, title):
   spec.baseline(subtract=False, order=10, interactive=True)
   plt.show()
   done = raw_input("hit enter ")
-
-  """
-  # Fit voigt profiles to the lines
-  fitguesses=[-0.5, D1, 0.01,
-              -0.5, D2, 0.01]
-  spec.specfit(fittype='gaussian', multifit=True, guesses=fitguesses)
-  plt.draw()
-
-  # Grab the fitted parameters and their errors
-  fitpars = spec.specfit.modelpars
-  fiterrs = spec.specfit.modelerrs
-
-  # Sometimes, the lines 'switch' places, so check that
-  if fitpars[1] > fitpars[4]:
-    fitpars = fitpars[3:] + fitpars[:3]
-    fiterrs = fiterrs[3:] + fiterrs[:3]
-
-  #Determine the start and end of each line
-  start1 = fitpars[1] - 7*fitpars[2]
-  end1 = fitpars[1] + 7*fitpars[2]
-  start2 = fitpars[4] - 7*fitpars[5]
-  end2 = fitpars[4] + 7*fitpars[5]
-  print "%f - %f" %(start1, end1)
-  print "%f - %f" %(start2, end2)
-  """
 
   start1, end1 = spec.baseline.xclicks[1], spec.baseline.xclicks[2]
   start2, end2 = spec.baseline.xclicks[3], spec.baseline.xclicks[4]
@@ -262,6 +257,7 @@ def Measure(filename, figure, title):
   both sodium D lines
   """
   orders = HelperFunctions.ReadExtensionFits(filename)
+  ordernum = FindOrderNum(orders, 589)
   order = orders[ordernum]
   left = numpy.searchsorted(order.x, 588)
   right = numpy.searchsorted(order.x, 590.5)
@@ -314,9 +310,7 @@ def Measure(filename, figure, title):
 if __name__ == "__main__":
   #Read in the lines in the current log file
   logfilename = "%s/Dropbox/School/Research/AstarStuff/TargetLists/Na_Params.csv" %os.environ['HOME']
-  logfile = open(logfilename, "r")
-  lines = logfile.readlines()
-  logfile.close()
+
 
   #Parse command line arguments
   fileList = []
@@ -327,6 +321,9 @@ if __name__ == "__main__":
   fig = plt.figure()
   for fname in fileList:
     #First, check to make sure that this target was not already measured
+    logfile = open(logfilename, "r")
+    lines = logfile.readlines()
+    logfile.close()
     measure = True
     overwrite = 9999999
     starname = fits.getheader(fname)["object"]
@@ -352,7 +349,7 @@ if __name__ == "__main__":
       else:
         lines[overwrite] = outline
 
-  #Finally, output the new logfile
-  logfile = open(logfilename, "w")
-  logfile.writelines(lines)
-  logfile.close()
+      #Finally, output the new logfile
+      logfile = open(logfilename, "w")
+      logfile.writelines(lines)
+      logfile.close()
