@@ -34,7 +34,14 @@ badregions = [[567.5, 575.5],
               [647, 655],
               [686, 706],
               [716, 734],
-              [759, 9e9]]
+              [759, 9e9],
+	      [655, 657],   #H alpha
+	      [485, 487],   #H beta
+	      [433, 435],   #H gamma
+	      [409, 411],   #H delta
+	      [396, 398],   #H epsilon
+	      [388, 390],   #H zeta
+	      ]
 
 #Define the amount to trim from either side of every order
 trimsize = 1
