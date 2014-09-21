@@ -3,7 +3,7 @@ import sys
 import GenericSearch
 
 
-#Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
+# Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
 badregions = [[567.5, 575.5],
               [588.5, 598.5],
               [627, 632],
@@ -19,20 +19,33 @@ badregions = [[567.5, 575.5],
               [388, 390],  #H zeta
 ]
 
-if __name__ == "__main__":
+if "darwin" in sys.platform:
+    modeldir = "/Volumes/DATADRIVE/Stellar_Models/PHOENIX/Stellar/Vband/"
+elif "linux" in sys.platform:
+    modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
+else:
+    modeldir = raw_input("sys.platform not recognized. Please enter model directory below: ")
+    if not modeldir.endswith("/"):
+        modeldir = modeldir + "/"
+
+if __name__ == '__main__':
     # Parse command line arguments:
     fileList = []
     extensions = True
     tellurics = False
-    trimsize = 1
+    trimsize = 10
     for arg in sys.argv[1:]:
-        if "-e" in arg:
+        if '-e' in arg:
             extensions = False
-        if "-t" in arg:
+        if '-t' in arg:
             tellurics = True  #telluric lines modeled but not removed
         else:
             fileList.append(arg)
 
-    GenericSearch.CompanionSearch(fileList, extensions=extensions, resolution=60000.0, trimsize=trimsize)
+    GenericSearch.CompanionSearch(fileList,
+                                  extensions=extensions,
+                                  resolution=60000.0,
+                                  trimsize=trimsize,
+                                  modeldir=modeldir)
 
 

@@ -2,15 +2,15 @@ import os
 import sys
 from collections import defaultdict
 from operator import itemgetter
+import numpy as np
+import FittingUtilities
 
 import matplotlib.pyplot as plt
-import numpy as np
 from astropy.io import fits as pyfits
-import FittingUtilities
 from astropy import units
-
 import SpectralTypeRelations
 import StarData
+
 import PlotBlackbodies
 
 
@@ -145,6 +145,7 @@ def MakePlot(infilename):
 
 
     #Read in file/files  WARNING! ASSUMES A CERTAIN FORMAT. MUST CHANGE THIS IF THE FORMAT CHANGES!
+    stardict = {}
     for infilename in infiles:
         infile = open(infilename)
         lines = infile.readlines()
@@ -186,7 +187,14 @@ def MakePlot(infilename):
                                                                                                              R1 / R2) ** 2
 
             else:
-                starname = segments[0].split(".fits")[0]
+                if segments[0] in stardict.keys():
+                    starname = stardict[segments[0]]
+                else:
+                    header = pyfits.getheader(segments[0].split("_telluric")[0] + ".fits")
+                    starname = header['object']
+                    stardict[segments[0]] = starname
+                    print starname
+                # starname = segments[0].split(".fits")[0]
                 sec_mass = float(segments[3])
                 massratio = float(segments[4])
                 if "y" in segments[6]:
@@ -204,20 +212,22 @@ def MakePlot(infilename):
         #print sorted(s_spt.keys(), key=fcn)
         #for starname in sorted(s_spt.keys(), key=fcn):
         print sorted(s_spt.keys())
+        #fig = plt.figure(dpi=120)
         for starname in sorted(s_spt.keys()):
             p_spectype = p_spt[starname]
             x = namedict[xaxis][starname]
             y = namedict[yaxis][starname]
             if "SpectralType" in xaxis:
                 plt.plot(range(len(x)), y[::-1], linestyle=next(linecycler), linewidth=2,
-                         label="%s (%s)" % (starname, p_spectype[0]))
+                         label="%s (%s)" % (starname, p_spectype[0]))  #, rasterized=True)
                 plt.xticks(range(len(x)), x[::-1], size="small")
             elif "SpectralType" in yaxis:
                 plt.plot(x[::-1], range(len(y)), linestyle=next(linecycler), linewidth=2,
-                         label="%s (%s)" % (starname, p_spectype[0]))
+                         label="%s (%s)" % (starname, p_spectype[0]))  #, rasterized=True)
                 plt.yticks(range(len(y)), y[::-1], size="small")
             else:
-                plt.plot(x, y, linestyle=next(linecycler), linewidth=2, label="%s (%s)" % (starname, p_spectype[0]))
+                plt.plot(x, y, linestyle=next(linecycler), linewidth=2,
+                         label="%s (%s)" % (starname, p_spectype[0]))  #, rasterized=True)
                 if "Magnitude" in xaxis:
                     ax = plt.gca()
                     ax.set_xlim(ax.get_xlim()[::-1])
@@ -225,12 +235,12 @@ def MakePlot(infilename):
                     ax = plt.gca()
                     ax.set_ylim(ax.get_ylim()[::-1])
             plt.legend(loc='best')
-            plt.xlabel(labeldict[xaxis])
-            plt.ylabel(labeldict[yaxis])
+            plt.xlabel(labeldict[xaxis], fontsize=15)
+            plt.ylabel(labeldict[yaxis], fontsize=15)
             if "DetectionRate" in yaxis:
                 ax = plt.gca()
                 ax.set_ylim([-0.05, 1.05])
-            plt.title("Sensitivity Analysis")
+            plt.title("Sensitivity Analysis", fontsize=20)
 
     plt.show()
 
