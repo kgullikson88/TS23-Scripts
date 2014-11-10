@@ -11,12 +11,12 @@ badregions = [[567.5, 575.5],
               [686, 706],
               [716, 734],
               [759, 9e9],
-              [655, 657],  # H alpha
-              [485, 487],  #H beta
-              [433, 435],  #H gamma
-              [409, 411],  #H delta
-              [396, 398],  #H epsilon
-              [388, 390],  #H zeta
+              # [655, 657],  # H alpha
+              # [485, 487],  #H beta
+              #[433, 435],  #H gamma
+              #[409, 411],  #H delta
+              #[396, 398],  #H epsilon
+              #[388, 390],  #H zeta
 ]
 
 if "darwin" in sys.platform:
@@ -31,21 +31,18 @@ else:
 if __name__ == '__main__':
     # Parse command line arguments:
     fileList = []
-    extensions = True
-    tellurics = False
     trimsize = 10
     for arg in sys.argv[1:]:
-        if '-e' in arg:
-            extensions = False
-        if '-t' in arg:
-            tellurics = True  #telluric lines modeled but not removed
-        else:
+        if 1:
             fileList.append(arg)
 
     GenericSearch.CompanionSearch(fileList,
-                                  extensions=extensions,
+                                  extensions=True,
                                   resolution=60000.0,
                                   trimsize=trimsize,
-                                  modeldir=modeldir)
+                                  modeldir=modeldir,
+                                  badregions=badregions,
+                                  vsini_values=(1, 10, 20, 30, 40),
+                                  addmode='weighted')
 
 

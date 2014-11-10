@@ -1,18 +1,15 @@
 import sys
-from scipy.interpolate import InterpolatedUnivariateSpline as interp
 import os
+import FittingUtilities
 
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 import DataStructures
-import FittingUtilities
 import numpy as np
-import MakeModel
-
 import HelperFunctions
 
 
-plot = True
+plot = False
 
 
 def ReadCorrectedFile(fname, yaxis="model"):
@@ -79,8 +76,8 @@ def Correct(original, corrected, offset=None, get_primary=False):
         elif model.size() > data.size():
             sys.exit("Error! Model size (%i) is larger than data size (%i)" % (model.size(), data.size()))
 
-        #if np.sum((model.x-data.x)**2) > 1e-8:
-        #  model = FittingUtilities.RebinData(model, data.x)
+        # if np.sum((model.x-data.x)**2) > 1e-8:
+        # model = FittingUtilities.RebinData(model, data.x)
 
         data.y[data.y / data.cont < 1e-5] = 1e-5 * data.cont[data.y / data.cont < 1e-5]
         badindices = np.where(np.logical_or(data.y <= 0, model.y < 0.05))[0]
@@ -134,8 +131,8 @@ def main1():
         corrected_files = [f for f in allfiles if "Corrected_KG" in f and f.endswith("-0.fits")]
         # original_files = [f for f in allfiles if any(f in cf for cf in corrected_files)]
 
-        #print corrected_files
-        #print original_files
+        # print corrected_files
+        # print original_files
 
         for corrected in corrected_files:
             original = corrected.split("Corrected_")[-1]  #.split("-")[0] + ".fits"
@@ -149,7 +146,7 @@ def main1():
             header = pyfits.getheader(original)
             if header['imagetyp'].strip().lower() != 'object' or "solar" in header['object'].lower():
                 print "Skipping file %s, with imagetype = %s and object = %s" % (
-                original, header['imagetyp'], header['object'])
+                    original, header['imagetyp'], header['object'])
                 continue
 
             outfilename = "%s_telluric_corrected.fits" % (original.split(".fits")[0])
