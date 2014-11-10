@@ -9,8 +9,6 @@ import FittingUtilities
 import numpy as np
 import MakeModel
 
-import FitsUtils
-import FindContinuum
 import HelperFunctions
 
 
