@@ -9,8 +9,6 @@ import pylab
 from astropy.io import fits as pyfits
 import FittingUtilities
 
-import FitsUtils
-import FindContinuum
 import HelperFunctions
 
 
@@ -19,8 +17,7 @@ def MedianAdd(fileList, outfilename="Total.fits"):
     numorders = []
     medians = []
     for fname in fileList:
-        observation = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum",
-                                             errors="error")
+        observation = HelperFunctions.ReadExtensionFits(fname)
         all_data.append(observation)
         numorders.append(len(observation))
         medians.append([np.median(order.y) for order in observation])
@@ -66,7 +63,7 @@ def MedianAdd(fileList, outfilename="Total.fits"):
 
     print "Outputting to %s" % outfilename
     pylab.show()
-    FitsUtils.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
+    HelperFunctions.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
 
     #Add the files used to the primary header of the new file
     hdulist = pyfits.open(outfilename, mode='update')
@@ -145,7 +142,13 @@ if __name__ == "__main__":
         fileList.append(arg)
 
     if len(fileList) > 1:
-        Add(fileList)
+        fileDict = defaultdict(list)
+        for fname in fileList:
+            header = pyfits.getheader(fname)
+            starname = header['OBJECT'].replace(" ", "_")
+            fileDict[starname].append(fname)
+        for star in fileDict.keys():
+            Add(fileDict[star], outfilename="%s.fits" % star)
     else:
         allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-0" in f and "telluric" in f]
         fileDict = defaultdict(list)
