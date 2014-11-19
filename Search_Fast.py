@@ -43,6 +43,7 @@ if __name__ == '__main__':
                                   modeldir=modeldir,
                                   badregions=badregions,
                                   vsini_values=(1, 10, 20, 30, 40),
+                                  observatory="McDonald",
                                   addmode='weighted')
 
 
