@@ -25,7 +25,7 @@ if __name__ == "__main__":
         for T in Temperatures:
             for metal in metals:
                 for vsini in vsini_values:
-                    corrfile = "{0:s}{1:s}.{2:d}kps_{3:d}K{4:+.1f}{5:+.1f}".format(corrdir,
+                    corrfile = "{0:s}{1:s}.{2:d}kps_{3:.1f}K{4:+.1f}{5:+.1f}".format(corrdir,
                                                                                    rootfile.split(".fits")[0],
                                                                                    vsini,
                                                                                    T,
@@ -50,6 +50,7 @@ if __name__ == "__main__":
                     std = 1.4826 * mad
                     sigma = (corr[idx] - mean) / std
 
+                    """
                     # Plot if > 3 sigma peak
                     if sigma > 4:
                         fig = plt.figure(10)
@@ -61,6 +62,7 @@ if __name__ == "__main__":
                         ax.grid(True)
                         fig.savefig(u"Figures/{0:s}.pdf".format(corrfile.split("/")[-1]))
                         plt.close(fig)
+                    """
 
                     Tvals.append(T)
                     Zvals.append(metal)
