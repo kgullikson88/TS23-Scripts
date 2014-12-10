@@ -7,7 +7,7 @@ import DataStructures
 import FittingUtilities
 from astropy import units
 
-from np.polynomial import chebyshev
+from numpy.polynomial import chebyshev
 import readmultispec as multispec
 
 

@@ -13,14 +13,14 @@ badregions = [[567.5, 575.5],
               [759, 9e9],
               # [655, 657],  # H alpha
               # [485, 487],  #H beta
-              #[433, 435],  #H gamma
-              #[409, 411],  #H delta
+              # [433, 435],  #H gamma
+              # [409, 411],  #H delta
               #[396, 398],  #H epsilon
               #[388, 390],  #H zeta
 ]
 
 if "darwin" in sys.platform:
-    modeldir = "/Volumes/DATADRIVE/Stellar_Models/PHOENIX/Stellar/Vband/"
+    modeldir = "/Volumes/DATADRIVE/Stellar_Models/Sorted/Stellar/Vband/"
 elif "linux" in sys.platform:
     modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
 else:
@@ -42,8 +42,11 @@ if __name__ == '__main__':
                                   trimsize=trimsize,
                                   modeldir=modeldir,
                                   badregions=badregions,
-                                  vsini_values=(1, 10, 20, 30, 40),
+                                  Tvalues=range(3500, 6000, 100),
+                                  vsini_values=[1, ],
+                                  metal_values=[0, ],
                                   observatory="McDonald",
+                                  debug=True,
                                   addmode='weighted')
 
 
