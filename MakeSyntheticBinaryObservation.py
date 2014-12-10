@@ -11,16 +11,17 @@ latefile: a filename for a late-type star with known properties, taken with the 
 
 """
 
-import HelperFunctions
 import sys
 import os
+import logging
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
-import FittingUtilities
 from astropy.io import fits
 import numpy as np
-from collections import defaultdict
-import logging
 from astroquery.simbad import Simbad
+
+import HelperFunctions
+import ConvertToExtensions
 
 
 def parse_input(argv):
@@ -51,6 +52,55 @@ def combine(early_filename, late_filename):
     # First, we will classify the files by their fits header and some simbad lookups
     early_dict = classify_file(early_filename)
     late_dict = classify_file(late_filename)
+    print early_dict
+    print late_dict
+
+    # Now, we need to work out how to scale the data as if they were in the same system
+    # This ASSUMES that all atmospheric affects are the same for both observations, which is not really true!
+    scale = (early_dict['exptime'] / late_dict['exptime']) * (early_dict['plx'] / late_dict['plx']) ** 2
+    print scale
+
+    # Get the blazefile for my data
+    header = fits.getheader(early_filename)
+    try:
+        blazefile = "%s.fits" % header['BLAZE']
+    except KeyError:
+        allfiles = os.listdir("./")
+        blazefile = [f for f in allfiles if "BLAZE" in f][0]
+
+    # Read in the orders for both files
+    early_orders = ConvertToExtensions.read_orders(early_filename, blazefile)
+    late_orders = ConvertToExtensions.read_orders(late_filename)
+
+    # Finally, combine:
+    order_list = []
+    for order in early_orders:
+        num = HelperFunctions.FindOrderNums(late_orders, [np.median(order.x)])[0]
+        late = late_orders[num]
+        late.y *= scale
+        combined = add_order(order, late)
+        order_list.append(combined)
+        # plt.plot(order.x, order.y)
+        #plt.plot(combined.x, combined.y)
+    # plt.show()
+
+    return order_list, early_dict, late_dict
+
+
+def add_order(early, late):
+    """
+    Adds two xypoint instances. This is only really necessary because the wavelengths
+    and/or order lengths are not always the same...
+    :param early: the early type star
+    :param late: the late type star
+    :return: xypoint instance of the combined 'observation'
+    """
+    left = np.searchsorted(early.x, late.x[0])
+    right = np.searchsorted(early.x, late.x[-1])
+    late_fcn = spline(late.x, late.y, k=1)
+    combined = early[left:right].copy()
+    combined.y += late_fcn(combined.x)
+    return combined
 
 
 def classify_file(filename):
@@ -84,5 +134,24 @@ if __name__ == '__main__':
     # Add each late file to all of the early-type files
     for late_file in late:
         for early_file in early:
-            total = combine(early_file, late_file)
+            total, early_dict, late_dict = combine(early_file, late_file)
+
+            # Prepare for output
+            HelperFunctions.ensure_dir('GeneratedObservations')
+            outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('.fits')[0], 1)
+            column_list = []
+            for order in total:
+                column = {'wavelength': order.x,
+                          'flux': order.y,
+                          'continuum': order.cont,
+                          'error': order.err}
+                column_list.append(column)
+            newheader = {'object1': early_dict['Object'],
+                         'object2': late_dict['Object'],
+                         'SpT1': early_dict['SpT'],
+                         'SpT2': late_dict['SpT'],
+                         'file1': early_file,
+                         'file2': late_file}
+            HelperFunctions.OutputFitsFileExtensions(column_list, early_file, outfilename,
+                                                     mode='new', primary_header=newheader)
 
