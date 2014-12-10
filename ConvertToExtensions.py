@@ -10,6 +10,7 @@ import HelperFunctions
 
 left_trim = 0
 right_trim = 50
+"""
 bad_regions = {12: [438, 9e9],
                13: [442.5, 9e9],
                14: [447.5, 9e9],
@@ -20,6 +21,14 @@ bad_regions = {12: [438, 9e9],
                58: [1, 9e9],
                59: [1, 9e9]
 }
+"""
+bad_regions_wave = {436: [438, 9e9],
+                    441.6: [442.5, 9e9],
+                    447.3: [447.5, 9e9],
+                    453.2: [455, 9e9],
+                    459.2: [1, 9e9],
+                    465.4: [1, 9e9],
+                    471.8: [1, 9e9]}
 
 
 def read_orders(fname, blazefile=None):
@@ -28,8 +37,7 @@ def read_orders(fname, blazefile=None):
         orders = HelperFunctions.ReadFits(fname)
     except ValueError:
         orders = HelperFunctions.ReadFits(fname, errors=2)
-    orders = orders[::-1]  # Reverse order so the bluest order is first
-    print len(orders)
+    orders = orders[::-1][:-2]  # Reverse order so the bluest order is first
 
     # Read in the blaze, if applicable
     if blazefile is not None:
@@ -42,7 +50,12 @@ def read_orders(fname, blazefile=None):
             print "Not converting file %s" % fname
             raise IOError
         blaze = blaze[::-1]
-        print len(blaze)
+
+    # make the bad_regions dictionary
+    bad_regions = {}
+    for wave in bad_regions_wave.keys():
+        ordernum = HelperFunctions.FindOrderNums(orders, [wave])[0]
+        bad_regions[ordernum] = bad_regions_wave[wave]
 
     # Trim the data
     order_list = []
@@ -58,7 +71,7 @@ def read_orders(fname, blazefile=None):
                 order.y = np.delete(order.y, np.arange(left, right))
                 order.cont = np.delete(order.cont, np.arange(left, right))
                 order.err = np.delete(order.err, np.arange(left, right))
-                if blazecorrect:
+                if blazefile is not None:
                     blaze[i].y = np.delete(blaze[i].y, np.arange(left, right))
             else:
                 print "Warning! Bad region covers the middle of order %i" % i
@@ -67,14 +80,14 @@ def read_orders(fname, blazefile=None):
                 order.err[left:right] = 9e9
         else:
             order = order[left:right]
-            if blazecorrect:
+            if blazefile is not None:
                 blaze[i].y = blaze[i].y[left:right]
         if order.size() < 10:
             continue
 
 
         # Blaze correction
-        if blazecorrect:
+        if blazefile is not None:
             order.y /= blaze[i].y
             order.err /= blaze[i].y
 
