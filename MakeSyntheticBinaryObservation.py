@@ -14,14 +14,19 @@ latefile: a filename for a late-type star with known properties, taken with the 
 import sys
 import os
 import logging
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
+import re
 
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from astropy.io import fits
 import numpy as np
 from astroquery.simbad import Simbad
-
 import HelperFunctions
+import SpectralTypeRelations
+import astropy.units as u
+import pySIMBAD
+
 import ConvertToExtensions
+from PlotBlackbodies import Planck
 
 
 def parse_input(argv):
@@ -50,8 +55,8 @@ def combine(early_filename, late_filename):
     :return: A list of orders, after combination
     """
     # First, we will classify the files by their fits header and some simbad lookups
-    early_dict = classify_file(early_filename)
-    late_dict = classify_file(late_filename)
+    early_dict = classify_file(early_filename, astroquery=False)
+    late_dict = classify_file(late_filename, astroquery=False)
     print early_dict
     print late_dict
 
@@ -59,6 +64,13 @@ def combine(early_filename, late_filename):
     # This ASSUMES that all atmospheric affects are the same for both observations, which is not really true!
     scale = (early_dict['exptime'] / late_dict['exptime']) * (early_dict['plx'] / late_dict['plx']) ** 2
     print scale
+
+    # Get some information to use for the predicted flux ratio (done later)
+    MS = SpectralTypeRelations.MainSequence()
+    T1 = MS.Interpolate(MS.Temperature, early_dict['SpT'])
+    R1 = MS.Interpolate(MS.Radius, early_dict['SpT'])
+    T2 = MS.Interpolate(MS.Temperature, late_dict['SpT'])
+    R2 = MS.Interpolate(MS.Radius, late_dict['SpT'])
 
     # Get the blazefile for my data
     header = fits.getheader(early_filename)
@@ -71,6 +83,20 @@ def combine(early_filename, late_filename):
     # Read in the orders for both files
     early_orders = ConvertToExtensions.read_orders(early_filename, blazefile)
     late_orders = ConvertToExtensions.read_orders(late_filename)
+
+    # Before combining, we need to adjust the scale factor for atmospheric effects (clouds, poor seeing, etc)
+    scale_adjust = []
+    for early in early_orders:
+        num = HelperFunctions.FindOrderNums(late_orders, [np.median(early.x)])[0]
+        late = late_orders[num]
+        fluxratio_obs = late.cont.mean() * scale / early.cont.mean()
+        x = early.x * u.nm.to(u.cm)
+        fluxratio_pred = Planck(x, T2) / Planck(x, T1) * (R2 / R1) ** 2
+        scale_adjust.append(np.median(fluxratio_pred / fluxratio_obs))
+    scale_adjust = np.median(scale_adjust)
+    print '\t', scale_adjust
+    scale *= scale_adjust
+
 
     # Finally, combine:
     order_list = []
@@ -103,7 +129,7 @@ def add_order(early, late):
     return combined
 
 
-def classify_file(filename):
+def classify_file(filename, astroquery=True):
     """
     This function uses the fits header information and the Simbad database to classify the object
     :param filename: The filename of the observation to be classified
@@ -112,13 +138,21 @@ def classify_file(filename):
     # Read in the header and get the object name
     header = fits.getheader(filename)
     object = header['object']
+    print object
 
     # Make a Simbad object
-    sim = Simbad()
-    sim.add_votable_fields('plx', 'sp')
-    data = sim.query_object(object)
-    plx = data['PLX_VALUE'].item()
-    spt = data['SP_TYPE'].item()
+    if astroquery:
+        sim = Simbad()
+        sim.add_votable_fields('plx', 'sp')
+        data = sim.query_object(object)
+        plx = data['PLX_VALUE'].item()
+        spt = data['SP_TYPE'].item()
+    else:
+        link = pySIMBAD.buildLink(object)
+        data = pySIMBAD.simbad(link)
+        plx = data.Parallax()
+        spt_full = data.SpectralType().split()[0]
+        spt = spt_full[0] + re.search(r'\d*\.?\d*', spt_full[1:]).group()
 
     d = {'Object': object,
          'plx': plx,
@@ -138,7 +172,8 @@ if __name__ == '__main__':
 
             # Prepare for output
             HelperFunctions.ensure_dir('GeneratedObservations')
-            outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('.fits')[0], 1)
+            outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('/')[-1].split('.fits')[0],
+                                                                    late_file.split('/')[-1].split('.fits')[0])
             column_list = []
             for order in total:
                 column = {'wavelength': order.x,
