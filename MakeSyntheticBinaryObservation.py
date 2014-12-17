@@ -55,8 +55,8 @@ def combine(early_filename, late_filename):
     :return: A list of orders, after combination
     """
     # First, we will classify the files by their fits header and some simbad lookups
-    early_dict = classify_file(early_filename, astroquery=False)
-    late_dict = classify_file(late_filename, astroquery=False)
+    early_dict = classify_file(early_filename, astroquery=True)
+    late_dict = classify_file(late_filename, astroquery=True)
     print early_dict
     print late_dict
 
@@ -75,13 +75,14 @@ def combine(early_filename, late_filename):
     # Get the blazefile for my data
     header = fits.getheader(early_filename)
     try:
-        blazefile = "%s.fits" % header['BLAZE']
+        blazefile = "Blazefiles/{}.fits".format(header['BLAZE'])
     except KeyError:
-        allfiles = os.listdir("./")
-        blazefile = [f for f in allfiles if "BLAZE" in f][0]
+        allfiles = os.listdir("Blazefiles")
+        blazefile = ["Blazefiles/{}".format(f) for f in allfiles if "BLAZE" in f][0]
 
     # Read in the orders for both files
-    early_orders = ConvertToExtensions.read_orders(early_filename, blazefile)
+    # early_orders = ConvertToExtensions.read_orders(early_filename, blazefile)
+    early_orders = HelperFunctions.ReadExtensionFits(early_filename)
     late_orders = ConvertToExtensions.read_orders(late_filename)
 
     # Before combining, we need to adjust the scale factor for atmospheric effects (clouds, poor seeing, etc)
@@ -95,7 +96,7 @@ def combine(early_filename, late_filename):
         scale_adjust.append(np.median(fluxratio_pred / fluxratio_obs))
     scale_adjust = np.median(scale_adjust)
     print '\t', scale_adjust
-    scale *= scale_adjust
+    scale *= scale_adjust * 10.0
 
 
     # Finally, combine:
@@ -140,13 +141,17 @@ def classify_file(filename, astroquery=True):
     object = header['object']
     print object
 
+    # Default values
+    plx = 30.0
+
     # Make a Simbad object
     if astroquery:
         sim = Simbad()
         sim.add_votable_fields('plx', 'sp')
         data = sim.query_object(object)
         plx = data['PLX_VALUE'].item()
-        spt = data['SP_TYPE'].item()
+        spt_full = data['SP_TYPE'].item()
+        spt = spt_full[0] + re.search(r'\d*\.?\d*', spt_full[1:]).group()
     else:
         link = pySIMBAD.buildLink(object)
         data = pySIMBAD.simbad(link)
@@ -172,7 +177,7 @@ if __name__ == '__main__':
 
             # Prepare for output
             HelperFunctions.ensure_dir('GeneratedObservations')
-            outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('/')[-1].split('.fits')[0],
+            outfilename = 'GeneratedObservations/{}_{}_scalex10.fits'.format(early_file.split('/')[-1].split('.fits')[0],
                                                                     late_file.split('/')[-1].split('.fits')[0])
             column_list = []
             for order in total:
@@ -187,6 +192,7 @@ if __name__ == '__main__':
                          'SpT2': late_dict['SpT'],
                          'file1': early_file,
                          'file2': late_file}
+            print 'Outputting to {}'.format(outfilename)
             HelperFunctions.OutputFitsFileExtensions(column_list, early_file, outfilename,
                                                      mode='new', primary_header=newheader)
 
