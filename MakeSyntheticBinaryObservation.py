@@ -47,7 +47,7 @@ def parse_input(argv):
     return early_files, late_files
 
 
-def combine(early_filename, late_filename):
+def combine(early_filename, late_filename, increase_scale=False):
     """
     This function does the bulk of the work.
     :param early_filename: the filename of the early-type star
@@ -96,8 +96,9 @@ def combine(early_filename, late_filename):
         scale_adjust.append(np.median(fluxratio_pred / fluxratio_obs))
     scale_adjust = np.median(scale_adjust)
     print '\t', scale_adjust
-    scale *= scale_adjust * 10.0
-
+    scale *= scale_adjust
+    if increase_scale:
+      scale *= 10.0
 
     # Finally, combine:
     order_list = []
@@ -168,17 +169,24 @@ def classify_file(filename, astroquery=True):
 
 
 if __name__ == '__main__':
+    scale = False
     early, late = parse_input(sys.argv[1:])
 
     # Add each late file to all of the early-type files
+    HelperFunctions.ensure_dir('GeneratedObservations')
     for late_file in late:
         for early_file in early:
-            total, early_dict, late_dict = combine(early_file, late_file)
+	    outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('/')[-1].split(
+	      '.fits')[0],                                                                    late_file.split('/')[-1].split('.fits')[0])
+	    if scale:
+	        outfilename = outfilename.replace('.fits', '_scalex10.fits')
+	    if outfilename.split('/')[-1] in os.listdir('GeneratedObservations/'):
+	        print "File already generated. Skipping {}".format(outfilename)
+		continue
+
+	    total, early_dict, late_dict = combine(early_file, late_file, increase_scale=scale)
 
             # Prepare for output
-            HelperFunctions.ensure_dir('GeneratedObservations')
-            outfilename = 'GeneratedObservations/{}_{}_scalex10.fits'.format(early_file.split('/')[-1].split('.fits')[0],
-                                                                    late_file.split('/')[-1].split('.fits')[0])
             column_list = []
             for order in total:
                 column = {'wavelength': order.x,
