@@ -75,7 +75,7 @@ def MedianAdd(fileList, outfilename="Total.fits"):
     hdulist.close()
 
 
-def Add(fileList, outfilename=None):
+def Add(fileList, outfilename=None, plot=True):
     all_data = []
     numorders = []
     for fname in fileList:
@@ -119,11 +119,12 @@ def Add(fileList, outfilename=None):
                    "error": total.err}
         column_list.append(columns)
 
-        pylab.plot(total.x, total.y / total.cont)
-        #pylab.plot(total.x, total.cont)
+        if plot:
+            pylab.plot(total.x, total.y / total.cont, 'k-', alpha=0.4)
 
+    if plot:
+        pylab.show()
     print "Outputting to %s" % outfilename
-    pylab.show()
     HelperFunctions.OutputFitsFileExtensions(column_list, fileList[0], outfilename, mode="new")
 
     #Add the files used to the primary header of the new file
@@ -138,17 +139,24 @@ def Add(fileList, outfilename=None):
 
 if __name__ == "__main__":
     fileList = []
+    plot = False
     for arg in sys.argv[1:]:
-        fileList.append(arg)
+        if "-plot" in arg:
+            plot = True
+        else:
+            fileList.append(arg)
 
     if len(fileList) > 1:
         fileDict = defaultdict(list)
         for fname in fileList:
             header = pyfits.getheader(fname)
             starname = header['OBJECT'].replace(" ", "_")
-            fileDict[starname].append(fname)
+            starname1 = header['OBJECT1'].replace(" ", "_")
+            starname2 = header['OBJECT2'].replace(" ", "_")
+            key = "{}+{}".format(starname1, starname2)
+            fileDict[key].append(fname)
         for star in fileDict.keys():
-            Add(fileDict[star], outfilename="%s.fits" % star)
+            Add(fileDict[star], outfilename="%s.fits" % star, plot=plot)
     else:
         allfiles = [f for f in os.listdir("./") if f.startswith("KG") and "-0" in f and "telluric" in f]
         fileDict = defaultdict(list)
@@ -157,5 +165,5 @@ if __name__ == "__main__":
             starname = header['OBJECT'].replace(" ", "_")
             fileDict[starname].append(fname)
         for star in fileDict.keys():
-            Add(fileDict[star], outfilename="%s.fits" % star)
+            Add(fileDict[star], outfilename="%s.fits" % star, plot=plot)
     
