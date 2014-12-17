@@ -1,11 +1,13 @@
 import sys
 import os
-import FittingUtilities
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
+import FittingUtilities
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
-import DataStructures
 import numpy as np
+
+import DataStructures
 import HelperFunctions
 
 
@@ -29,7 +31,7 @@ def ReadCorrectedFile(fname, yaxis="model"):
     return orders, headers
 
 
-def Correct(original, corrected, offset=None, get_primary=False):
+def Correct(original, corrected, offset=None, get_primary=False, interpolate=True, adjust=True):
     # Read in the data and model
     original_orders = HelperFunctions.ReadFits(original, extensions=True, x="wavelength", y="flux", errors="error",
                                                cont="continuum")
@@ -73,22 +75,41 @@ def Correct(original, corrected, offset=None, get_primary=False):
             if right < data.size():
                 right += 1
             data = data[left:right]
-        elif model.size() > data.size():
+        elif model.size() > data.size() and not interpolate:
             sys.exit("Error! Model size (%i) is larger than data size (%i)" % (model.size(), data.size()))
 
-        # if np.sum((model.x-data.x)**2) > 1e-8:
-        # model = FittingUtilities.RebinData(model, data.x)
+        if interpolate:
+            fcn = spline(model.x, model.y, k=1)
+            model = data.copy()
+            model.y = fcn(data.x)
+            if primary:
+                fcn = spline(primary.x, primary.y, k=1)
+                primary = data.copy()
+                primary.y = fcn(primary.x)
 
         data.y[data.y / data.cont < 1e-5] = 1e-5 * data.cont[data.y / data.cont < 1e-5]
         badindices = np.where(np.logical_or(data.y <= 0, model.y < 0.05))[0]
         model.y[badindices] = data.y[badindices] / data.cont[badindices]
         model.y[model.y < 1e-5] = 1e-5
 
+        if get_primary:
+            data.y /= primary.y
+
+        if adjust:
+            model.cont = np.ones(model.size())
+            lines = FittingUtilities.FindLines(model, tol=0.95).astype(int)
+            if len(lines) > 5:
+                scale = np.median(np.log(data.y[lines] / data.cont[lines]) / np.log(model.y[lines]))
+            else:
+                scale = 1.0
+            print i, scale
+            model.y = model.y ** (scale)
+
         #plt.plot(data.x, data.y / model.y)
         data.y /= model.y
         data.err /= model.y
         if get_primary:
-            data.y /= primary.y
+            data.y *= primary.y
         original_orders[i] = data.copy()
     if plot:
         plt.show()
@@ -96,7 +117,9 @@ def Correct(original, corrected, offset=None, get_primary=False):
 
 
 def main1():
-    primary = False
+    primary = True
+    adjust = True
+    interpolate = True
     if len(sys.argv) > 2:
         original = sys.argv[1]
         corrected = sys.argv[2]
@@ -106,7 +129,8 @@ def main1():
         outfilename = "%s_telluric_corrected.fits" % (original.split(".fits")[0])
         print "Outputting to %s" % outfilename
 
-        corrected_orders = Correct(original, corrected, offset=None, get_primary=primary)
+        corrected_orders = Correct(original, corrected, offset=None, get_primary=primary,
+                                   adjust=adjust, interpolate=interpolate)
 
         column_list = []
         if plot:
@@ -152,7 +176,8 @@ def main1():
             outfilename = "%s_telluric_corrected.fits" % (original.split(".fits")[0])
             print "Outputting to %s" % outfilename
 
-            corrected_orders = Correct(original, corrected, offset=None)
+            corrected_orders = Correct(original, corrected, offset=None, get_primary=primary,
+                                       adjust=adjust, interpolate=interpolate)
 
             column_list = []
             if plot:
