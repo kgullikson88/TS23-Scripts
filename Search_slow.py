@@ -55,7 +55,7 @@ if __name__ == '__main__':
             vsini_dict[root] = float(v) * 0.8
     for fname, vsini in zip(fileList, prim_vsini):
         print fname, vsini
-    sys.exit()
+    
     GenericSearch.slow_companion_search(fileList, prim_vsini,
 	                                extensions=True,
 					resolution=60000.0,
