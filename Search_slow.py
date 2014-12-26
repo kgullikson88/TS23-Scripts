@@ -66,7 +66,7 @@ if __name__ == '__main__':
 					vsini_values=(1,),
 					#Tvalues=range(3000, 6600, 100),
 					observatory='McDonald',
-					debug=True,
+					debug=False,
 					vbary_correct=False,
 					addmode='simple')
 
