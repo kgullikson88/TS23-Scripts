@@ -1,11 +1,10 @@
 import os
-import pandas
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import re
 
+import pandas
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import matplotlib.pyplot as plt
 import numpy as np
-
 import StarData
 import SpectralTypeRelations
 
@@ -67,8 +66,6 @@ def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.ara
     ccf = []
     for fname in all_files:
         star1, star2, vsini, temp, logg, metal = classify_filename(fname)
-        if temp == 5000:
-            print star1, star2, secondary_name
         if primary_name is not None and star1.lower() != primary_name.lower():
             continue
         if secondary_name is not None and star2.lower() != secondary_name.lower():
@@ -178,26 +175,46 @@ def plot_temperature_accuracy(df, velocity='highest', vel_arr=np.arange(-900.0, 
 
     Tactual = []  # Temperature, as obtained from the spectral type of the secondary star
     Tmeas = []
+    truth = []
+    medians = []
+    low = []
+    high = []
     for secondary in secondary_names:
         star_data = StarData.GetData(secondary)
         spt = star_data.spectype[0] + re.search('[0-9]\.*[0-9]*', star_data.spectype).group()
         T_sec = MS.Interpolate(MS.Temperature, spt)
+        measured_values = []
         for primary in primary_names:
             good = df.loc[(df.Primary == primary) & (df.Secondary == secondary)]
-            Tmeas.append(get_best_temperature(good, velocity=velocity, vel_arr=vel_arr))
+            bestT = get_best_temperature(good, velocity=velocity, vel_arr=vel_arr)
+            Tmeas.append(bestT)
             Tactual.append(T_sec)
+            measured_values.append(bestT)
 
-    plt.scatter(Tactual, Tmeas)
-    plt.plot(Tactual, Tactual, 'r--')
+        # Compile statistics for this secondary
+        medians.append(np.percentile(measured_values, 50.0))
+        low.append(np.percentile(measured_values, 5.0))
+        high.append(np.percentile(measured_values, 95.0))
+        truth.append(T_sec)
+
+
+    # plt.scatter(Tactual, Tmeas)
+    # Plot the statistics
+    plt.plot(truth, medians, 'k-', lw=2, label='Median Measured Temperature')
+    plt.fill_between(truth, high, low, facecolor='green', alpha=0.4)
+    plt.plot([], [], color='green', alpha=0.4, label=r'$2\sigma$ region', lw=10)  #Dummy region for the legend
+    plt.plot(Tactual, Tactual, 'r--', label='Actual Temperature')
+    leg = plt.legend(loc='best', fancybox=True)
+    leg.get_frame().set_alpha(0.4)
     plt.savefig('Temperature_Accuracy.svg')
-    # plt.show()
+    plt.show()
 
     return Tactual, Tmeas
 
 
 if __name__ == '__main__':
     secondary = '16 Cyg B'
-    df = get_ccf_data('Cross_correlations/')
+    df = get_ccf_data('GeneratedObservations/Cross_correlations/')
     # temperature_plot_star(df, 'HIP 42313', 'Gam Ser')
     #plot_temperature_distribution(df, secondary)
     plot_temperature_accuracy(df)
