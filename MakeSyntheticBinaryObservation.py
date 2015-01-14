@@ -32,7 +32,7 @@ from PlotBlackbodies import Planck
 def parse_input(argv):
     early_files = []
     late_files = []
-    late = False #Flag for when to start filling the late file list
+    late = False  # Flag for when to start filling the late file list
     for arg in argv:
         if arg.lower() == '-late':
             late = True
@@ -98,7 +98,7 @@ def combine(early_filename, late_filename, increase_scale=False):
     print '\t', scale_adjust
     scale *= scale_adjust
     if increase_scale:
-      scale *= 10.0
+        scale *= 10.0
 
     # Finally, combine:
     order_list = []
@@ -109,7 +109,7 @@ def combine(early_filename, late_filename, increase_scale=False):
         combined = add_order(order, late)
         order_list.append(combined)
         # plt.plot(order.x, order.y)
-        #plt.plot(combined.x, combined.y)
+        # plt.plot(combined.x, combined.y)
     # plt.show()
 
     return order_list, early_dict, late_dict
@@ -167,7 +167,6 @@ def classify_file(filename, astroquery=True):
     return d
 
 
-
 if __name__ == '__main__':
     scale = False
     early, late = parse_input(sys.argv[1:])
@@ -176,15 +175,15 @@ if __name__ == '__main__':
     HelperFunctions.ensure_dir('GeneratedObservations')
     for late_file in late:
         for early_file in early:
-	    outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('/')[-1].split(
-	      '.fits')[0],                                                                    late_file.split('/')[-1].split('.fits')[0])
-	    if scale:
-	        outfilename = outfilename.replace('.fits', '_scalex10.fits')
-	    if outfilename.split('/')[-1] in os.listdir('GeneratedObservations/'):
-	        print "File already generated. Skipping {}".format(outfilename)
-		continue
+            outfilename = 'GeneratedObservations/{}_{}.fits'.format(early_file.split('/')[-1].split(
+                '.fits')[0], late_file.split('/')[-1].split('.fits')[0])
+            if scale:
+                outfilename = outfilename.replace('.fits', '_scalex10.fits')
+            if outfilename.split('/')[-1] in os.listdir('GeneratedObservations/'):
+                print "File already generated. Skipping {}".format(outfilename)
+                continue
 
-	    total, early_dict, late_dict = combine(early_file, late_file, increase_scale=scale)
+            total, early_dict, late_dict = combine(early_file, late_file, increase_scale=scale)
 
             # Prepare for output
             column_list = []
