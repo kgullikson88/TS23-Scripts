@@ -1,17 +1,16 @@
 import sys
 import os
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
-
 import FittingUtilities
+
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 import numpy as np
-
 import DataStructures
 import HelperFunctions
 
 
-plot = False
+plot = True
 
 
 def ReadCorrectedFile(fname, yaxis="model"):

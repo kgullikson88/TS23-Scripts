@@ -205,8 +205,8 @@ if __name__ == "__main__":
 
         # Now, apply the scale to everything
         o2 = 2.12e5 * o2_scale
-        h2o_ppmv = TelluricFitter.MakeModel.humidity_to_ppmv(h2o, temperature, pressure)
-        h2o = TelluricFitter.MakeModel.ppmv_to_humidity(h2o_ppmv * h2o_scale, temperature, pressure)
+        h2o_ppmv = TelluricFitter.MakeModel.humidity_to_ppmv(humidity, temperature, pressure)
+        humidity = TelluricFitter.MakeModel.ppmv_to_humidity(h2o_ppmv * h2o_scale, temperature, pressure)
 
         for i, order in enumerate(orders):
             if (order.x[0] < 470 and order.x[-1] > 470) or max(order.y) < 0.01:
@@ -218,7 +218,7 @@ if __name__ == "__main__":
                 print "\n\nGenerating model for order %i of %i\n" % (i, len(orders))
                 fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
                                     "waveend": order.x[-1] + 20.0,
-                                    "o2": 2.12e5,
+                                    "o2": o2,
                                     "h2o": humidity,
                                     "resolution": resolution})
                 fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j]]
