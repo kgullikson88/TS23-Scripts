@@ -3,6 +3,7 @@ import sys
 import GenericSearch
 import pandas
 from astropy.io import fits
+import logging
 
 
 # Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
@@ -15,14 +16,14 @@ badregions = [[567.5, 575.5],
               [759, 9e9],
               # [655, 657],  # H alpha
               # [485, 487],  #H beta
-              #[433, 435],  #H gamma
+              # [433, 435],  #H gamma
               #[409, 411],  #H delta
               #[396, 398],  #H epsilon
               #[388, 390],  #H zeta
 ]
 
 if "darwin" in sys.platform:
-    modeldir = "/Volumes/DATADRIVE/Stellar_Models/PHOENIX/Stellar/Vband/"
+    modeldir = "/Volumes/DATADRIVE/Stellar_Models/Sorted/Stellar/Vband/"
 elif "linux" in sys.platform:
     modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
 else:
@@ -37,7 +38,7 @@ if __name__ == '__main__':
     for arg in sys.argv[1:]:
         if 1:
             fileList.append(arg)
-    prim_vsini = [100.0]*len(fileList)
+    prim_vsini = [100.0] * len(fileList)
 
     # Get the primary star vsini values
     prim_vsini = []
@@ -45,28 +46,31 @@ if __name__ == '__main__':
     vsini_dict = {}
     for fname in fileList:
         root = fname.split('/')[-1][:9]
-	if root in vsini_dict:
-	    prim_vsini.append(vsini_dict[root])
+        if root in vsini_dict:
+            prim_vsini.append(vsini_dict[root])
         else:
             header = fits.getheader(fname)
             star = header['OBJECT']
-            v = vsini.loc[vsini.Identifier.str.strip() == star]['vsini(km/s)'].values[0]
-            prim_vsini.append(float(v) * 0.8)
-            vsini_dict[root] = float(v) * 0.8
+            try:
+                v = vsini.loc[vsini.Identifier.str.strip() == star]['vsini(km/s)'].values[0]
+                prim_vsini.append(float(v) * 0.8)
+                vsini_dict[root] = float(v) * 0.8
+            except IndexError:
+                logging.warn('No vsini found for star {}! No primary star removal will be attempted!'.format(star))
+                prim_vsini.append(None)
     for fname, vsini in zip(fileList, prim_vsini):
         print fname, vsini
-    
+
     GenericSearch.slow_companion_search(fileList, prim_vsini,
-	                                extensions=True,
-					resolution=60000.0,
-					trimsize=trimsize,
-					modeldir=modeldir,
-					badregions=badregions,
-					metal_values=(0.0,),
-					vsini_values=(1,),
-					#Tvalues=range(3000, 6600, 100),
-					observatory='McDonald',
-					debug=False,
-					vbary_correct=False,
-					addmode='ML')
+                                        extensions=True,
+                                        resolution=60000.0,
+                                        trimsize=trimsize,
+                                        modeldir=modeldir,
+                                        badregions=badregions,
+                                        metal_values=(0.0,),
+                                        vsini_values=(1,),  # Tvalues=range(3000, 6600, 100),
+                                        observatory='McDonald',
+                                        debug=False,
+                                        vbary_correct=False,
+                                        addmode='simple')
 
