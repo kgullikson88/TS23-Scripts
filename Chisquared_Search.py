@@ -10,6 +10,7 @@ import StellarModel
 import HelperFunctions
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import matplotlib.pyplot as plt
+import Broaden
 
 
 if "darwin" in sys.platform:
@@ -57,7 +58,7 @@ if __name__ == '__main__':
 
     # Read in the stellar models
     model_list = StellarModel.GetModelList(metal=[0], alpha=[0], model_directory=modeldir,
-                                           temperature=range(5800, 7000, 100))
+                                           temperature=range(5000, 6000, 100))
     model_dict = StellarModel.MakeModelDicts(model_list, vsini_values=[1], logspace=True)[0]
 
     for fname in file_list:
@@ -72,6 +73,8 @@ if __name__ == '__main__':
         Tvalues = []
         for T in sorted(model_dict.keys()):
             model = model_dict[T][4.50][0.0][1.0]
+            if vsini is not None:
+                model = Broaden.RotBroad(model, vsini * 1e5)
             model.x *= (1.0 + rv / c)
             print 'T = {}'.format(T)
             chi2.append(np.sum(residual(orders, model, plot=True) ** 2))
