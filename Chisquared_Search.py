@@ -4,6 +4,7 @@ This script does a chi-squared search to find the best model fit to the given da
 
 import sys
 import FittingUtilities
+from collections import defaultdict
 
 import numpy as np
 import StellarModel
@@ -11,7 +12,6 @@ import HelperFunctions
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import matplotlib.pyplot as plt
 import Broaden
-from collections import defaultdict
 import pandas as pd
 
 

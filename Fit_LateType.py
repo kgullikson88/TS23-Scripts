@@ -93,3 +93,4 @@ if __name__ == '__main__':
     data = get_ccf_data(sys.argv[1])
     best = find_best_pars(data)
     print best[COLS]
+    best.to_csv('CCF_fit.csv', index=False)
