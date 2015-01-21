@@ -110,6 +110,11 @@ if __name__ == '__main__':
         print 'Best T = {} K'.format(T)
         print 'Best rv = {} km/s'.format(vel)
 
+        # Save log as a csv file via pandas
+        log = pd.DataFrame(data={'file': [fname.split('/')[-1]] * len(chi2),
+                                 'Chi2': chi2, 'T': Tvalues, 'RV': rv_values})
+        log.to_csv('{}_Fit.csv'.format(fname.split('/')[-1]))
+
         if plotflg:
             plt.plot(Tvalues, chi2, 'ro')
             plt.xlabel('Temperature')

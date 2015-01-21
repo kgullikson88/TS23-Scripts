@@ -102,9 +102,9 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
 
     # Find the ccf value at the given velocity
     if velocity == 'highest':
-        df['ccf_max'] = df['ccf'].map(np.max)
+        df['ccf_max'] = df['CCF'].map(np.max)
     else:
-        df['ccf_max'] = df['ccf'].map(lambda arr: arr[np.argmin(np.abs(vel_arr - velocity))])
+        df['ccf_max'] = df['CCF'].map(lambda arr: arr[np.argmin(np.abs(vel_arr - velocity))])
 
     # Find the best parameter for each combination
     d = defaultdict(list)
@@ -114,7 +114,7 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
             best = good.loc[good.ccf_max == good.ccf_max.max()]
             d['Primary'].append(primary)
             d['Secondary'].append(secondary)
-            d['Temperature'].append(best['T'].item())
+            d['Temperature'].append(best['Temperature'].item())
             d['vsini'].append(best['vsini'].item())
             d['logg'].append(best['logg'].item())
             d['[Fe/H]'].append(best['[Fe/H]'].item())
