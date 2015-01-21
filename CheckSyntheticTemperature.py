@@ -1,6 +1,8 @@
 import os
 import re
 import sys
+from george import kernels
+from collections import defaultdict
 
 import pandas
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -9,7 +11,6 @@ import numpy as np
 import StarData
 import SpectralTypeRelations
 import george
-from george import kernels
 import emcee
 
 
@@ -45,7 +46,7 @@ def classify_filename(fname):
     return star1, star2, vsini, temp, logg, metal
 
 
-def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.arange(-900.0, 900.0, 0.1), type=None):
+def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.arange(-900.0, 900.0, 0.1), type='bright'):
     """
     Searches the given directory for CCF files, and classifies
     by star, temperature, metallicity, and vsini
@@ -57,10 +58,7 @@ def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.ara
     """
     if not basedir.endswith('/'):
         basedir += '/'
-    if type is None:
-        all_files = ['{}{}'.format(basedir, f) for f in os.listdir(basedir) if 'MS_scale' not in f]
-    elif 'ms' in type.lower():
-        all_files = ['{}{}'.format(basedir, f) for f in os.listdir(basedir) if 'MS_scale' in f]
+    all_files = ['{}{}'.format(basedir, f) for f in os.listdir(basedir) if type in f.lower()]
     primary = []
     secondary = []
     vsini_values = []
@@ -88,6 +86,41 @@ def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.ara
     df = pandas.DataFrame(data={'Primary': primary, 'Secondary': secondary, 'Temperature': temperature,
                                 'vsini': vsini_values, 'logg': gravity, '[Fe/H]': metallicity, 'CCF': ccf})
     return df
+
+
+def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
+    """
+    Find the 'best-fit' parameters for each combination of primary and secondary star
+    :param df: the dataframe to search in
+    :keyword velocity: The velocity to measure the CCF at. The default is 'highest', and uses the maximum of the ccf
+    :keyword vel_arr: The velocities to interpolate each ccf at
+    :return: a dataframe with keys of primary, secondary, and the parameters
+    """
+    # Get the names of the primary and secondary stars
+    primary_names = pandas.unique(df.Primary)
+    secondary_names = pandas.unique(df.Secondary)
+
+    # Find the ccf value at the given velocity
+    if velocity == 'highest':
+        df['ccf_max'] = df['ccf'].map(np.max)
+    else:
+        df['ccf_max'] = df['ccf'].map(lambda arr: arr[np.argmin(np.abs(vel_arr - velocity))])
+
+    # Find the best parameter for each combination
+    d = defaultdict(list)
+    for primary in primary_names:
+        for secondary in secondary_names:
+            good = df.loc[(df.Primary == primary) & (df.Secondary == secondary)]
+            best = good.loc[good.ccf_max == good.ccf_max.max()]
+            d['Primary'].append(primary)
+            d['Secondary'].append(secondary)
+            d['Temperature'].append(best['T'].item())
+            d['vsini'].append(best['vsini'].item())
+            d['logg'].append(best['logg'].item())
+            d['[Fe/H]'].append(best['[Fe/H]'].item())
+
+    return pandas.DataFrame(data=d)
+
 
 
 def temperature_plot_star(df, starname1, starname2, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
