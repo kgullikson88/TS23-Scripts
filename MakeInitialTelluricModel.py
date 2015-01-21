@@ -227,6 +227,7 @@ if __name__ == "__main__":
                 fitter.resolution_fit_mode = "gauss"
                 #wave0 = order.x.mean()
                 #fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
+                fitter.DisplayVariables()
                 model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False)
 
                 data = fitter.data
