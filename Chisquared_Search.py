@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     # Read in the stellar models
     model_list = StellarModel.GetModelList(metal=[0], alpha=[0], model_directory=modeldir,
-                                           temperature=range(5000, 5200, 100))
+                                           temperature=range(3000, 7000, 100))
     model_dict = StellarModel.MakeModelDicts(model_list, vsini_values=[1], logspace=True)[0]
 
     summary_dict = defaultdict(list)
@@ -96,6 +96,7 @@ if __name__ == '__main__':
                 print 'T = {}'.format(T)
                 chi2.append(np.sum(residual(orders, model, plot=plotflg) ** 2))
                 Tvalues.append(float(T))
+                rv_values.append(vel)
                 print '{}  {}'.format(chi2[-1], Tvalues[-1])
 
         # Find the best T
