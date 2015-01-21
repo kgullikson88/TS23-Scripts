@@ -14,7 +14,7 @@ import george
 import emcee
 
 
-def classify_filename(fname):
+def classify_filename(fname, type='bright'):
     """
     Given a CCF filename, it classifies the star combination, temperature, metallicity, and vsini
     :param fname:
@@ -27,10 +27,10 @@ def classify_filename(fname):
     m1 = re.search('\.[0-9]+kps', fname)
     stars = fname[:m1.start()]
     star1 = stars.split('+')[0].replace('_', ' ')
-    star2 = stars.split('+')[1].replace('_', ' ')
+    star2 = stars.split('+')[1].split('_{}'.format(type))[0].replace('_', ' ')
 
     # secondary star vsini
-    vsini = float(fname[m1.start():].split('kps')[0])
+    vsini = float(fname[m1.start() + 1:].split('kps')[0])
 
     # Temperature
     m2 = re.search('[0-9]+\.0K', fname)
@@ -67,7 +67,7 @@ def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.ara
     metallicity = []
     ccf = []
     for fname in all_files:
-        star1, star2, vsini, temp, logg, metal = classify_filename(fname)
+        star1, star2, vsini, temp, logg, metal = classify_filename(fname, type=type)
         if primary_name is not None and star1.lower() != primary_name.lower():
             continue
         if secondary_name is not None and star2.lower() != secondary_name.lower():
