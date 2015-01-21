@@ -72,5 +72,5 @@ if __name__ == '__main__':
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=False,
-                                        addmode='simple')
+                                        addmode='ml')
 

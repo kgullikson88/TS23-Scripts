@@ -10,7 +10,7 @@ import DataStructures
 import HelperFunctions
 
 
-plot = True
+plot = False
 
 
 def ReadCorrectedFile(fname, yaxis="model"):
