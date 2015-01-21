@@ -114,7 +114,7 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
             best = good.loc[good.ccf_max == good.ccf_max.max()]
             d['Primary'].append(primary)
             d['Secondary'].append(secondary)
-            d['Temperature'].append(best['T'].item())
+            d['Temperature'].append(best['Temperature'].item())
             d['vsini'].append(best['vsini'].item())
             d['logg'].append(best['logg'].item())
             d['[Fe/H]'].append(best['[Fe/H]'].item())
