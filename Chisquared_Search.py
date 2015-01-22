@@ -13,7 +13,16 @@ from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import matplotlib.pyplot as plt
 import Broaden
 import pandas as pd
+import GenericSearch
 
+# Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
+badregions = [[567.5, 575.5],
+              [588.5, 598.5],
+              [627, 632],
+              [647, 655],
+              [686, 706],
+              [716, 734],
+              [759, 9e9]]
 
 if "darwin" in sys.platform:
     modeldir = "/Volumes/DATADRIVE/Stellar_Models/Sorted/Stellar/Vband/"
@@ -30,7 +39,7 @@ def residual(orders, model, plot=False):
     resid = []
     for order in orders:
         m = fcn(order.x)
-        c = FittingUtilities.Continuum(order.x, m, fitorder=3, lowreject=1.5, highreject=10)
+        c = FittingUtilities.Continuum(order.x, m, fitorder=2, lowreject=2, highreject=10)
         resid.append(order.y / order.cont - m / c)
         if plot:
             plt.plot(order.x, order.y / order.cont, 'k-', alpha=0.4)
@@ -57,6 +66,8 @@ if __name__ == '__main__':
             #rv = float(arg.split('=')[-1])
         elif '--vsini' in arg:
             vsini = float(arg.split('=')[-1])
+        elif '--plot' in arg:
+            plotflg=True
         else:
             file_list.append(arg)
 
@@ -70,13 +81,14 @@ if __name__ == '__main__':
 
     # Read in the stellar models
     model_list = StellarModel.GetModelList(metal=[0], alpha=[0], model_directory=modeldir,
-                                           temperature=range(3000, 7000, 100))
+                                           temperature=range(3300, 7000, 100))
     model_dict = StellarModel.MakeModelDicts(model_list, vsini_values=[1], logspace=True)[0]
 
     summary_dict = defaultdict(list)
     for n, fname in enumerate(file_list):
         print 'FILE {}'.format(fname)
         orders = HelperFunctions.ReadExtensionFits(fname)
+        orders = GenericSearch.Process_Data(orders, badregions)
 
         # Re-measure continuum
         for i, order in enumerate(orders):
