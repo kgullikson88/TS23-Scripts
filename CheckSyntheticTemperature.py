@@ -295,7 +295,7 @@ def make_gaussian_process_samples_2(df):
     Make a gaussian process fitting the Tactual-Tmeasured relationship
     :param df: pandas DataFrame with columns 'Temperature' (with the measured temperature)
                  and 'Tactual' (for the actual temperature)
-    :return: FILL IN ONCE I FIGURE THAT OUT!
+    :return: emcee sampler instance
     """
     # First, find the uncertainties at each actual temperature
     temperature_groups = df.groupby('Temperature')
