@@ -4,6 +4,7 @@ import sys
 from collections import defaultdict
 import pandas
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from operator import itemgetter
 
 from george import kernels
 import matplotlib.pyplot as plt
@@ -126,6 +127,27 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
             d['rv'].append(best['rv'].item())
 
     return pandas.DataFrame(data=d)
+
+
+def get_detected_objects(df, tol=1.0):
+    """
+    Takes a summary dataframe with RV information. Finds the median rv for each star,
+      and removes objects that are 'tol' km/s from the median value
+    :param df: A summary dataframe, such as created by find_best_pars
+    :param tol: The tolerance, in km/s, to accept an observation as detected
+    :return: a dataframe containing only detected companions
+    """
+    secondary_names = pandas.unique(df.Secondary)
+    secondary_to_rv = defaultdict(float)
+    for secondary in secondary_names:
+        rv = df.loc[df.Secondary == secondary]['rv'].median()
+        secondary_to_rv[secondary] = rv
+        print secondary, rv
+
+    keys = df.Secondary.values
+    good = df.loc[abs(df.rv.values - np.array(itemgetter(*keys)(secondary_to_rv))) < tol]
+    return good
+
 
 def add_actual_temperature(df, method='spt'):
     """
