@@ -62,8 +62,9 @@ if __name__ == '__main__':
         print fname, vsini
 
     GenericSearch.slow_companion_search(fileList, prim_vsini,
+                                        hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
                                         extensions=True,
-                                        resolution=60000.0,
+                                        resolution=None,
                                         trimsize=trimsize,
                                         modeldir=modeldir,
                                         badregions=badregions,
