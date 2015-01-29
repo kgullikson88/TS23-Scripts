@@ -1,17 +1,18 @@
 import os
 import re
 import sys
-from george import kernels
 from collections import defaultdict
-
 import pandas
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
+
+from george import kernels
 import matplotlib.pyplot as plt
 import numpy as np
-import StarData
-import SpectralTypeRelations
 import george
 import emcee
+
+import StarData
+import SpectralTypeRelations
 
 
 def classify_filename(fname, type='bright'):
@@ -102,7 +103,11 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
 
     # Find the ccf value at the given velocity
     if velocity == 'highest':
-        df['ccf_max'] = df['CCF'].map(np.max)
+        fcn = lambda row: (np.max(row), vel_arr[np.argmax(row)])
+        vals = df['CCF'].map(fcn)
+        df['ccf_max'] = vals.map(lambda l: l[0])
+        df['rv'] = vals.map(lambda l: l[1])
+        # df['ccf_max'] = df['CCF'].map(np.max)
     else:
         df['ccf_max'] = df['CCF'].map(lambda arr: arr[np.argmin(np.abs(vel_arr - velocity))])
 
@@ -133,6 +138,7 @@ def add_actual_temperature(df, method='spt'):
     # First, get a list of the secondary stars in the data
     secondary_names = pandas.unique(df.Secondary)
     secondary_to_temperature = defaultdict(float)
+    secondary_to_error = defaultdict(float)
 
     if method.lower() == 'spt':
         MS = SpectralTypeRelations.MainSequence()
@@ -143,12 +149,16 @@ def add_actual_temperature(df, method='spt'):
             secondary_to_temperature[secondary] = T_sec
 
     elif method.lower() == 'excel':
-        table = pandas.read_excel('SecondaryStar_Temperatures.xls')
+        table = pandas.read_excel('SecondaryStar_Temperatures.xls', 0)
         for secondary in secondary_names:
             T_sec = table.loc[table.Star.str.lower().str.contains(secondary.strip().lower())]['Literature_Temp'].item()
+            T_error = table.loc[table.Star.str.lower().str.contains(secondary.strip().lower())][
+                'Literature_error'].item()
             secondary_to_temperature[secondary] = T_sec
+            secondary_to_error[secondary] = T_error
 
     df['Tactual'] = df['Secondary'].map(lambda s: secondary_to_temperature[s])
+    df['Tact_err'] = df['Secondary'].map(lambda s: secondary_to_error[s])
     return
 
 def temperature_plot_star(df, starname1, starname2, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
@@ -298,6 +308,10 @@ def make_gaussian_process_samples_2(df):
     :return: emcee sampler instance
     """
     # First, find the uncertainties at each actual temperature
+    Tactual = df['Tactual'].values
+    Tmeasured = df['Temperature'].values
+    error = df['Tact_err'].values
+    """
     temperature_groups = df.groupby('Temperature')
     Tactual = []
     Tmeasured = []
@@ -315,6 +329,7 @@ def make_gaussian_process_samples_2(df):
     error = np.array(error)
     for Tm, Ta, e in zip(Tmeasured, Tactual, error):
         print Tm, Ta, e
+    """
     plt.figure(1)
     plt.errorbar(Tmeasured, Tactual, yerr=error, fmt='.k', capsize=0)
     plt.plot(Tmeasured, Tmeasured, 'r--')
@@ -390,6 +405,10 @@ def make_gaussian_process_samples(df):
     :return: FILL IN ONCE I FIGURE THAT OUT!
     """
     # First, find the uncertainties at each actual temperature
+    Tactual = df['Tactual'].values
+    Tmeasured = df['Temperature'].values
+    error = df['Tact_err'].values
+    """
     temperature_groups = df.groupby('Tactual')
     Tactual = []
     Tmeasured = []
@@ -403,6 +422,7 @@ def make_gaussian_process_samples(df):
     Tactual = np.array(Tactual)
     Tmeasured = np.array(Tmeasured)
     error = np.array(error)
+    """
     plt.figure(1)
     plt.errorbar(Tactual, Tmeasured, yerr=error, fmt='.k', capsize=0)
     plt.plot(Tactual, Tactual, 'r--')
