@@ -309,7 +309,7 @@ def make_gaussian_process_samples_2(df):
         l, m, h = np.percentile(measurements, [5.0, 50.0, 95.0])
         Tactual.append(m)
         Tmeasured.append(T)
-        error.append(max(100.0, np.sqrt(((m-l)/2.0)**2 + ((h-m)/2.0)**2)))
+        error.append(max(190.0, np.sqrt(((m-l)/2.0)**2 + ((h-m)/2.0)**2)))
     Tactual = np.array(Tactual)
     Tmeasured = np.array(Tmeasured)
     error = np.array(error)
