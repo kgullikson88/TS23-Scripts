@@ -123,6 +123,7 @@ def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)
             d['vsini'].append(best['vsini'].item())
             d['logg'].append(best['logg'].item())
             d['[Fe/H]'].append(best['[Fe/H]'].item())
+            d['rv'].append(best['rv'].item())
 
     return pandas.DataFrame(data=d)
 
