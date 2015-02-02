@@ -5,6 +5,7 @@ from collections import defaultdict
 import pandas
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from operator import itemgetter
+import logging
 
 from george import kernels
 import matplotlib.pyplot as plt
@@ -331,9 +332,17 @@ def make_gaussian_process_samples_2(df):
     :return: emcee sampler instance
     """
     # First, find the uncertainties at each actual temperature
-    Tactual = df['Tactual'].values
-    Tmeasured = df['Temperature'].values
-    error = df['Tact_err'].values
+    # Tactual = df['Tactual'].values
+    #Tmeasured = df['Temperature'].values
+    #error = df['Tact_err'].values
+    temp = df.groupby('Temperature').mean()['Tactual']
+    Tmeasured = temp.keys().values
+    Tactual = temp.values
+    error = np.nan_to_num(df.groupby('Temperature').std(ddof=1)['Tactual'].values)
+    default = np.median(error[error > 1])
+    error = np.maximum(error, np.ones(error.size) * default)
+    for Tm, Ta, e in zip(Tmeasured, Tactual, error):
+        print Tm, Ta, e
     """
     temperature_groups = df.groupby('Temperature')
     Tactual = []
@@ -416,104 +425,65 @@ def make_gaussian_process_samples_2(df):
         plt.plot(Tvalues, s, 'b-', alpha=0.1)
     plt.draw()
 
-
-
-    return sampler
-
-def make_gaussian_process_samples(df):
-    """
-    Make a gaussian process fitting the Tactual-Tmeasured relationship
-    :param df: pandas DataFrame with columns 'Temperature' (with the measured temperature)
-                 and 'Tactual' (for the actual temperature)
-    :return: FILL IN ONCE I FIGURE THAT OUT!
-    """
-    # First, find the uncertainties at each actual temperature
-    Tactual = df['Tactual'].values
-    Tmeasured = df['Temperature'].values
-    error = df['Tact_err'].values
-    """
-    temperature_groups = df.groupby('Tactual')
-    Tactual = []
-    Tmeasured = []
-    error = []
-    for T in temperature_groups.groups.keys():
-        measurements = temperature_groups.get_group(T)['Temperature']
-        l, m, h = np.percentile(measurements, [16.0, 50.0, 84.0])
-        Tactual.append(T)
-        Tmeasured.append(m)
-        error.append(np.sqrt((m-l)**2 + (h-m)**2))
-    Tactual = np.array(Tactual)
-    Tmeasured = np.array(Tmeasured)
-    error = np.array(error)
-    """
-    plt.figure(1)
-    plt.errorbar(Tactual, Tmeasured, yerr=error, fmt='.k', capsize=0)
-    plt.plot(Tactual, Tactual, 'r--')
-    plt.xlim((min(Tactual) - 100, max(Tactual) + 100))
-    plt.show(block=False)
-
-    # Define some functions to use in the GP fit
-    def model(pars, T):
-        #polypars = pars[2:]
-        #return np.poly1d(polypars)(T)
-        return T
-
-    def lnlike(pars, Tact, Tmeas, Terr):
+    # Finally, make confidence intervals for the actual temperature at all the possibly measured temperatures
+    print 'Generating confidence intervals...'
+    N = 10000  # This is 1/10th of the total number of samples!
+    idx = np.argsort(-sampler.lnprobability.flatten())  # Get N 'best' curves
+    par_vals = sampler.flatchain[idx]
+    Tvalues = np.arange(3000, 6900, 100)
+    gp_posterior = []
+    for pars in par_vals:
         a, tau = np.exp(pars[:2])
         gp = george.GP(a * kernels.ExpSquaredKernel(tau))
-        gp.compute(Tact, Terr)
-        return gp.lnlikelihood(Tmeas - model(pars, Tact))
+        gp.compute(Tmeasured, error)
+        s = gp.sample_conditional(Tactual - model(pars, Tmeasured), Tvalues) + model(pars, Tvalues)
+        gp_posterior.append(s)
 
-    def lnprior(pars):
-        lna, lntau = pars[:2]
-        polypars = pars[2:]
-        if -20 < lna < 20 and 4 < lntau < 20:
-            return 0.0
-        return -np.inf
-
-    def lnprob(pars, x, y, yerr):
-        lp = lnprior(pars)
-        return lp + lnlike(pars, x, y, yerr) if np.isfinite(lp) else -np.inf
-
-    # Set up the emcee fitter
-    initial = np.array([0, 6])#, 1.0, 0.0])
-    ndim = len(initial)
-    nwalkers = 100
-    p0 = [np.array(initial) + 1e-8 * np.random.randn(ndim) for i in xrange(nwalkers)]
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(Tactual, Tmeasured, error))
-
-    print 'Running first burn-in'
-    p1, lnp, _ = sampler.run_mcmc(p0, 500)
-    sampler.reset()
-
-    print "Running second burn-in..."
-    p_best = p1[np.argmax(lnp)]
-    p2 = [p_best + 1e-8 * np.random.randn(ndim) for i in xrange(nwalkers)]
-    p3, _, _ = sampler.run_mcmc(p2, 250)
-    sampler.reset()
-
-    print "Running production..."
-    sampler.run_mcmc(p3, 1000)
-
-    # Plot a bunch of the fits
-    N = 100
-    Tvalues = np.arange(3300, 7000, 20)
-    for i in range(N):
-        pars = sampler.flatchain[i]
-        a, tau = np.exp(pars[:2])
-        gp = george.GP(a * kernels.ExpSquaredKernel(tau))
-        gp.compute(Tactual, error)
-        s = gp.sample_conditional(Tmeasured - model(pars, Tactual), Tvalues) + model(pars, Tvalues)
-        plt.plot(Tvalues, s, 'b-', alpha=0.1)
-    plt.draw()
+    return sampler, np.array(gp_posterior)
 
 
+def check_posterior(df, posterior, Tvalues):
+    """
+    Checks the posterior samples: Are 95% of the measurements within 2-sigma of the prediction?
+    :param df: The summary dataframe
+    :param posterior: The MCMC predicted values
+    :param Tvalues: The measured temperatures the posterior was made with
+    :return: boolean, as well as some warning messages if applicable
+    """
+    # First, make 2-sigma confidence intervals
+    l, m, h = np.percentile(posterior, [5.0, 50.0, 95.0], axis=0)
 
-    return sampler #, p0, p1, p2, p3, truths, median , error
+    # Save the confidence intervals
+    conf = pandas.DataFrame(data={'Measured Temperature': Tvalues, 'Actual Temperature': m,
+                                  'Lower Bound': l, 'Upper bound': h})
+    conf.to_csv('Confidence_Intervals.csv', index=False)
 
+    Ntot = []  # The total number of observations with the given measured temperature
+    Nacc = []  # The number that have actual temperatures within the confidence interval
 
-#def
+    g = df.groupby('Temperature')
+    for i, T in enumerate(Tvalues):
+        if T in g.groups.keys():
+            Ta = g.get_group(T)['Tactual']
+            low, high = l[i], h[i]
+            Ntot.append(len(Ta))
+            Nacc.append(len(Ta.loc[(Ta >= low) & (Ta <= high)]))
+            p = float(Nacc[-1]) / float(Ntot[-1])
+            if p < 0.95:
+                logging.warn(
+                    'Only {}/{} of the samples ({:.2f}%) were accepted for T = {} K'.format(Nacc[-1], Ntot[-1], p * 100,
+                                                                                            T))
+                print low, high
+                print sorted(Ta)
+        else:
+            Ntot.append(0)
+            Nacc.append(0)
 
+    p = float(sum(Nacc)) / float(sum(Ntot))
+    if p < 0.95:
+        logging.warn('Only {:.2f}% of the total samples were accepted!'.format(p * 100))
+        return False
+    return True
 
 
 if __name__ == '__main__':
@@ -522,6 +492,6 @@ if __name__ == '__main__':
     Tactual, Tmeas = plot_temperature_accuracy(df)
     Tactual = np.array(Tactual)
     Tmeas = np.array(Tmeas)
-    sampler, p0, p1, p2, p3, truths, median , error = make_gaussian_process_samples(Tactual, Tmeas)
+    #sampler, p0, p1, p2, p3, truths, median , error = make_gaussian_process_samples(Tactual, Tmeas)
 
     #TODO: Sample the GP hyperparameters to get the measured temperature and uncertainty for each actual temperature. Then, reverse the relationship!
