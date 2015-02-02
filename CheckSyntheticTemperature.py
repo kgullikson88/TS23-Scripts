@@ -398,7 +398,7 @@ def make_gaussian_process_samples_2(df):
     print "Plotting..."
     N = 100
     Tvalues = np.arange(3300, 7000, 20)
-    idx = np.argsort(-sampler.lnprobability.flatten())  # Get N 'best' curves
+    idx = np.argsort(-sampler.lnprobability.flatten())[:N]  # Get N 'best' curves
     par_vals = sampler.flatchain[idx]
     for i, pars in enumerate(par_vals):
         a, tau = np.exp(pars[:2])
@@ -411,7 +411,7 @@ def make_gaussian_process_samples_2(df):
     # Finally, get posterior samples at all the possibly measured temperatures
     print 'Generating posterior samples at all temperatures...'
     N = 10000  # This is 1/10th of the total number of samples!
-    idx = np.argsort(-sampler.lnprobability.flatten())  # Get N 'best' curves
+    idx = np.argsort(-sampler.lnprobability.flatten())[:N]  # Get N 'best' curves
     par_vals = sampler.flatchain[idx]
     Tvalues = np.arange(3000, 6900, 100)
     gp_posterior = []
