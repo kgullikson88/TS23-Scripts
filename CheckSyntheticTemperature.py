@@ -343,25 +343,6 @@ def make_gaussian_process_samples_2(df):
     error = np.maximum(error, np.ones(error.size) * default)
     for Tm, Ta, e in zip(Tmeasured, Tactual, error):
         print Tm, Ta, e
-    """
-    temperature_groups = df.groupby('Temperature')
-    Tactual = []
-    Tmeasured = []
-    error = []
-    for T in temperature_groups.groups.keys():
-        measurements = temperature_groups.get_group(T)['Tactual']
-        if measurements.size < 10:
-            continue
-        l, m, h = np.percentile(measurements, [5.0, 50.0, 95.0])
-        Tactual.append(m)
-        Tmeasured.append(T)
-        error.append(max(190.0, np.sqrt(((m-l)/2.0)**2 + ((h-m)/2.0)**2)))
-    Tactual = np.array(Tactual)
-    Tmeasured = np.array(Tmeasured)
-    error = np.array(error)
-    for Tm, Ta, e in zip(Tmeasured, Tactual, error):
-        print Tm, Ta, e
-    """
     plt.figure(1)
     plt.errorbar(Tmeasured, Tactual, yerr=error, fmt='.k', capsize=0)
     plt.plot(Tmeasured, Tmeasured, 'r--')
@@ -414,10 +395,12 @@ def make_gaussian_process_samples_2(df):
     sampler.run_mcmc(p3, 1000)
 
     # Plot a bunch of the fits
+    print "Plotting..."
     N = 100
     Tvalues = np.arange(3300, 7000, 20)
-    for i in range(N):
-        pars = sampler.flatchain[i]
+    idx = np.argsort(-sampler.lnprobability.flatten())  # Get N 'best' curves
+    par_vals = sampler.flatchain[idx]
+    for i, pars in enumerate(par_vals):
         a, tau = np.exp(pars[:2])
         gp = george.GP(a * kernels.ExpSquaredKernel(tau))
         gp.compute(Tmeasured, error)
@@ -425,8 +408,8 @@ def make_gaussian_process_samples_2(df):
         plt.plot(Tvalues, s, 'b-', alpha=0.1)
     plt.draw()
 
-    # Finally, make confidence intervals for the actual temperature at all the possibly measured temperatures
-    print 'Generating confidence intervals...'
+    # Finally, get posterior samples at all the possibly measured temperatures
+    print 'Generating posterior samples at all temperatures...'
     N = 10000  # This is 1/10th of the total number of samples!
     idx = np.argsort(-sampler.lnprobability.flatten())  # Get N 'best' curves
     par_vals = sampler.flatchain[idx]
@@ -438,6 +421,13 @@ def make_gaussian_process_samples_2(df):
         gp.compute(Tmeasured, error)
         s = gp.sample_conditional(Tactual - model(pars, Tmeasured), Tvalues) + model(pars, Tvalues)
         gp_posterior.append(s)
+
+    # Finally, make confidence intervals for the actual temperatures
+    gp_posterior = np.array(gp_posterior)
+    l, m, h = np.percentile(gp_posterior, [16.0, 50.0, 84.0])
+    conf = pandas.DataFrame(data={'Measured Temperature': Tvalues, 'Actual Temperature': m,
+                                  'Lower Bound': l, 'Upper bound': h})
+    conf.to_csv('Confidence_Intervals.csv', index=False)
 
     return sampler, np.array(gp_posterior)
 
@@ -454,9 +444,9 @@ def check_posterior(df, posterior, Tvalues):
     l, m, h = np.percentile(posterior, [5.0, 50.0, 95.0], axis=0)
 
     # Save the confidence intervals
-    conf = pandas.DataFrame(data={'Measured Temperature': Tvalues, 'Actual Temperature': m,
-                                  'Lower Bound': l, 'Upper bound': h})
-    conf.to_csv('Confidence_Intervals.csv', index=False)
+    # conf = pandas.DataFrame(data={'Measured Temperature': Tvalues, 'Actual Temperature': m,
+    #                              'Lower Bound': l, 'Upper bound': h})
+    #conf.to_csv('Confidence_Intervals.csv', index=False)
 
     Ntot = []  # The total number of observations with the given measured temperature
     Nacc = []  # The number that have actual temperatures within the confidence interval
