@@ -89,6 +89,34 @@ def get_ccf_data(basedir, primary_name=None, secondary_name=None, vel_arr=np.ara
     return df
 
 
+def get_ccf_summary(basedir, vel_arr=np.arange(-900.0, 900.0, 0.1), velocity='highest', type='bright'):
+    """
+    Very similar to get_ccf_data, but does it in a way that is more memory efficient
+    :param basedir: The directory to search for CCF files
+    :keyword velocity: The velocity to measure the CCF at. The default is 'highest', and uses the maximum of the ccf
+    :keyword vel_arr: The velocities to interpolate each ccf at
+    :return: pandas DataFrame
+    """
+    if not basedir.endswith('/'):
+        basedir += '/'
+    all_files = ['{}{}'.format(basedir, f) for f in os.listdir(basedir) if type in f.lower()]
+    file_dict = defaultdict(lambda: defaultdict(list))
+    for fname in all_files:
+        star1, star2, vsini, temp, logg, metal = classify_filename(fname, type=type)
+        file_dict[star1][star2].append(fname)
+
+    # Now, read the ccfs for each primary/secondary combo, and find the best combination
+    summary_dfs = []
+    for primary in file_dict.keys():
+        for secondary in file_dict[primary].keys():
+            data = get_ccf_data(basedir, primary_name=primary, secondary_name=secondary,
+                                vel_arr=vel_arr, type=type)
+            summary_dfs.append(find_best_pars(data, velocity=velocity, vel_arr=vel_arr))
+
+    # TODO: Work out how to combine all the dfs in the right way to get a single summary. pd.concat?
+    return summary_dfs
+
+
 def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
     """
     Find the 'best-fit' parameters for each combination of primary and secondary star
