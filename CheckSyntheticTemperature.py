@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 from collections import defaultdict
 from operator import itemgetter
 import logging
@@ -184,144 +183,6 @@ def add_actual_temperature(df, method='spt'):
     df['Tact_err'] = df['Secondary'].map(lambda s: secondary_to_error[s])
     return
 
-def temperature_plot_star(df, starname1, starname2, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
-    """
-    Takes a pandas dataframe such as created by get_ccf_data, and the name of a primary/secondary star.
-    It plots the ccf value as a function of temperature
-    :param df: pandas DataFrame with the appropriate keys (use get_ccf_data)
-    :param starname1: the name of the primary star
-    :param starname2: the name of the secondary star
-    :keyword velocity: The velocity to measure the CCF at. The default is 'highest', and uses the maximum of the ccf
-    :keyword vel_arr: The velocities to interpolate each ccf at
-    :return:
-    """
-    good = df.loc[(df.Primary == starname1) & (df.Secondary == starname2)]
-    good = good.sort(columns='Temperature')
-    Tvalues = good.Temperature.values
-    if isinstance(velocity, str) and velocity == 'highest':
-        corr_vals = [max(v) for v in good.CCF.values]
-    elif isinstance(velocity, int) or isinstance(velocity, float):
-        pixel = int(velocity)
-        corr_vals = [v[pixel] for v in good.CCF.values]
-    else:
-        raise TypeError('Bad value entered for pixel ({})'.format(velocity))
-
-    maxidx = np.argmax(corr_vals)
-    maxT = Tvalues[maxidx]
-    print('Maximum Temperature at {}'.format(maxT))
-
-    plt.plot(Tvalues, corr_vals, 'r-o')
-    plt.show()
-
-
-def get_best_temperature(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
-    """
-    Given a DataFrame with just primary and secondary star combination, find the best temperature
-    :param df: DataFrame to search
-    :keyword velocity: The velocity to measure the CCF at. The default is 'highest', and uses the maximum of the ccf
-    :keyword vel_arr: The velocities to interpolate each ccf at
-    :return: best temperature (as a float object)
-    """
-    Tvalues = df.Temperature.values
-    if isinstance(velocity, str) and velocity == 'highest':
-        corr_vals = [max(v) for v in df.CCF.values]
-    elif isinstance(velocity, int) or isinstance(velocity, float):
-        pixel = np.argmin(abs(vel_arr - velocity))
-        corr_vals = [v[pixel] for v in df.CCF.values]
-    else:
-        raise TypeError('Bad value entered for velocity ({})'.format(velocity))
-    maxidx = np.argmax(corr_vals)
-    return Tvalues[maxidx]
-
-
-def plot_temperature_distribution(df, secondary, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
-    """
-    Goes through all entries with the given secondary star, finds the best temperature for each one, and plots
-    the distribution of temperatures (one for each primary star). Returns the distribution as well.
-    :param df: pandas DataFrame with the appropriate keys (use get_ccf_data)
-    :param secondary: The name of the secondary star
-    :param velocity: The velocity to measure the CCF at. If 'highest', it uses the maximum of the ccf
-    :keyword vel_arr: The velocities to interpolate each ccf at
-    :return: numpy.ndarray with the best temperature for each primary star
-    """
-    good = df.loc[df.Secondary.str.upper() == secondary.upper()]
-    primary_names = pandas.unique(good.Primary)
-    bestT = []
-    for primary in primary_names:
-        print primary
-        prim_df = good.loc[good.Primary == primary]
-        bestT.append(get_best_temperature(prim_df, vel_arr=vel_arr, velocity=velocity))
-
-    plt.hist(bestT)
-    plt.show()
-
-    return bestT
-
-
-def plot_temperature_accuracy(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
-    """
-     Plots the best temperature for each combination of primary and secondary
-    :param df:
-    :param velocity: The velocity to measure the CCF at. If 'highest', it uses the maximum of the ccf
-    :keyword vel_arr: The velocities to interpolate each ccf at
-    :return:
-    """
-    primary_names = pandas.unique(df.Primary)
-    secondary_names = pandas.unique(df.Secondary)
-
-    MS = SpectralTypeRelations.MainSequence()
-
-    Tactual = []  # Temperature, as obtained from the spectral type of the secondary star
-    Tmeas = []
-    truth = []
-    medians = []
-    low = []
-    high = []
-    N = max([len(s) for s in secondary_names])
-    for i, secondary in enumerate(secondary_names):
-        sys.stdout.write('\r' + ' '*(N+34))
-        sys.stdout.flush()
-        sys.stdout.write("\rCompiling stats for {}, star {}/{}".format(secondary, i+1, len(secondary_names)))
-        sys.stdout.flush()
-        star_data = StarData.GetData(secondary)
-        spt = star_data.spectype[0] + re.search('[0-9]\.*[0-9]*', star_data.spectype).group()
-        T_sec = MS.Interpolate(MS.Temperature, spt)
-        measured_values = []
-        for primary in primary_names:
-            good = df.loc[(df.Primary == primary) & (df.Secondary == secondary)]
-            bestT = get_best_temperature(good, velocity=velocity, vel_arr=vel_arr)
-            Tmeas.append(bestT)
-            Tactual.append(T_sec)
-            measured_values.append(bestT)
-
-        # Compile statistics for this secondary
-        medians.append(np.percentile(measured_values, 50.0))
-        low.append(np.percentile(measured_values, 5.0))
-        high.append(np.percentile(measured_values, 95.0))
-        truth.append(T_sec)
-
-    # Sort the stats so we get a decent plot
-    sorter = np.argsort(truth)
-    medians = np.array(medians)[sorter]
-    low = np.array(low)[sorter]
-    high = np.array(high)[sorter]
-    truth = np.array(truth)[sorter]
-
-    # plt.scatter(Tactual, Tmeas)
-    # Plot the statistics
-    plt.plot(truth, medians, 'k-', lw=2, label='Median Measured Temperature')
-    plt.fill_between(truth, high, low, facecolor='green', alpha=0.4)
-    plt.plot([], [], color='green', alpha=0.4, label=r'$2\sigma$ region', lw=10)  #Dummy region for the legend
-    plt.plot(Tactual, Tactual, 'r--', label='Actual Temperature')
-    leg = plt.legend(loc='best', fancybox=True)
-    plt.xlabel('Actual Temperature', fontsize=15)
-    plt.ylabel('Measured Temperature', fontsize=15)
-    leg.get_frame().set_alpha(0.4)
-    plt.savefig('Temperature_Accuracy.svg')
-    plt.show()
-
-    return Tactual, Tmeas
-
 
 def make_gaussian_process_samples(df):
     """
@@ -486,11 +347,5 @@ def check_posterior(df, posterior, Tvalues):
 
 
 if __name__ == '__main__':
-    # Run these in an ipython shell for interactivity. Takes about 5 GB of RAM though!
-    df = get_ccf_data('GeneratedObservations/Cross_correlations/')
-    Tactual, Tmeas = plot_temperature_accuracy(df)
-    Tactual = np.array(Tactual)
-    Tmeas = np.array(Tmeas)
-    #sampler, p0, p1, p2, p3, truths, median , error = make_gaussian_process_samples(Tactual, Tmeas)
+    pass
 
-    #TODO: Sample the GP hyperparameters to get the measured temperature and uncertainty for each actual temperature. Then, reverse the relationship!
