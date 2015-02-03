@@ -2,17 +2,16 @@ import os
 import re
 import sys
 from collections import defaultdict
-import pandas
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from operator import itemgetter
 import logging
 
+import pandas
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from george import kernels
 import matplotlib.pyplot as plt
 import numpy as np
 import george
 import emcee
-
 import StarData
 import SpectralTypeRelations
 
@@ -324,7 +323,7 @@ def plot_temperature_accuracy(df, velocity='highest', vel_arr=np.arange(-900.0, 
     return Tactual, Tmeas
 
 
-def make_gaussian_process_samples_2(df):
+def make_gaussian_process_samples(df):
     """
     Make a gaussian process fitting the Tactual-Tmeasured relationship
     :param df: pandas DataFrame with columns 'Temperature' (with the measured temperature)
