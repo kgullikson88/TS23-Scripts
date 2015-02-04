@@ -6,6 +6,7 @@ import pandas
 from astropy.io import fits
 
 
+
 # Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
 badregions = [[567.5, 575.5],
               [588.5, 598.5],
@@ -68,9 +69,9 @@ if __name__ == '__main__':
                                         trimsize=trimsize,
                                         modeldir=modeldir,
                                         badregions=badregions,
-                                        metal_values=(-0.5, 0.0, 0.5),
-                                        vsini_values=(1, 5, 10, 15, 20),
-                                        # Tvalues=range(6100, 6200, 100),
+                                        metal_values=(0.0,),
+                                        vsini_values=(1, 5, 10, 15),
+                                        Tvalues=range(3400, 6900, 100),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=False,
