@@ -113,8 +113,7 @@ def get_ccf_summary(basedir, vel_arr=np.arange(-900.0, 900.0, 0.1), velocity='hi
                                 vel_arr=vel_arr, type=type)
             summary_dfs.append(find_best_pars(data, velocity=velocity, vel_arr=vel_arr))
 
-    # TODO: Work out how to combine all the dfs in the right way to get a single summary. pd.concat?
-    return summary_dfs
+    return pandas.concat(summary_dfs)
 
 
 def find_best_pars(df, velocity='highest', vel_arr=np.arange(-900.0, 900.0, 0.1)):
