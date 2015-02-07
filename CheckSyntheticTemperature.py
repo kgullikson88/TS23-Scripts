@@ -311,7 +311,7 @@ def make_gaussian_process_samples(df):
 
     # Finally, make confidence intervals for the actual temperatures
     gp_posterior = np.array(gp_posterior)
-    l, m, h = np.percentile(gp_posterior, [16.0, 50.0, 84.0])
+    l, m, h = np.percentile(gp_posterior, [16.0, 50.0, 84.0], axis=0)
     conf = pandas.DataFrame(data={'Measured Temperature': Tvalues, 'Actual Temperature': m,
                                   'Lower Bound': l, 'Upper bound': h})
     conf.to_csv('Confidence_Intervals.csv', index=False)
