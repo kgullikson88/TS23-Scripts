@@ -11,8 +11,9 @@ import HelperFunctions
 homedir = os.environ["HOME"]
 weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
 
-badregions = [[588.98, 589.037],  # Na D line 1
-              [589.567, 589.632],  # Na D line 2
+badregions = [[588., 590],  # Na D lines
+              # [589.567, 589.632],  # Na D line 2
+              [655., 658.],  #H-alpha line
               [627.4, 629.0],  #O2 band
               [686.4, 690.7]]  # O2 band
 
@@ -75,7 +76,7 @@ if __name__ == "__main__":
 
     # START LOOPING OVER INPUT FILES
     for fname in fileList:
-        #Make sure this file is an object file
+        # Make sure this file is an object file
         header = pyfits.getheader(fname)
         if header['imagetyp'].strip() != 'object' or "solar" in header['object'].lower():
             print "Skipping file %s, with imagetype = %s and object = %s" % (
