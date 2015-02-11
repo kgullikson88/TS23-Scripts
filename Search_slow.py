@@ -76,7 +76,7 @@ if __name__ == '__main__':
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=False,
-                                        addmode='simple',
+                                        addmode='ml',
                                         output_mode='hdf5')
 
     #done = raw_input('Hit Enter')
