@@ -1,5 +1,6 @@
 import sys
 import logging
+import os
 
 import GenericSearch
 import pandas
@@ -44,7 +45,8 @@ if __name__ == '__main__':
 
     # Get the primary star vsini values
     prim_vsini = []
-    vsini = pandas.read_csv("../../Useful_Datafiles/Vsini.csv", sep='|', skiprows=8)[1:]
+    homedir = os.environ['HOME']
+    vsini = pandas.read_csv("{}/School/Research/Useful_Datafiles/Vsini.csv".format(homedir), sep='|', skiprows=8)[1:]
     vsini_dict = {}
     for fname in fileList:
         root = fname.split('/')[-1][:9]
@@ -70,13 +72,13 @@ if __name__ == '__main__':
                                         trimsize=trimsize,
                                         modeldir=modeldir,
                                         badregions=badregions,
-                                        metal_values=(0.0,),
-                                        vsini_values=(1, 5, 10, 15),
+                                        metal_values=(0.0, -0.5, 0.5),
+                                        vsini_values=(1, 5, 10, 20, 30),
                                         Tvalues=range(3000, 6900, 100),
                                         observatory='McDonald',
                                         debug=False,
-                                        vbary_correct=False,
-                                        addmode='ml',
+                                        vbary_correct=True,
+                                        addmode='simple',
                                         output_mode='hdf5')
 
     #done = raw_input('Hit Enter')
