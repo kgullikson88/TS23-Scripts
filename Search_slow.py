@@ -9,6 +9,7 @@ from astropy.io import fits
 
 
 
+
 # Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
 badregions = [[567.5, 575.5],
               [588.5, 598.5],
@@ -24,6 +25,8 @@ badregions = [[567.5, 575.5],
               #[396, 398],  #H epsilon
               #[388, 390],  #H zeta
 ]
+interp_regions = []
+trimsize = 10
 
 if "darwin" in sys.platform:
     modeldir = "/Volumes/DATADRIVE/Stellar_Models/Sorted/Stellar/Vband/"
@@ -34,21 +37,13 @@ else:
     if not modeldir.endswith("/"):
         modeldir = modeldir + "/"
 
-if __name__ == '__main__':
-    # Parse command line arguments:
-    fileList = []
-    trimsize = 10
-    for arg in sys.argv[1:]:
-        if 1:
-            fileList.append(arg)
-    prim_vsini = [100.0] * len(fileList)
 
-    # Get the primary star vsini values
-    prim_vsini = []
+def get_primary_vsini(file_list):
     homedir = os.environ['HOME']
     vsini = pandas.read_csv("{}/School/Research/Useful_Datafiles/Vsini.csv".format(homedir), sep='|', skiprows=8)[1:]
     vsini_dict = {}
-    for fname in fileList:
+    prim_vsini = []
+    for fname in file_list:
         root = fname.split('/')[-1][:9]
         if root in vsini_dict:
             prim_vsini.append(vsini_dict[root])
@@ -62,8 +57,20 @@ if __name__ == '__main__':
             except IndexError:
                 logging.warn('No vsini found for star {}! No primary star removal will be attempted!'.format(star))
                 prim_vsini.append(None)
-    for fname, vsini in zip(fileList, prim_vsini):
+    for fname, vsini in zip(file_list, prim_vsini):
         print fname, vsini
+    return prim_vsini
+
+
+if __name__ == '__main__':
+    # Parse command line arguments:
+    fileList = []
+    for arg in sys.argv[1:]:
+        if 1:
+            fileList.append(arg)
+
+    # Get the primary star vsini values
+    prim_vsini = get_primary_vsini(fileList)
 
     GenericSearch.slow_companion_search(fileList, prim_vsini,
                                         hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
