@@ -8,7 +8,8 @@ import StarData
 
 import Search_slow
 
-if __name__ == '__main__':
+
+def check_sensitivity():
     fileList = []
     for arg in sys.argv[1:]:
         if 1:
@@ -27,7 +28,21 @@ if __name__ == '__main__':
                         badregions=badregions, interp_regions=interp_regions,
                         metal_values=(0.0,),
                         vsini_values=(5,),
-                        Tvalues=range(6000, 6100, 100),
+                        Tvalues=range(3000, 6000, 100),
                         debug=False,
                         addmode='simple',
                         output_mode='hdf5')
+
+
+def analyze_sensitivity():
+    """
+    This uses the output of a previous run of check_sensitivity, and makes plots
+    :return:
+    """
+
+
+if __name__ == '__main__':
+    if 'analyze' in sys.argv[1]:
+        analyze_sensitivity()
+    else:
+        check_sensitivity()
