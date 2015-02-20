@@ -4,9 +4,9 @@ Sensitivity analysis, using the new search method.
 import sys
 
 import Sensitivity
+import StarData
 
 import Search_slow
-
 
 if __name__ == '__main__':
     fileList = []
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     badregions = Search_slow.badregions
     interp_regions = Search_slow.interp_regions
     trimsize = Search_slow.trimsize
-    prim_vsini = Search_slow.get_primary_vsini(fileList)
+    prim_vsini = StarData.get_vsini(fileList)
 
     Sensitivity.Analyze(fileList, prim_vsini,
                         hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',

@@ -5,6 +5,8 @@ import os
 import GenericSearch
 import pandas
 from astropy.io import fits
+import StarData
+
 
 
 
@@ -70,7 +72,7 @@ if __name__ == '__main__':
             fileList.append(arg)
 
     # Get the primary star vsini values
-    prim_vsini = get_primary_vsini(fileList)
+    prim_vsini = StarData.get_vsini(fileList)
 
     GenericSearch.slow_companion_search(fileList, prim_vsini,
                                         hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
