@@ -1,10 +1,9 @@
 import sys
 import os
-
 import FittingUtilities
+
 from astropy.io import fits as pyfits
 import numpy as np
-
 import HelperFunctions
 
 
@@ -33,9 +32,10 @@ bad_regions_wave = {436: [438, 9e9],
 
 def read_orders(fname, blazefile=None):
     # Read in the data
+    print fname
     try:
         orders = HelperFunctions.ReadFits(fname)
-    except ValueError:
+    except IndexError:
         orders = HelperFunctions.ReadFits(fname, errors=2)
     orders = orders[::-1][:-2]  # Reverse order so the bluest order is first
 
@@ -45,6 +45,12 @@ def read_orders(fname, blazefile=None):
             blaze = HelperFunctions.ReadFits(blazefile)
         except ValueError:
             blaze = HelperFunctions.ReadFits(blazefile, errors=2)
+        except IndexError:
+            data = pyfits.getdata(blazefile)
+            blaze = []
+            for i in range(data.shape[1]):
+                y = data[0, i, :]
+                blaze.append(HelperFunctions.DataStructures.xypoint(x=np.arange(y.size), y=y))
         except IOError:
             print "Error! blaze file %s does not exist!" % blazefile
             print "Not converting file %s" % fname
