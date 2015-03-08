@@ -2,10 +2,12 @@ import sys
 import logging
 import os
 
-import GenericSearch
 import pandas
 from astropy.io import fits
+
+import GenericSearch
 import StarData
+
 
 
 
@@ -83,11 +85,30 @@ if __name__ == '__main__':
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
                                         vsini_values=(1, 5, 10, 20, 30),
-                                        Tvalues=range(3000, 6900, 100),
+                                        Tvalues=range(3000, 7500, 100),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
                                         addmode='simple',
+                                        obstype='real',
                                         output_mode='hdf5')
 
-    #done = raw_input('Hit Enter')
+    """   Use this for the synthetic companion search
+    GenericSearch.slow_companion_search(fileList, prim_vsini,
+                                        hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
+                                        extensions=True,
+                                        resolution=None,
+                                        trimsize=trimsize,
+                                        modeldir=modeldir,
+                                        badregions=badregions,
+                                        metal_values=(0.0, -0.5, 0.5),
+                                        vsini_values=(1, 5, 10, 20, 30),
+                                        Tvalues=range(3000, 6900, 100),
+                                        observatory='McDonald',
+                                        debug=False,
+                                        vbary_correct=False,
+                                        addmode='T-weighted',
+                                        obstype='synthetic',
+                                        output_mode='hdf5')
+
+    """
