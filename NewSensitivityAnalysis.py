@@ -12,6 +12,7 @@ import Search_slow
 
 MS = SpectralTypeRelations.MainSequence()
 
+
 def check_sensitivity():
     fileList = []
     for arg in sys.argv[1:]:
@@ -30,14 +31,11 @@ def check_sensitivity():
                         trimsize=trimsize,
                         badregions=badregions, interp_regions=interp_regions,
                         metal_values=(0.0,),
-                        vsini_values=(5,),
+                        vsini_values=(0, 10, 20, 30, 40, 50),
                         Tvalues=range(3000, 6000, 100),
                         debug=False,
                         addmode='simple',
                         output_mode='hdf5')
-
-
-
 
 
 if __name__ == '__main__':
