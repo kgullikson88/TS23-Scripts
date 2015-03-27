@@ -40,11 +40,13 @@ def check_sensitivity():
 
 if __name__ == '__main__':
     if '--analyze' in sys.argv[1]:
-        sig_fig, rate_fig, rate_ax, rate_top_ax, sig_ax, sig_top_ax = Sensitivity.analyze_sensitivity(
-            hdf5_file='Sensitivity.hdf5')
+        # sig_fig, rate_fig, rate_ax, rate_top_ax, sig_ax, sig_top_ax = Sensitivity.analyze_sensitivity(
+        #    hdf5_file='Sensitivity.hdf5', update=True)
 
-        sig_fig.savefig('CHIRON_Significance.pdf')
-        rate_fig.savefig('CHIRON_Rate.pdf')
+        # sig_fig.savefig('TS23_Significance.pdf')
+        #rate_fig.savefig('TS23_Rate.pdf')
+        Sensitivity.analyze_sensitivity(hdf5_file='Sensitivity.hdf5', update=True)
+
         plt.show()
     else:
         check_sensitivity()
