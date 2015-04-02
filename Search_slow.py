@@ -2,10 +2,14 @@ import sys
 import logging
 import os
 
-import GenericSearch
 import pandas
 from astropy.io import fits
+
+import GenericSearch
 import StarData
+
+
+
 
 
 
@@ -23,7 +27,7 @@ badregions = [[567.5, 575.5],
               # [655, 657],  # H alpha
               # [485, 487],  #H beta
               # [433, 435],  #H gamma
-              #[409, 411],  #H delta
+              # [409, 411],  #H delta
               #[396, 398],  #H epsilon
               #[388, 390],  #H zeta
 ]
@@ -74,6 +78,32 @@ if __name__ == '__main__':
     # Get the primary star vsini values
     prim_vsini = StarData.get_vsini(fileList)
 
+    # Remove anything without a vsini
+    new_file_list = []
+    new_prim_vsini = []
+    for vsini, fname in zip(prim_vsini, fileList):
+        if vsini is not None:
+            new_file_list.append(fname)
+            new_prim_vsini.append(vsini)
+
+    GenericSearch.slow_companion_search(new_file_list, new_prim_vsini,
+                                        hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
+                                        extensions=True,
+                                        resolution=None,
+                                        trimsize=trimsize,
+                                        modeldir=modeldir,
+                                        badregions=badregions,
+                                        metal_values=(0.0, -0.5, 0.5),
+                                        vsini_values=(1, 5, 10, 20, 30),
+                                        Tvalues=range(3000, 9000, 100),
+                                        observatory='McDonald',
+                                        debug=False,
+                                        vbary_correct=True,
+                                        addmode='simple',
+                                        obstype='real',
+                                        output_mode='hdf5')
+
+    """   Use this for the synthetic companion search
     GenericSearch.slow_companion_search(fileList, prim_vsini,
                                         hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
                                         extensions=True,
@@ -86,8 +116,9 @@ if __name__ == '__main__':
                                         Tvalues=range(3000, 6900, 100),
                                         observatory='McDonald',
                                         debug=False,
-                                        vbary_correct=True,
-                                        addmode='simple',
+                                        vbary_correct=False,
+                                        addmode='T-weighted',
+                                        obstype='synthetic',
                                         output_mode='hdf5')
 
-    #done = raw_input('Hit Enter')
+    """

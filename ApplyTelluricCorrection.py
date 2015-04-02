@@ -6,11 +6,12 @@ from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 import numpy as np
+
 import DataStructures
 import HelperFunctions
 
 
-plot = True
+plot = False
 
 
 def ReadCorrectedFile(fname, yaxis="model"):
