@@ -210,8 +210,8 @@ if __name__ == "__main__":
         humidity = TelluricFitter.MakeModel.ppmv_to_humidity(h2o_ppmv * h2o_scale, temperature, pressure)
 
         # Make a model for the whole spectrum
-        fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
-                            "waveend": order.x[-1] + 20.0,
+        fitter.AdjustValue({"wavestart": orders[0].x[0] - 20.0,
+                            "waveend": orders[-1].x[-1] + 20.0,
                             "o2": o2,
                             "h2o": humidity,
                             "resolution": resolution})
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         for i, order in enumerate(orders):
             left = np.searchsorted(full_model.x, order.x[0] - 5)
             right = np.searchsorted(full_model.x, order.x[-1] + 5)
-            if min(full_model.x[left:right]) > 0.95:
+            if min(full_model.y[left:right]) > 0.95:
                 model = FittingUtilities.ReduceResolution(full_model[left:right].copy(), resolution)
                 model = FittingUtilities.RebinData(model, order.x)
                 data = order.copy()
