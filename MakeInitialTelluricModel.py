@@ -209,35 +209,33 @@ if __name__ == "__main__":
         h2o_ppmv = TelluricFitter.MakeModel.humidity_to_ppmv(humidity, temperature, pressure)
         humidity = TelluricFitter.MakeModel.ppmv_to_humidity(h2o_ppmv * h2o_scale, temperature, pressure)
 
+        # Make a model for the whole spectrum
+        fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
+                            "waveend": order.x[-1] + 20.0,
+                            "o2": o2,
+                            "h2o": humidity,
+                            "resolution": resolution})
+        fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j]]
+        full_model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False,
+                                          broaden=False, nofit=True)
+
         for i, order in enumerate(orders):
-            if (order.x[0] < 470 and order.x[-1] > 470) or max(order.y) < 0.01:
-                model = order.copy()
-                model.y = np.ones(order.size())
+            left = np.searchsorted(full_model.x, order.x[0] - 5)
+            right = np.searchsorted(full_model.x, order.x[-1] + 5)
+            if min(full_model.x[left:right]) > 0.95:
+                model = FittingUtilities.ReduceResolution(full_model[left:right].copy(), resolution)
+                model = FittingUtilities.RebinData(model, order.x)
                 data = order.copy()
                 data.cont = np.ones(data.size())
+
             else:
                 print "\n\nGenerating model for order %i of %i\n" % (i, len(orders))
-                fitter.AdjustValue({"wavestart": order.x[0] - 20.0,
-                                    "waveend": order.x[-1] + 20.0,
-                                    "o2": o2,
-                                    "h2o": humidity,
-                                    "resolution": resolution})
-                fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j]]
                 order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
                 fitter.ImportData(order)
                 fitter.resolution_fit_mode = "gauss"
-                #wave0 = order.x.mean()
-                #fitter.shift = vel/(constants.c.cgs.value*units.cm.to(units.km)) * wave0
-                fitter.DisplayVariables()
-                model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False)
+                model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False, model=full_model[left:right].copy())
 
                 data = fitter.data
-
-                # Apply scale
-                #if i in HelperFunctions.FindOrderNums(orders, [630, 690]):
-                #    model.y = model.y ** (o2_scale)
-                #else:
-                #    model.y = model.y ** h2o_scale
 
 
             # Set up data structures for OutputFitsFile
