@@ -6,6 +6,8 @@ import numpy as np
 
 import FitsUtils
 import FindContinuum
+import itertools
+import seaborn as sns
 
 
 if __name__ == "__main__":
@@ -30,10 +32,16 @@ if __name__ == "__main__":
         else:
             fileList.append(arg)
 
-    linestyles = ['k-', 'r-', 'b-', 'g-']
+    #linestyles = ['k-', 'r-', 'b-', 'g-']
+    linestyles = itertools.cycle(('-', '--', ':', '-.'))
+    colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 
     for fnum, fname in enumerate(fileList):
-        ls = linestyles[fnum % len(linestyles)]
+        #ls = linestyles[fnum % len(linestyles)]
+        col = colors.next()
+        if fnum % 7 == 0:
+            style = linestyles.next()
+        ls = '{}{}'.format(col, style)
         orders = FitsUtils.MakeXYpoints(fname, extensions=True, x="wavelength", y="flux", cont="continuum",
                                         errors="error")
         print fname, len(orders)
@@ -52,10 +60,13 @@ if __name__ == "__main__":
                 plt.plot(order.x, model[i].y, 'r-')
             else:
                 if normalize:
-                    plt.plot(order.x, order.y / order.cont, 'k-')
+                    plt.plot(order.x, order.y / order.cont, ls)
                     plt.text(order.x.mean(), 1.1, str(i + 1))
                 else:
-                    plt.plot(order.x, order.y, ls)
+                    if i == 0:
+                        plt.plot(order.x, order.y, ls, label=fname)
+                    else:
+                        plt.plot(order.x, order.y, ls)
                     #plt.plot(order.x, order.cont)
             plt.xlabel("Wavelength (nm)")
             plt.ylabel("Flux")
@@ -64,4 +75,7 @@ if __name__ == "__main__":
                 plt.title("Order %i" % i)
                 plt.show()
     if not byorder:
+        if 'oneplot':
+            leg = plt.legend(loc='best', fancybox=True)
+            leg.get_frame().set_alpha(0.4)
         plt.show()

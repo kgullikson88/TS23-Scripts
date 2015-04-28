@@ -11,7 +11,7 @@ import DataStructures
 import HelperFunctions
 
 
-plot = True
+plot = False
 
 
 def ReadCorrectedFile(fname, yaxis="model"):
@@ -152,7 +152,7 @@ def main1():
 
     else:
         allfiles = os.listdir("./")
-        corrected_files = [f for f in allfiles if "Corrected_KG" in f and f.endswith("-0.fits")]
+        corrected_files = [f for f in allfiles if "Corrected_RV" in f and f.endswith("-1.fits")]
         # original_files = [f for f in allfiles if any(f in cf for cf in corrected_files)]
 
         # print corrected_files
