@@ -36,9 +36,9 @@ def check_sensitivity():
                         trimsize=trimsize,
                         badregions=badregions, interp_regions=interp_regions,
                         metal_values=(0.0,),
-                        #vsini_values=(0, 10, 20, 30, 40, 50),
-                        vsini_values=(5,),
-                        Tvalues=range(6000, 7100, 100),
+                        vsini_values=(0, 10, 20, 30, 40, 50),
+                        # vsini_values=(5,),
+                        Tvalues=range(3000, 7000, 100),
                         debug=False,
                         addmode='simple',
                         output_mode='hdf5')
