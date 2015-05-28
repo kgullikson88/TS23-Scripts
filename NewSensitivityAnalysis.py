@@ -38,7 +38,7 @@ def check_sensitivity():
                         metal_values=(0.0,),
                         vsini_values=(0, 10, 20, 30, 40, 50),
                         # vsini_values=(5,),
-                        Tvalues=range(3000, 7000, 100),
+                        Tvalues=range(4500, 7000, 100),
                         debug=False,
                         addmode='simple',
                         output_mode='hdf5')

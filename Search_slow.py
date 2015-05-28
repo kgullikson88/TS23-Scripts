@@ -95,7 +95,7 @@ if __name__ == '__main__':
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
                                         vsini_values=(1, 5, 10, 20, 30),
-                                        Tvalues=range(3000, 9000, 100),
+                                        Tvalues=range(6800, 9000, 100),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
