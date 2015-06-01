@@ -16,6 +16,7 @@ import StarData
 
 
 
+
 # Define regions contaminated by telluric residuals or other defects. We will not use those regions in the cross-correlation
 badregions = [[567.5, 575.5],
               [588.5, 598.5],
@@ -28,7 +29,7 @@ badregions = [[567.5, 575.5],
               # [485, 487],  #H beta
               # [433, 435],  #H gamma
               # [409, 411],  #H delta
-              #[396, 398],  #H epsilon
+              # [396, 398],  #H epsilon
               #[388, 390],  #H zeta
 ]
 interp_regions = []
@@ -88,6 +89,7 @@ if __name__ == '__main__':
 
     GenericSearch.slow_companion_search(new_file_list, new_prim_vsini,
                                         hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
+                                        # hdf5_file = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5',
                                         extensions=True,
                                         resolution=None,
                                         trimsize=trimsize,
