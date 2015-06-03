@@ -1,9 +1,4 @@
 import sys
-import logging
-import os
-
-import pandas
-from astropy.io import fits
 
 import GenericSearch
 import StarData
@@ -37,36 +32,14 @@ trimsize = 10
 
 if "darwin" in sys.platform:
     modeldir = "/Volumes/DATADRIVE/Stellar_Models/Sorted/Stellar/Vband/"
+    hdf5_filename = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5'
 elif "linux" in sys.platform:
     modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
+    hdf5_filename = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5'
 else:
     modeldir = raw_input("sys.platform not recognized. Please enter model directory below: ")
     if not modeldir.endswith("/"):
         modeldir = modeldir + "/"
-
-
-def get_primary_vsini(file_list):
-    homedir = os.environ['HOME']
-    vsini = pandas.read_csv("{}/School/Research/Useful_Datafiles/Vsini.csv".format(homedir), sep='|', skiprows=8)[1:]
-    vsini_dict = {}
-    prim_vsini = []
-    for fname in file_list:
-        root = fname.split('/')[-1][:9]
-        if root in vsini_dict:
-            prim_vsini.append(vsini_dict[root])
-        else:
-            header = fits.getheader(fname)
-            star = header['OBJECT']
-            try:
-                v = vsini.loc[vsini.Identifier.str.strip() == star]['vsini(km/s)'].values[0]
-                prim_vsini.append(float(v) * 0.8)
-                vsini_dict[root] = float(v) * 0.8
-            except IndexError:
-                logging.warn('No vsini found for star {}! No primary star removal will be attempted!'.format(star))
-                prim_vsini.append(None)
-    for fname, vsini in zip(file_list, prim_vsini):
-        print fname, vsini
-    return prim_vsini
 
 
 if __name__ == '__main__':
