@@ -25,7 +25,7 @@ badregions = [[567.5, 575.5],
               # [433, 435],  #H gamma
               # [409, 411],  #H delta
               # [396, 398],  #H epsilon
-              #[388, 390],  #H zeta
+              # [388, 390],  #H zeta
 ]
 interp_regions = []
 trimsize = 10
@@ -40,7 +40,6 @@ else:
     modeldir = raw_input("sys.platform not recognized. Please enter model directory below: ")
     if not modeldir.endswith("/"):
         modeldir = modeldir + "/"
-
 
 if __name__ == '__main__':
     # Parse command line arguments:
@@ -70,7 +69,7 @@ if __name__ == '__main__':
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
                                         vsini_values=(1, 5, 10, 20, 30),
-                                        Tvalues=range(6800, 9000, 100),
+                                        Tvalues=range(3000, 9000, 100),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
