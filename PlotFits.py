@@ -1,13 +1,10 @@
 import sys
+import itertools
 
-from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 import numpy as np
 
 import FitsUtils
-import FindContinuum
-import itertools
-import seaborn as sns
 
 
 if __name__ == "__main__":
@@ -32,7 +29,7 @@ if __name__ == "__main__":
         else:
             fileList.append(arg)
 
-    #linestyles = ['k-', 'r-', 'b-', 'g-']
+    # linestyles = ['k-', 'r-', 'b-', 'g-']
     linestyles = itertools.cycle(('-', '--', ':', '-.'))
     colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 
@@ -60,14 +57,14 @@ if __name__ == "__main__":
                 plt.plot(order.x, model[i].y, 'r-')
             else:
                 if normalize:
-                    plt.plot(order.x, order.y / order.cont, ls)
+                    plt.plot(order.x, order.y / order.cont, ls, label=fname)
                     plt.text(order.x.mean(), 1.1, str(i + 1))
                 else:
                     if i == 0:
                         plt.plot(order.x, order.y, ls, label=fname)
                     else:
                         plt.plot(order.x, order.y, ls)
-                    #plt.plot(order.x, order.cont)
+                        #plt.plot(order.x, order.cont)
             plt.xlabel("Wavelength (nm)")
             plt.ylabel("Flux")
             plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)

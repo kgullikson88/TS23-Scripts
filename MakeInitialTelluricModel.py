@@ -1,9 +1,10 @@
 import sys
 import os
-import FittingUtilities
 
 import numpy as np
 from astropy.io import fits as pyfits
+
+import FittingUtilities
 import TelluricFitter
 import HelperFunctions
 
@@ -13,7 +14,7 @@ weather_file = homedir + "/School/Research/Useful_Datafiles/Weather.dat"
 
 badregions = [[588., 590],  # Na D lines
               # [589.567, 589.632],  # Na D line 2
-              [655., 658.],  #H-alpha line
+              [655., 658.],  # H-alpha line
               [627.4, 629.0],  #O2 band
               [686.4, 690.7]]  # O2 band
 
@@ -86,7 +87,7 @@ if __name__ == "__main__":
         name = fname.split(".fits")[0]
         outfilename = "Corrected_%s.fits" % name
 
-        #Read file
+        # Read file
         orders = HelperFunctions.ReadFits(fname, errors="error", extensions=True, x="wavelength", y="flux")
 
         #Get the observation time
@@ -160,7 +161,7 @@ if __name__ == "__main__":
             fitter.resolution_fit_mode = "gauss"
             fitter.fit_source = False
             fitter.fit_primary = False
-            model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False)
+            model = fitter.GenerateModel(fitpars, separate_source=False, return_resolution=False)
 
             # Find the best scale factor
             model.cont = np.ones(model.size())
@@ -188,7 +189,7 @@ if __name__ == "__main__":
             fitter.resolution_fit_mode = "gauss"
             fitter.fit_source = False
             fitter.fit_primary = False
-            model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False)
+            model = fitter.GenerateModel(fitpars, separate_source=False, return_resolution=False)
 
             # Find the best scale factor
             model.cont = np.ones(model.size())
@@ -216,7 +217,7 @@ if __name__ == "__main__":
                             "h2o": humidity,
                             "resolution": resolution})
         fitpars = [fitter.const_pars[j] for j in range(len(fitter.parnames)) if fitter.fitting[j]]
-        full_model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False,
+        full_model = fitter.GenerateModel(fitpars, separate_source=False, return_resolution=False,
                                           broaden=False, nofit=True)
 
         for i, order in enumerate(orders):
@@ -233,7 +234,8 @@ if __name__ == "__main__":
                 order.cont = FittingUtilities.Continuum(order.x, order.y, fitorder=3, lowreject=1.5, highreject=10)
                 fitter.ImportData(order)
                 fitter.resolution_fit_mode = "gauss"
-                model = fitter.GenerateModel(fitpars, separate_primary=False, return_resolution=False, model=full_model[left:right].copy())
+                model = fitter.GenerateModel(fitpars, separate_source=False, return_resolution=False,
+                                             model=full_model[left:right].copy())
 
                 data = fitter.data
 
