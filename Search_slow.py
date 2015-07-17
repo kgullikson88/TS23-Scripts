@@ -35,7 +35,7 @@ if "darwin" in sys.platform:
     hdf5_filename = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5'
 elif "linux" in sys.platform:
     modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
-    hdf5_filename = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5'
+    hdf5_filename = '/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5'
 else:
     modeldir = raw_input("sys.platform not recognized. Please enter model directory below: ")
     if not modeldir.endswith("/"):
@@ -60,8 +60,7 @@ if __name__ == '__main__':
             new_prim_vsini.append(vsini)
 
     GenericSearch.slow_companion_search(new_file_list, new_prim_vsini,
-                                        hdf5_file='/media/ExtraSpace/PhoenixGrid/TS23_Grid.hdf5',
-                                        # hdf5_file = '/Volumes/DATADRIVE/PhoenixGrid/TS23_Grid.hdf5',
+                                        hdf5_file=hdf5_filename,
                                         extensions=True,
                                         resolution=None,
                                         trimsize=trimsize,
@@ -69,7 +68,7 @@ if __name__ == '__main__':
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
                                         vsini_values=(1, 5, 10, 20, 30),
-                                        Tvalues=range(3000, 9000, 100),
+                                        Tvalues=range(9000, 13000, 100),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
