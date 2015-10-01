@@ -15,6 +15,7 @@ import seaborn as sns
 import HelperFunctions
 import Fitters
 
+
 # Set up plotting
 sns.set_style('white')
 sns.set_style('ticks')
@@ -62,8 +63,8 @@ if __name__ == '__main__':
 
         # Find this filename in the fitted dataframe (generated while flattening the spectra)
         original_fname = filename.split('_flattened.fits')[0] + '.fits'
-	subset = fitted_df.loc[fitted_df.fname == original_fname]
-	teff = float(subset.teff)
+        subset = fitted_df.loc[fitted_df.fname == original_fname]
+        teff = float(subset.teff)
         logg = float(subset.logg)
         logging.info('Teff = {}\nlogg = {}'.format(teff, logg))
 
