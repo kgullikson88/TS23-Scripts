@@ -67,13 +67,13 @@ if __name__ == '__main__':
                                         modeldir=modeldir,
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
-                                        #vsini_values=(1, 5, 10, 20, 30),
+                                        vsini_values=(1, 5, 10, 20, 30),
                                         Tvalues=range(3000, 9000, 100),
-                                        vsini_values=(60, 70, 80),
+                                        #vsini_values=(60, 70, 80),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
-                                        addmode='simple',
+                                        addmode='all',
                                         obstype='real',
                                         output_mode='hdf5')
 
