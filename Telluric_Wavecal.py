@@ -19,6 +19,7 @@ import HelperFunctions
 import telfit
 
 
+
 # Make the speed of light a constant
 C_LIGHT = constants.c.cgs.to(u.km/u.s).value
 ARCHIVE_DIR = '/media/FreeAgent_Drive_/data/McDonaldData/'
@@ -170,7 +171,8 @@ class VelocityFitter(object):
         the user if they are not found.
         """
         header = fits.getheader(filename)
-        names = ['{}.fits'.format(header[k].split('_telluric_corrected')[0]) for k in header.keys() if k.startswith('FILE')]
+        names = ['{}.fits'.format(header[k].split('_telluric_corrected')[0]) for k in header.keys() if
+                 k.startswith('FILE') and k.upper() != 'FILENAME']
         basedir = os.path.dirname(filename)
         if len(basedir) > 0 and not basedir.endswith('/'):
             basedir += '/'
