@@ -30,6 +30,8 @@ if __name__ == '__main__':
     prim_vsini = [None for _ in fileList]
 
     # Use this one for the real data search
+    GenericSearch.minvel = -3000  # Minimum velocity to output, in km/s
+    GenericSearch.maxvel = 3000
     GenericSearch.slow_companion_search(fileList, prim_vsini,
                                         hdf5_file=hdf5_filename,
                                         extensions=True,
@@ -42,9 +44,11 @@ if __name__ == '__main__':
                                         vsini_values=(10, 40, 80, 150, 250),
                                         Tvalues=range(7000, 20000, 1000),
                                         observatory='McDonald',
-                                        debug=False,
+                                        debug=True,
                                         reject_outliers=False,
                                         vbary_correct=False,
                                         addmode='all',
                                         output_mode='hdf5',
-                                        output_file='CCF_primary_nobalmer.hdf5')
+                                        output_file='CCF_primary_test.hdf5',
+                                        min_x=0,
+                                        max_x=650)
