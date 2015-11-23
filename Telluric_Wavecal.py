@@ -3,25 +3,28 @@ Adjust the wavelength calibration of CHIRON spectra
 to match the telluric lines
 """
 
-from astropy.io import fits
-import HelperFunctions
-import lmfit
 import os
 from functools import partial
 import logging
 from collections import defaultdict
-import numpy as np
-import telfit
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
-from astropy import constants, units as u 
+from astropy import constants, units as u
 import FittingUtilities
+
+from astropy.io import fits
+import lmfit
+import numpy as np
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
+
+import HelperFunctions
+import telfit
+
 
 # Make the speed of light a constant
 C_LIGHT = constants.c.cgs.to(u.km/u.s).value
-ARCHIVE_DIR = '/media/FreeAgent_Drive_/data/CHIRON_data/'
+ARCHIVE_DIR = '/media/FreeAgent_Drive_/data/McDonaldData/'
 
 class VelocityFitter(object):
-    def __init__(self, filename, tell_orders=[690., 700., 715., 725., 735.], telluric_model=None):
+    def __init__(self, filename, tell_orders=(690., 700., 715., 725., 735.), telluric_model=None):
         """
         Fit the velocity shift, with uncertainties, to make the spectrum line up with the telluric lines
 
@@ -187,11 +190,6 @@ class VelocityFitter(object):
         logging.debug('Checking archive directory: {}{}/backup/'.format(ARCHIVE_DIR, date))
         if all(os.path.exists('{}{}/backup/{}'.format(ARCHIVE_DIR, date, f)) for f in names):
             return ['{}{}/backup/{}'.format(ARCHIVE_DIR, date, f) for f in names]
-
-        # Check Adam's section of the data archive
-        logging.debug('Checking archive directory {}Adam_Data/{}'.format(ARCHIVE_DIR, date))
-        if all(os.path.exists('{}Adam_Data/{}/{}'.format(ARCHIVE_DIR, date, f)) for f in names ):
-            return ['{}Adam_Data/{}/{}'.format(ARCHIVE_DIR, date, f) for f in names]
         
         # Ask the user
         done = False
