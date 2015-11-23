@@ -10,7 +10,7 @@ trimsize = 10
 if "darwin" in sys.platform:
     modeldir = "/Volumes/DATADRIVE/Stellar_Models/PHOENIX/Stellar/Vband/"
     hdf5_filename = '/Users/kevingullikson/StellarLibrary/Kurucz_Grid/TS23_grid_air.hdf5'
-    #hdf5_filename = '/Volumes/DATADRIVE/Kurucz_Grid/CHIRON_grid_air.hdf5'
+    hdf5_filename = '/Volumes/DATADRIVE/Kurucz_Grid/TS23_grid_air.hdf5'
 elif "linux" in sys.platform:
     modeldir = "/media/FreeAgent_Drive/SyntheticSpectra/Sorted/Stellar/Vband/"
     hdf5_filename = '/media/ExtraSpace/Kurucz_FullGrid/TS23_grid_air.hdf5'
@@ -48,6 +48,8 @@ if __name__ == '__main__':
                                         reject_outliers=False,
                                         vbary_correct=False,
                                         addmode='all',
+                                        min_x=0,
+                                        max_x=700,
                                         output_mode='hdf5',
                                         output_file='CCF_primary_test.hdf5',
                                         min_x=0,
