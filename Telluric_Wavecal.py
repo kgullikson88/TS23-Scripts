@@ -63,6 +63,8 @@ class VelocityFitter(object):
                 if isinstance(n, int) and n < len(orders):
                     self.data[basename].append(orders[n])
                 else:
+                    logging.debug(n)
+                    logging.debug(HelperFunctions.FindOrderNums(orders, [n]))
                     ordernum = HelperFunctions.FindOrderNums(orders, [n])[0]
                     self.data[basename].append(orders[ordernum])
                 if self.data[basename][-1].x[0] < min_wave:
