@@ -40,7 +40,8 @@ def check_sensitivity():
                         Tvalues=range(7000, 12100, 1000),
                         debug=False,
                         addmode='all',
-                        output_mode='hdf5')
+                        output_mode='hdf5',
+                        output_file='Sensitivity.hdf5')
 
 
 if __name__ == '__main__':

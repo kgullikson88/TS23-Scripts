@@ -58,6 +58,10 @@ def get_jd(fname, dirname='{}/School/Research/McDonaldData'.format(os.environ['H
         raise OSError('Filename does not exist: {}'.format(fname))
         #return np.nan
     header = fits.getheader(fname)
+    if 'MCDONALD' not in header['OBSERVAT']:
+        raise KeyError('Wrong observatory: ({})'.format(header['OBSERVAT']))
+    if '107' not in header['TELESCOP']:
+        raise KeyError('Wrong Telescope: ({})'.format(header['TELESCOP']))
     if 'HJD' in header:
         jd = header['HJD']
     else:
@@ -96,7 +100,10 @@ def measure_rv(hdf5_file, output_log=None, update_attrs=True):
                                       extensions=True, trimsize=trimsize, vsini=None,
                                       reject_outliers=False)
                 Npix = sum([o.size() for o in orders])
-                jd = get_jd(fname)
+                try:
+                    jd = get_jd(fname)
+                except KeyError:
+                    continue
 
                 # Loop over the datasets
                 summary = defaultdict(list)
