@@ -1,7 +1,7 @@
 import sys
 
-import GenericSearch
-import StarData
+from kglib.cross_correlation import GenericSearch
+from kglib.utils import StarData
 
 
 
@@ -67,9 +67,9 @@ if __name__ == '__main__':
                                         modeldir=modeldir,
                                         badregions=badregions,
                                         metal_values=(0.0, -0.5, 0.5),
-                                        vsini_values=(1, 5, 10, 20, 30),
-                                        Tvalues=range(3000, 9000, 100),
-                                        #vsini_values=(60, 70, 80),
+                                        #vsini_values=(1, 5, 10, 20, 30),
+                                        Tvalues=range(3000, 12000, 100),
+                                        vsini_values=(40, 50, 60, 70),
                                         observatory='McDonald',
                                         debug=False,
                                         vbary_correct=True,
